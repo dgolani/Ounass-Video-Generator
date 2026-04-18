@@ -6,10 +6,38 @@ Invoke when the user asks to add a new template to the Ounass Video Ad Generator
 
 Do **not** use this skill for: modifying shared engine code, changing the template contract itself, or authoring export-pipeline changes. Those are out of scope.
 
+## Two phases, one workflow
+
+Template work usually splits into two phases. Don't merge them.
+
+1. **Design-preview phase** — produce HTML previews that explore motion and layout. Often delegated to an external tool (e.g. claude.design, Figma Make). Output: one self-contained `.html` per template, playable in a browser.
+2. **Code-port phase** — port each preview into the app's template contract as a real folder under `app/src/templates/<slug>/`. Output: drop-in template code + registry entry, typecheck clean, build clean.
+
+The rest of this doc is primarily the code-port contract (phase 2). The answers to design-preview tools (phase 1) are fixed below so you don't re-derive them each time.
+
+## Pre-answered: design-preview phase (phase 1)
+
+When an external design tool asks clarifying questions before producing HTML previews, these are the standing answers. They reflect two invariants: **(a) the app already exists** — don't scaffold it; **(b) previews are throwaway for evaluating motion + layout** — don't over-engineer them with export buttons or tweaks panels.
+
+| Question | Answer | Why |
+|---|---|---|
+| **What should I deliver?** | Five self-contained HTML previews, one per archetype. Inline CSS + vanilla JS/SVG, no build step. 1080×1920 canvas each. **Don't scaffold the React/Vite app — it already exists.** | Scaffolding the app wastes a day. Single-canvas showcases hide per-template detail. Five standalone HTMLs port 1:1. |
+| **Aspect ratio for previews?** | 9:16 only (1080×1920). | The real `scene.tsx` handles 9:16 / 4:5 / 1:1 via `w/h/wh` scale helpers at port time. Generating variants during preview is wasted effort. |
+| **Which archetypes?** | Five that **don't overlap** with the four in production (Lookbook, Editorial, Countdown, Hero). Good starter set: Bestsellers Countdown (ranked 5→1), Seasonal Campaign (occasion-driven), Category Carousel (depth in one category), Style the Look (outfit builder), Gift Guide (curated picks with gift framing). Skip Hero Drop, Lookbook, Flash Sale w/ ticking clock, Sale/Price Drop, New Arrivals Grid — all duplicate or drift-close to existing templates. | Archetype coverage, not archetype count, is the goal. Each new template should cover a mechanic the library doesn't already have. |
+| **How should I use the product illustrations?** | Use them **as-is** — they ARE the production product imagery. Don't treat them as silhouettes or editorial abstractions. | `photos.*` JPEGs are what the real `defaultProps` references. Previews must be visually faithful so porting is 1:1, not a re-design. |
+| **Brand name to show?** | **OUNASS**, using the attached SVG as the wordmark. | `DEFAULT_BRAND.boutiqueName = 'Ounass'` and the SVG is pre-wired as the brand-kit default. Generic "BOUTIQUE" drifts from what marketers will see on first open. |
+| **Motion character?** | **Mix across the 5**, but only between *Subtle & luxurious* and *Editorial & kinetic*. **No Bold & experimental** (liquid morphs, 3D, unexpected transitions) — off-brand for luxury Middle East boutique. | Existing 4 templates sit in the Subtle–Editorial-Kinetic band (Lookbook/Editorial = subtle; Countdown/Hero = editorial-kinetic). Ratio the new 5 similarly so the full library of 9 reads coherent. |
+| **Export needs from preview?** | **Playable HTML only** — preview in a browser, nothing else. No export button, no screen-recording prep, no frame-by-frame capture. | The real app has `ffmpeg.wasm` export. Export work in the preview is code that gets discarded at port time. |
+| **Editable tweaks in preview?** | **No** — fixed demos showing the concept, with the exact Ounass defaults from the brand kit. | The real app's `FieldDescriptor` properties panel IS the tweaks panel. Building a second one in each of 5 previews is throwaway work. Copy-length edge cases get stress-tested in the real editor after port. |
+| **Motion-per-archetype default mapping** | Bestsellers → editorial-kinetic (numerals slam). Style the Look → editorial-kinetic (snappy outfit assembly). Seasonal Campaign → subtle (warmth, not urgency). Category Carousel → subtle (each piece lingers). Gift Guide → subtle (delicate flourishes). | Covers the full Subtle ↔ Editorial-Kinetic range at a 3:2 ratio, matching the existing 2:2 split. |
+
+If an external tool asks a question not in the table above, ask the user before inventing an answer.
+
 ## What the user provides
 
 - A brief — archetype, tone, 1–2 lines of storyboard intent (e.g. *"Bestsellers countdown, numbered 05 → 01, punchy 1.5s per slot"*). If the brief is vague, ask **one** targeted question before scaffolding (e.g. *"How many products, and should prices animate in?"*). Don't interrogate.
 - Optionally: brand assets. Assume the brand kit is already wired — the Ounass SVG lives at `app/src/assets/ounass-logo.svg` and renders through `<BoutiqueLogo>`. Placeholder product imagery lives at `app/src/assets/photos/` and is exported via `app/src/assets/placeholders.ts` (`photos.dress`, `photos.trouser`, `photos.blouse`, `photos.outerwear`, `photos.handbag`, `photos.shoes`, `photos.sunglasses`, `photos.watch`, `photos.jewellery`, `photos.knitwear`).
+- Optionally: HTML previews from phase 1. When present, the port is a translation exercise — keep the preview's motion, timing, and layout; re-express it in `scene.tsx` using `animate` / `interpolate` / the scale helpers.
 
 ## Read before writing
 
