@@ -147,6 +147,9 @@ VideoAds/
         ├── store/
         │   ├── types.ts        ← Project includes template props + aspectIndex, duration,
         │   │                     background music (track id, volume, anchor, trim), timestamps
+        │   ├── editableState.ts ← Slice of Project the Editor treats as undo/redo + autosave:
+        │   │                      props, aspectIndex, duration, videoClipStartSec, music fields.
+        │   │                      projectToEditable / editableToPatch / editablesEqual.
         │   ├── projects.ts     ← localStorage CRUD + useProjects/useProject hooks.
         │   │                     Throws StorageQuotaError on quota; surfaced in Editor.
         │   └── brand.ts        ← Brand kit (boutique name + 4 colors + optional logo).
@@ -234,6 +237,7 @@ The only valid `kind`s are `section | text | color | image | productList`. If a 
 `productList` has knobs: `imagePath` (which key holds the image), `newProductTemplate` (default shape for + Add), `minProducts` / `maxProducts`, `addLabel`. Phillip Lim uses 2/10. Editorial uses 4/4 (fixed grid).
 
 ### 5.4 State + persistence
+- **Editor undo scope:** see **§5.8** — timeline + props share one `EditableState` history; see **`store/editableState.ts`**.
 - All projects: `localStorage['vag:projects:v1']` — array of Project (includes `backgroundTrackId`, `musicVolume`, `musicAnchorVideoTime`, `musicTrimStartSec` for timeline + export).
 - Brand kit: `localStorage['vag:brand:v1']` — single object.
 - Per-project playhead: `localStorage['project:<id>:t']` — last seek position.
@@ -263,6 +267,18 @@ The editor’s **left** column is built in `EditorBrandPanel.tsx` from `template
 - **`color`:** set `brandColumn: false` to keep a swatch on the **right** Properties panel only (omit from BRAND KIT).
 
 Paths included on the left are removed from the right-hand `PropertiesPanel` via `collectBrandColumnExcludePaths`.
+
+### 5.8 Editor unified history (`EditableState` + `useHistory`)
+**Merged 2026** (`main` through **004e5e8** / timeline polish branch): the Editor keeps one **`useHistory<EditableState>`** stack (`src/store/editableState.ts`) so **undo/redo includes timeline drags** (duration, clip slip, music anchor/end, etc.) alongside template props.
+
+**Rules when changing `Editor.tsx` or anything that mutates project fields:**
+- **Do not** call `save({ ...patch })` directly for fields that belong in **`EditableState`** (props, aspect, duration, `videoClipStartSec`, `backgroundTrackId`, `musicVolume`, `musicAnchorVideoTime`, `musicTrimStartSec`, `musicEndVideoTime`). Route those through **`setEditable(prev => ({ ...prev, ...patch }))`** (or the existing **`onTimelinePatch`** wrapper) so every change is one history entry.
+- **`normalizeEditable(e)`** runs on timeline patches: clamps music anchor/end when **duration** shortens (replaces the old separate `useEffect` clamp so the stack stays coherent).
+- **`editablesEqual(a, b)`** uses shallow compare and **`props === props` (identity)** for the props blob — **`PropertiesPanel` / `setLocalProps` must always replace `props` with a new object reference** on each edit (immutable discipline) or autosave/history can mis-detect “no change”.
+- **Debounced autosave** compares `editable` to `projectToEditable(project)` and calls **`save(editableToPatch(editable))`** when they differ. **Project name** stays outside this stack (blur → `save({ name })` only), by design.
+- **`EditorTimelineDock`:** `onPatch` from the dock is wired to **`onTimelinePatch`** → **`setEditable` + `normalizeEditable`**. A reusable **`snap()`** helper lives in the dock file for quantizing times (usable elsewhere).
+
+**Deferred follow-ups** (not in that merge): timeline **⌘-scroll zoom**, splitting the large dock file, consolidating **html-to-image** vs **modern-screenshot**, numeric clip inspector.
 
 **MAINTENANCE — update §5 when you:** introduce a new convention, deprecate an existing one, change the template anatomy, or add/remove a FieldDescriptor kind.
 
@@ -449,6 +465,7 @@ The Project type | `store/types.ts` + `store/projects.ts` + every consumer of `u
 The TemplateMeta type | `templates/types.ts` + every template's `meta.ts` + `templates/registry.ts`
 The Scene contract | `templates/registry.ts` (`SceneComponentProps`) + every template's `scene.tsx` + `app/routes/Editor.tsx` (where it's invoked)
 The Stage `controller` API | `engine/Stage.tsx` + `engine/useStageController.ts` + `app/routes/Editor.tsx` + `lib/export.ts`
+EditableState / Editor history | `store/editableState.ts` + `store/types.ts` (`Project`) + `app/routes/Editor.tsx` + any child that called `save` for those fields (must use `setEditable` / `onTimelinePatch`)
 A token/color | `styles/tokens.css` (single source of truth — never hardcode)
 ROADMAP scope | ROADMAP.md + this HANDOFF §10 / §11
 
@@ -558,4 +575,4 @@ Contributors **never work in parallel** on this repo—only one active stream at
 
 ---
 
-**Last meaningful update:** 2026-04-18 — **Editor:** left **`EditorBrandPanel`** (PRODUCTS, then BRAND KIT: logo + colors; ~288px column); **`EditorTimelineDock`** scene markers + proportional scene-name segments on the video lane (from scaled `meta.scenes`); `PropertiesPanel` `compact` + right-hand field split. **`Outline.tsx`** unused by Editor (kept for reference). Docs: root **README**, **ROADMAP** Phase 1 + 5b, **app/README**. **§18** sequential Git workflow unchanged.
+**Last meaningful update:** 2026-04-18 — **Editor:** unified **`EditableState` + `useHistory`** (undo/redo includes timeline); **`normalizeEditable`** on timeline patches; **`brandColumn`** on `FieldDescriptor` (§5.7). Left **`EditorBrandPanel`**; **`EditorTimelineDock`** scene UI + `snap()` helper. **`Outline.tsx`** unused. **§13** + **§5.8** document `save` vs `setEditable`. Deferred: dock split, raster lib merge, ⌘-scroll zoom, clip inspector.
