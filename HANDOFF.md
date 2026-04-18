@@ -249,6 +249,21 @@ The only valid `kind`s are `section | text | color | image | productList`. If a 
 - All styling is inline-style objects using design-token CSS variables (`var(--editor-accent)` etc.). No CSS modules, no styled-components, no Tailwind. Keeps the codebase grep-able.
 - TypeScript everywhere; type assertions only at the registry boundary (`as unknown as TemplateMeta<unknown>`).
 
+### 5.7 Brand column routing (`EditorBrandPanel` / `splitEditorFields`)
+The editor’s **left** column is built in `EditorBrandPanel.tsx` from `template.fields` without branching on template id.
+
+**Default (no extra flags):**
+- **`image`** with `path === 'logo'` → **BRAND KIT**
+- **`productList`** with `path === 'products'` → **PRODUCTS**
+- Every **`color`** field → **BRAND KIT**
+
+**Optional `brandColumn` on `FieldDescriptor` (see `templates/fields.ts`):**
+- **`image`:** set `brandColumn: true` to surface an image in **BRAND KIT** when its path is **not** `logo` (e.g. a secondary mark).
+- **`productList`:** set `brandColumn: true` to surface a grid in **PRODUCTS** when its path is **not** `products`.
+- **`color`:** set `brandColumn: false` to keep a swatch on the **right** Properties panel only (omit from BRAND KIT).
+
+Paths included on the left are removed from the right-hand `PropertiesPanel` via `collectBrandColumnExcludePaths`.
+
 **MAINTENANCE — update §5 when you:** introduce a new convention, deprecate an existing one, change the template anatomy, or add/remove a FieldDescriptor kind.
 
 ---
