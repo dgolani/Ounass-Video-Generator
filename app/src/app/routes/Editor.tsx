@@ -17,8 +17,9 @@ import { ExportModal } from '../components/ExportModal';
 import { EditorTimelineDock } from '../components/EditorTimelineDock';
 import { useEditorMusicPreview } from '../hooks/useEditorMusicPreview';
 import { useFilmstripCapture } from '../hooks/useFilmstripCapture';
-import { getMusicTrack, resolveAudioUrl } from '../../lib/musicTracks';
+import { getMusicTrack, resolveAudioUrl } from '../../lib/musicLibrary';
 import { useHistory } from '../../lib/useHistory';
+import { activeSceneIdAtLocalTime } from '../../lib/activeSceneAtTime';
 
 /** Clamp music anchor/end against the current duration. Called on every
  *  timeline patch so a shorter video automatically pulls the music bed
@@ -150,6 +151,16 @@ export function Editor() {
     autoplay: false,
     persistKey: project ? `project:${project.id}` : undefined,
   });
+
+  const activeSceneId = useMemo(() => {
+    if (!template?.meta.scenes?.length) return null;
+    return activeSceneIdAtLocalTime(
+      template.meta.scenes,
+      controller.time,
+      duration,
+      timeScale,
+    );
+  }, [template, controller.time, duration, timeScale]);
 
   const { leftPaneFields, rightPaneFields } = useMemo(() => {
     if (!template) return { leftPaneFields: [], rightPaneFields: [] };
@@ -389,6 +400,7 @@ export function Editor() {
           leftPaneFields={leftPaneFields}
           value={localProps}
           onChange={setLocalProps}
+          activeSceneId={activeSceneId}
         />
       </div>
 
@@ -497,6 +509,7 @@ export function Editor() {
           fields={rightPaneFields}
           value={localProps}
           onChange={setLocalProps}
+          activeSceneId={activeSceneId}
         />
       </div>
 

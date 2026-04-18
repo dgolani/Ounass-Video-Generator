@@ -23,7 +23,14 @@ export function getMusicTrack(id: string | null): MusicTrack | null {
 }
 
 export function resolveAudioUrl(src: string): string {
-  if (src.startsWith('http://') || src.startsWith('https://')) return src;
+  if (
+    src.startsWith('data:') ||
+    src.startsWith('blob:') ||
+    src.startsWith('http://') ||
+    src.startsWith('https://')
+  ) {
+    return src;
+  }
   if (typeof window !== 'undefined') {
     return new URL(src, window.location.origin).href;
   }

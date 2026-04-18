@@ -87,9 +87,15 @@ type Props = {
   leftPaneFields: FieldDescriptor[];
   value: unknown;
   onChange: (next: unknown) => void;
+  activeSceneId?: string | null;
 };
 
-export function EditorBrandPanel({ leftPaneFields, value, onChange }: Props) {
+export function EditorBrandPanel({
+  leftPaneFields,
+  value,
+  onChange,
+  activeSceneId = null,
+}: Props) {
   const emptyHint = useMemo(
     () => (
       <div
@@ -114,6 +120,12 @@ export function EditorBrandPanel({ leftPaneFields, value, onChange }: Props) {
   }
 
   return (
-    <PropertiesPanel fields={leftPaneFields} value={value} onChange={onChange} compact />
+    <PropertiesPanel
+      fields={leftPaneFields}
+      value={value}
+      onChange={onChange}
+      compact
+      activeSceneId={activeSceneId}
+    />
   );
 }

@@ -11,20 +11,21 @@ export const fields: FieldDescriptor[] = [
   },
 
   { kind: 'section', label: 'Opening' },
-  { kind: 'text', path: 'kicker', label: 'Kicker' },
-  { kind: 'text', path: 'brand', label: 'Brand' },
-  { kind: 'text', path: 'tagline', label: 'Tagline' },
+  { kind: 'text', path: 'kicker', label: 'Kicker', sceneIds: ['act-1'] },
+  { kind: 'text', path: 'brand', label: 'Brand', sceneIds: ['act-1'] },
+  { kind: 'text', path: 'tagline', label: 'Tagline', sceneIds: ['act-1'] },
 
   { kind: 'section', label: 'Columns act' },
-  { kind: 'text', path: 'act2Kicker', label: 'Kicker' },
-  { kind: 'text', path: 'act2TitleLine1', label: 'Title — line 1' },
-  { kind: 'text', path: 'act2TitleLine2', label: 'Title — line 2' },
+  { kind: 'text', path: 'act2Kicker', label: 'Kicker', sceneIds: ['act-2'] },
+  { kind: 'text', path: 'act2TitleLine1', label: 'Title — line 1', sceneIds: ['act-2'] },
+  { kind: 'text', path: 'act2TitleLine2', label: 'Title — line 2', sceneIds: ['act-2'] },
 
   { kind: 'section', label: 'Products' },
   {
     kind: 'productList',
     path: 'products',
     label: 'Products',
+    sceneIds: ['act-3'],
     imagePath: 'src',
     addLabel: '+ Add product',
     minProducts: 2,
@@ -43,11 +44,11 @@ export const fields: FieldDescriptor[] = [
   },
 
   { kind: 'section', label: 'Outro' },
-  { kind: 'text', path: 'outroKicker', label: 'Kicker' },
-  { kind: 'text', path: 'boutiqueName', label: 'Boutique name' },
-  { kind: 'text', path: 'boutiqueTagline', label: 'Boutique tagline' },
-  { kind: 'text', path: 'ctaText', label: 'CTA text' },
-  { kind: 'text', path: 'ctaFooter', label: 'CTA footer' },
+  { kind: 'text', path: 'outroKicker', label: 'Kicker', sceneIds: ['act-4'] },
+  { kind: 'text', path: 'boutiqueName', label: 'Boutique name', sceneIds: ['act-4'] },
+  { kind: 'text', path: 'boutiqueTagline', label: 'Boutique tagline', sceneIds: ['act-4'] },
+  { kind: 'text', path: 'ctaText', label: 'CTA text', sceneIds: ['act-4'] },
+  { kind: 'text', path: 'ctaFooter', label: 'CTA footer', sceneIds: ['act-4'] },
 
   { kind: 'section', label: 'Watermark' },
   {
@@ -55,6 +56,7 @@ export const fields: FieldDescriptor[] = [
     path: 'watermark',
     label: 'Boutique signature',
     placeholder: 'Leave blank to hide',
+    sceneIds: ['act-4'],
   },
 
   { kind: 'section', label: 'Colors' },

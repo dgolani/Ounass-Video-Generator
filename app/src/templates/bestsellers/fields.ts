@@ -13,13 +13,14 @@ export const fields: FieldDescriptor[] = [
   { kind: 'text', path: 'headerMeta', label: 'Header line (e.g. "The Edit · Spring")' },
 
   { kind: 'section', label: 'Opening' },
-  { kind: 'text', path: 'kicker', label: 'Kicker' },
+  { kind: 'text', path: 'kicker', label: 'Kicker', sceneIds: ['slot-1'] },
 
   { kind: 'section', label: 'Products (ranked 5 → 1)' },
   {
     kind: 'productList',
     path: 'products',
     label: 'Ranked products',
+    productRowSceneIds: ['slot-1', 'slot-2', 'slot-3', 'slot-4', 'slot-5'],
     imagePath: 'src',
     addLabel: '+ Add product',
     minProducts: 3,
@@ -39,9 +40,9 @@ export const fields: FieldDescriptor[] = [
   },
 
   { kind: 'section', label: 'Closing CTA' },
-  { kind: 'text', path: 'ctaKicker', label: 'Kicker' },
-  { kind: 'text', path: 'ctaHeadline', label: 'Headline' },
-  { kind: 'text', path: 'ctaButton', label: 'Button label' },
+  { kind: 'text', path: 'ctaKicker', label: 'Kicker', sceneIds: ['cta'] },
+  { kind: 'text', path: 'ctaHeadline', label: 'Headline', sceneIds: ['cta'] },
+  { kind: 'text', path: 'ctaButton', label: 'Button label', sceneIds: ['cta'] },
 
   { kind: 'section', label: 'Colors' },
   { kind: 'color', path: 'colors.background', label: 'Background (paper)' },

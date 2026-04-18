@@ -8,7 +8,8 @@ import {
   type CSSProperties,
 } from 'react';
 import { Slider } from '../../ui/Slider';
-import { getMusicTrack, MUSIC_TRACKS } from '../../lib/musicTracks';
+import { getMusicTrack } from '../../lib/musicLibrary';
+import { MusicLibraryDrawer } from './MusicLibraryDrawer';
 import type { Project } from '../../store/types';
 import type { SceneOutline } from '../../templates/types';
 
@@ -241,7 +242,7 @@ export function EditorTimelineDock({
   const [padRight, setPadRight] = useState(0);
   const [audioMenuOpen, setAudioMenuOpen] = useState(false);
   const [soundPanelOpen, setSoundPanelOpen] = useState(false);
-  const popoverRef = useRef<HTMLDivElement | null>(null);
+  const audioMenuTriggerRef = useRef<HTMLButtonElement | null>(null);
   const soundPanelRef = useRef<HTMLDivElement | null>(null);
   const soundTriggerRef = useRef<HTMLButtonElement | null>(null);
 
@@ -298,18 +299,6 @@ export function EditorTimelineDock({
     ro.observe(el);
     return () => ro.disconnect();
   }, [cinemaMode]);
-
-  useEffect(() => {
-    if (!audioMenuOpen) return;
-    const close = (e: MouseEvent) => {
-      const p = popoverRef.current;
-      if (p && !p.contains(e.target as Node)) {
-        setAudioMenuOpen(false);
-      }
-    };
-    window.addEventListener('mousedown', close, true);
-    return () => window.removeEventListener('mousedown', close, true);
-  }, [audioMenuOpen]);
 
   useEffect(() => {
     if (!soundPanelOpen) return;
@@ -693,6 +682,21 @@ export function EditorTimelineDock({
   const musicMeta = backgroundTrackId ? getMusicTrack(backgroundTrackId) : null;
   const trackLabel = backgroundTrackId ? musicMeta?.label ?? 'Audio' : '';
 
+  const musicLibraryDrawerEl = (
+    <MusicLibraryDrawer
+      open={audioMenuOpen}
+      onClose={() => setAudioMenuOpen(false)}
+      onPickTrackId={(id) => {
+        onPatch({
+          backgroundTrackId: id,
+          musicAnchorVideoTime: 0,
+          musicTrimStartSec: 0,
+          musicEndVideoTime: duration,
+        });
+      }}
+    />
+  );
+
   if (cinemaMode) {
     const ext = Math.max(0.001, timelineExtentSec);
     const vLeftPct = (videoClipStartSec / ext) * 100;
@@ -704,6 +708,7 @@ export function EditorTimelineDock({
     const microCols = Math.min(10, Math.max(1, filmstripImages.length));
 
     return (
+      <>
       <div
         style={{
           marginTop: 0,
@@ -1057,10 +1062,13 @@ export function EditorTimelineDock({
           </div>
         </div>
       </div>
+      {musicLibraryDrawerEl}
+      </>
     );
   }
 
   return (
+    <>
     <div
       style={{
         marginTop: 2,
@@ -1928,6 +1936,7 @@ export function EditorTimelineDock({
                 ) : (
                   <div style={{ position: 'relative', height: '100%' }}>
                     <button
+                      ref={audioMenuTriggerRef}
                       type="button"
                       data-timeline-no-seek
                       onPointerDown={(e) => e.stopPropagation()}
@@ -1960,69 +1969,6 @@ export function EditorTimelineDock({
                       </span>
                       <span style={{ fontWeight: 700, color: TRIM_GOLD }}>Add audio</span>
                     </button>
-                    {audioMenuOpen && MUSIC_TRACKS.length > 0 ? (
-                      <div
-                        ref={popoverRef}
-                        data-timeline-no-seek
-                        style={{
-                          position: 'absolute',
-                          left: '50%',
-                          bottom: '100%',
-                          transform: 'translate(-50%, -8px)',
-                          minWidth: 220,
-                          maxWidth: 320,
-                          padding: 'var(--s-3)',
-                          borderRadius: 'var(--r-lg)',
-                          border: '1px solid var(--editor-border)',
-                          background: 'var(--editor-panel-2)',
-                          boxShadow: 'var(--shadow-editor)',
-                          zIndex: 40,
-                        }}
-                      >
-                        <div
-                          style={{
-                            fontSize: 9,
-                            fontWeight: 700,
-                            letterSpacing: '0.18em',
-                            textTransform: 'uppercase',
-                            color: 'var(--editor-text-dim)',
-                            marginBottom: 8,
-                          }}
-                        >
-                          Library
-                        </div>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                          {MUSIC_TRACKS.map((t) => (
-                            <button
-                              key={t.id}
-                              type="button"
-                              onClick={() => {
-                                onPatch({
-                                  backgroundTrackId: t.id,
-                                  musicAnchorVideoTime: 0,
-                                  musicTrimStartSec: 0,
-                                  musicEndVideoTime: duration,
-                                });
-                                setAudioMenuOpen(false);
-                              }}
-                              style={{
-                                textAlign: 'left',
-                                padding: '10px 12px',
-                                borderRadius: 'var(--r-md)',
-                                border: '1px solid var(--editor-border)',
-                                background: 'var(--editor-panel)',
-                                color: 'var(--editor-text)',
-                                fontFamily: 'var(--sans)',
-                                fontSize: 12,
-                                cursor: 'pointer',
-                              }}
-                            >
-                              {t.label}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    ) : null}
                   </div>
                 )}
               </div>
@@ -2131,6 +2077,8 @@ export function EditorTimelineDock({
       </div>
 
     </div>
+    {musicLibraryDrawerEl}
+    </>
   );
 }
 

@@ -6,7 +6,7 @@ import {
   type ExportProgress,
 } from '../../lib/export';
 import type { StageController } from '../../engine';
-import { getMusicTrack, resolveAudioUrl } from '../../lib/musicTracks';
+import { getMusicTrack, resolveAudioUrl } from '../../lib/musicLibrary';
 
 type Props = {
   open: boolean;
@@ -41,6 +41,8 @@ export function ExportModal({
   musicTrimStartSec,
   musicEndVideoTime,
 }: Props) {
+  const exportMusicTrack = getMusicTrack(backgroundTrackId);
+
   const [phase, setPhase] = useState<Phase>('idle');
   const [progress, setProgress] = useState<ExportProgress | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -72,6 +74,13 @@ export function ExportModal({
 
     try {
       const track = getMusicTrack(backgroundTrackId);
+      if (backgroundTrackId && musicVolume >= 0.001 && !track) {
+        setError(
+          'This project references a track that is not in the app catalog. Pick a bundled track in the timeline.',
+        );
+        setPhase('error');
+        return;
+      }
       const audioUrl =
         track && musicVolume >= 0.001 ? resolveAudioUrl(track.src) : null;
 
@@ -237,15 +246,18 @@ export function ExportModal({
                   color: 'var(--editor-text-dim)',
                 }}
               >
-                {getMusicTrack(backgroundTrackId) && musicVolume >= 0.001 ? (
+                {exportMusicTrack && musicVolume >= 0.001 ? (
                   <>
-                    <strong style={{ color: 'var(--editor-text)' }}>
-                      {getMusicTrack(backgroundTrackId)!.label}
-                    </strong>
+                    <strong style={{ color: 'var(--editor-text)' }}>{exportMusicTrack.label}</strong>
                     <br />
                     Volume {(musicVolume * 100).toFixed(0)}% · Clip{' '}
                     {musicAnchorVideoTime.toFixed(1)}–{musicEndVideoTime.toFixed(1)}s · File in{' '}
                     {musicTrimStartSec.toFixed(1)}s
+                  </>
+                ) : backgroundTrackId && musicVolume >= 0.001 ? (
+                  <>
+                    Unknown track id — pick a bundled track in the timeline so export can find the
+                    file.
                   </>
                 ) : (
                   <>No music — add a track in the timeline below the canvas.</>

@@ -7,6 +7,15 @@
 // under PRODUCTS / BRAND KIT. Use optional `brandColumn` / `brandColumn: false`
 // when a template needs different paths.
 
+/** Sub-field rows inside a `productList` control */
+export type ProductListSubField = {
+  path: string;
+  label: string;
+  kind: 'text';
+  /** When the playhead is in any of these `meta.scenes[].id`s, emphasize this row */
+  sceneIds?: string[];
+};
+
 export type FieldDescriptor =
   | { kind: 'section'; label: string }
   | {
@@ -15,6 +24,8 @@ export type FieldDescriptor =
       label: string;
       placeholder?: string;
       multiline?: boolean;
+      /** When the playhead is in any of these `meta.scenes[].id`s, emphasize this field */
+      sceneIds?: string[];
     }
   | {
       kind: 'color';
@@ -43,8 +54,12 @@ export type FieldDescriptor =
       label: string;
       /** When true, show in left PRODUCTS even if path is not `products`. */
       brandColumn?: boolean;
+      /** When the playhead is in any of these scene ids, emphasize the whole product list */
+      sceneIds?: string[];
+      /** Scene id per row index (`[idx] === activeScene` highlights that product card). */
+      productRowSceneIds?: string[];
       /** Sub-fields edited per product (path is relative to each product) */
-      productFields: { path: string; label: string; kind: 'text' }[];
+      productFields: ProductListSubField[];
       /** Key on each product that stores the image URL / data URL */
       imagePath?: string;
       /** Default shape used when the marketer adds a new product */

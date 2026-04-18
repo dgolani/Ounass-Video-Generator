@@ -8,7 +8,7 @@ import {
   TextField,
   Textarea,
 } from '../../ui/primitives';
-import type { FieldDescriptor } from '../../templates/fields';
+import type { FieldDescriptor, ProductListSubField } from '../../templates/fields';
 import { getPath, setPath } from '../../lib/path';
 import { resizeImageToDataURL } from '../../lib/image';
 import {
@@ -25,9 +25,32 @@ type Props = {
   onChange: (next: unknown) => void;
   /** Tighter padding for the narrow left brand column */
   compact?: boolean;
+  /** Current timeline scene id (`meta.scenes`) — highlights matching `sceneIds` on text fields */
+  activeSceneId?: string | null;
 };
 
-export function PropertiesPanel({ fields, value, onChange, compact }: Props) {
+function sceneIdsActive(
+  sceneIds: string[] | undefined,
+  activeSceneId: string | null | undefined,
+): boolean {
+  if (activeSceneId == null || !sceneIds?.length) return false;
+  return sceneIds.includes(activeSceneId);
+}
+
+/** Tight halo on the input only (label stays unstyled). */
+function sceneInputHaloClass(active: boolean): string {
+  return ['editor-scene-input-halo', active && 'editor-scene-input-halo--active']
+    .filter(Boolean)
+    .join(' ');
+}
+
+export function PropertiesPanel({
+  fields,
+  value,
+  onChange,
+  compact,
+  activeSceneId = null,
+}: Props) {
   return (
     <div
       style={{
@@ -43,22 +66,25 @@ export function PropertiesPanel({ fields, value, onChange, compact }: Props) {
         const set = (next: unknown) => onChange(setPath(value, field.path, next));
 
         if (field.kind === 'text') {
+          const hi = sceneIdsActive(field.sceneIds, activeSceneId);
           return (
-            <div key={i} style={{ marginTop: 16 }}>
+            <div key={i} style={{ marginTop: compact ? 12 : 16 }}>
               <Field label={field.label}>
-                {field.multiline ? (
-                  <Textarea
-                    value={String(current ?? '')}
-                    onChange={(e) => set(e.target.value)}
-                    placeholder={field.placeholder}
-                  />
-                ) : (
-                  <TextField
-                    value={String(current ?? '')}
-                    onChange={(e) => set(e.target.value)}
-                    placeholder={field.placeholder}
-                  />
-                )}
+                <div className={sceneInputHaloClass(hi)}>
+                  {field.multiline ? (
+                    <Textarea
+                      value={String(current ?? '')}
+                      onChange={(e) => set(e.target.value)}
+                      placeholder={field.placeholder}
+                    />
+                  ) : (
+                    <TextField
+                      value={String(current ?? '')}
+                      onChange={(e) => set(e.target.value)}
+                      placeholder={field.placeholder}
+                    />
+                  )}
+                </div>
               </Field>
             </div>
           );
@@ -103,6 +129,8 @@ export function PropertiesPanel({ fields, value, onChange, compact }: Props) {
                 Array.isArray(current) ? (current as ProductShape[]) : []
               }
               onChange={set}
+              activeSceneId={activeSceneId}
+              compact={compact}
             />
           );
         }
@@ -119,10 +147,14 @@ function ProductListField({
   field,
   products,
   onChange,
+  activeSceneId,
+  compact,
 }: {
   field: Extract<FieldDescriptor, { kind: 'productList' }>;
   products: ProductShape[];
   onChange: (next: ProductShape[]) => void;
+  activeSceneId?: string | null;
+  compact?: boolean;
 }) {
   const min = field.minProducts ?? 1;
   const max = field.maxProducts ?? 20;
@@ -156,24 +188,34 @@ function ProductListField({
     onChange([...products, newProduct]);
   };
 
+  const listSceneHi = sceneIdsActive(field.sceneIds, activeSceneId);
+
   return (
-    <div style={{ marginTop: 16 }}>
+    <div style={{ marginTop: compact ? 12 : 16 }}>
       <Stack gap={10}>
-        {products.map((product, idx) => (
-          <ProductRow
-            key={(product.id as string) ?? idx}
-            index={idx}
-            total={products.length}
-            product={product}
-            productFields={field.productFields}
-            imagePath={imagePath}
-            atMin={atMin}
-            onChange={(next) => updateAt(idx, next)}
-            onRemove={() => removeAt(idx)}
-            onMoveUp={() => move(idx, -1)}
-            onMoveDown={() => move(idx, 1)}
-          />
-        ))}
+        {products.map((product, idx) => {
+          const rowSceneId = field.productRowSceneIds?.[idx];
+          const rowSceneMatch =
+            rowSceneId != null && rowSceneId !== '' && rowSceneId === activeSceneId;
+          return (
+            <ProductRow
+              key={(product.id as string) ?? idx}
+              index={idx}
+              total={products.length}
+              product={product}
+              productFields={field.productFields}
+              imagePath={imagePath}
+              atMin={atMin}
+              activeSceneId={activeSceneId}
+              listSceneHi={listSceneHi}
+              rowSceneMatch={rowSceneMatch}
+              onChange={(next) => updateAt(idx, next)}
+              onRemove={() => removeAt(idx)}
+              onMoveUp={() => move(idx, -1)}
+              onMoveDown={() => move(idx, 1)}
+            />
+          );
+        })}
 
         <Button
           size="sm"
@@ -200,6 +242,9 @@ function ProductRow({
   productFields,
   imagePath,
   atMin,
+  activeSceneId,
+  listSceneHi,
+  rowSceneMatch,
   onChange,
   onRemove,
   onMoveUp,
@@ -208,9 +253,14 @@ function ProductRow({
   index: number;
   total: number;
   product: ProductShape;
-  productFields: { path: string; label: string; kind: 'text' }[];
+  productFields: ProductListSubField[];
   imagePath: string;
   atMin: boolean;
+  activeSceneId?: string | null;
+  /** Product list `sceneIds` matches (all rows’ inputs glow when subfields omit `sceneIds`) */
+  listSceneHi?: boolean;
+  /** Row index matches `productRowSceneIds[index]` */
+  rowSceneMatch?: boolean;
   onChange: (next: ProductShape) => void;
   onRemove: () => void;
   onMoveUp: () => void;
@@ -284,17 +334,27 @@ function ProductRow({
       <div style={{ display: 'grid', gridTemplateColumns: '88px 1fr', gap: 12 }}>
         <ImageDropZone url={imgUrl} onImage={setImage} />
         <Stack gap={8}>
-          {productFields.map((pf) => (
-            <TextField
-              key={pf.path}
-              value={String(product[pf.path] ?? '')}
-              onChange={(e) =>
-                onChange({ ...product, [pf.path]: e.target.value })
-              }
-              placeholder={pf.label}
-              style={{ padding: '6px 10px', fontSize: 12 }}
-            />
-          ))}
+          {productFields.map((pf) => {
+            const rowHi = sceneIdsActive(pf.sceneIds, activeSceneId);
+            const subHasOwnScenes = Boolean(pf.sceneIds?.length);
+            const inputActive = Boolean(
+              rowSceneMatch ||
+                rowHi ||
+                (listSceneHi && !subHasOwnScenes),
+            );
+            return (
+              <div key={pf.path} className={sceneInputHaloClass(inputActive)}>
+                <TextField
+                  value={String(product[pf.path] ?? '')}
+                  onChange={(e) =>
+                    onChange({ ...product, [pf.path]: e.target.value })
+                  }
+                  placeholder={pf.label}
+                  style={{ padding: '6px 10px', fontSize: 12 }}
+                />
+              </div>
+            );
+          })}
         </Stack>
       </div>
     </div>

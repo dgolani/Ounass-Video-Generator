@@ -11,10 +11,10 @@ export const fields: FieldDescriptor[] = [
   },
 
   { kind: 'section', label: 'Opening' },
-  { kind: 'text', path: 'preTitle', label: 'Pre-title' },
-  { kind: 'text', path: 'headlineLine1', label: 'Headline — line 1' },
-  { kind: 'text', path: 'headlineLine2', label: 'Headline — line 2 (italic)' },
-  { kind: 'text', path: 'subhead', label: 'Subhead' },
+  { kind: 'text', path: 'preTitle', label: 'Pre-title', sceneIds: ['reveal'] },
+  { kind: 'text', path: 'headlineLine1', label: 'Headline — line 1', sceneIds: ['copy'] },
+  { kind: 'text', path: 'headlineLine2', label: 'Headline — line 2 (italic)', sceneIds: ['copy'] },
+  { kind: 'text', path: 'subhead', label: 'Subhead', sceneIds: ['copy'] },
 
   { kind: 'section', label: 'The Product' },
   {
@@ -24,14 +24,14 @@ export const fields: FieldDescriptor[] = [
     aspectRatio: 2 / 3,
     hint: 'Full-frame hero. Drop a studio shot at 1080×1620 or similar.',
   },
-  { kind: 'text', path: 'product.name', label: 'Product name' },
-  { kind: 'text', path: 'product.category', label: 'Category' },
-  { kind: 'text', path: 'product.price', label: 'Price' },
+  { kind: 'text', path: 'product.name', label: 'Product name', sceneIds: ['copy'] },
+  { kind: 'text', path: 'product.category', label: 'Category', sceneIds: ['copy'] },
+  { kind: 'text', path: 'product.price', label: 'Price', sceneIds: ['copy'] },
 
   { kind: 'section', label: 'CTA' },
-  { kind: 'text', path: 'boutiqueName', label: 'Boutique name' },
-  { kind: 'text', path: 'ctaText', label: 'CTA text' },
-  { kind: 'text', path: 'ctaFooter', label: 'CTA footer' },
+  { kind: 'text', path: 'boutiqueName', label: 'Boutique name', sceneIds: ['cta'] },
+  { kind: 'text', path: 'ctaText', label: 'CTA text', sceneIds: ['cta'] },
+  { kind: 'text', path: 'ctaFooter', label: 'CTA footer', sceneIds: ['cta'] },
 
   { kind: 'section', label: 'Colors' },
   { kind: 'color', path: 'colors.background', label: 'Background' },
