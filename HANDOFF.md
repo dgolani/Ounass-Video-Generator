@@ -57,7 +57,7 @@ There is **no backend**. No login. No accounts. No Ounass API access (Kasada blo
                     ┌──────────────────────────────────┐
                     │          Template registry       │
                     │  src/templates/registry.ts       │
-                    │  4 entries today: phillip-lim,   │
+                    │  4 entries today: lookbook,      │
                     │  editorial, countdown, hero      │
                     └────┬───────────────┬─────────────┘
                          │ meta          │ Scene + fields
@@ -84,7 +84,7 @@ There is **no backend**. No login. No accounts. No Ounass API access (Kasada blo
 
 Three rules of the architecture:
 
-1. **The Editor never branches on template id.** Adding a new template = registering it in `registry.ts`. Zero editor edits. (Verified: `grep -r "phillip-lim\|editorial\|countdown\|hero" src/app/` returns 0 matches.)
+1. **The Editor never branches on template id.** Adding a new template = registering it in `registry.ts`. Zero editor edits. (Verified: `grep -r "lookbook\|editorial\|countdown\|hero" src/app/` returns 0 matches.)
 2. **Templates are pure data + one component.** A template = `{ meta, fields, defaultProps, Scene }`. Scene is a pure function of `(props, time)` that reads time via `useTimeline()`.
 3. **Scenes are dimension-agnostic.** Every scene receives `width` + `height` props and uses `makeScale(W, H)` helpers (`w(px)`, `h(px)`, `wh(px)`). No hardcoded pixel literals — they all read through the helpers so any aspect just works.
 
@@ -274,7 +274,7 @@ The only valid `kind`s are `section | text | color | image | productList`. If a 
    };
    ```
 4. **`fields.ts`** — declare which props are editable. Group with `{ kind: 'section', label: 'Brand' }` headers.
-5. **`scene.tsx`** — copy the makeScale + ActProps boilerplate from `phillip-lim/scene.tsx`. Each Act receives `{ props, T, s }`. Wrap every time literal in `T(...)` and every pixel in `s.w/s.h/s.wh`. Single-aspect-coded scenes are not allowed.
+5. **`scene.tsx`** — copy the makeScale + ActProps boilerplate from `lookbook/scene.tsx`. Each Act receives `{ props, T, s }`. Wrap every time literal in `T(...)` and every pixel in `s.w/s.h/s.wh`. Single-aspect-coded scenes are not allowed.
 6. **`index.ts`** — `export { FooScene } from './scene'; export { meta } from './meta'; export { fields } from './fields'; export { defaultProps, type FooProps } from './schema';`
 7. **Register in `src/templates/registry.ts`** (3-line addition).
 8. `npx tsc -b --noEmit` → must pass.
@@ -493,7 +493,7 @@ cd app && npm run build
 rm -rf app/node_modules/.vite
 
 # Find any place that branches on template id (should be empty!)
-grep -rn "phillip-lim\|editorial\|countdown\|hero" app/src/app
+grep -rn "lookbook\|editorial\|countdown\|hero" app/src/app
 
 # Find any hardcoded pixel literal in a scene (should be wrapped in w/h/wh)
 grep -nE "top: [0-9]+|left: [0-9]+|fontSize: [0-9]+" app/src/templates/*/scene.tsx
