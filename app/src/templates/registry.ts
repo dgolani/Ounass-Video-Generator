@@ -9,6 +9,11 @@ import * as lookbook from './lookbook';
 import * as editorial from './editorial';
 import * as countdown from './countdown';
 import * as hero from './hero';
+import * as bestsellers from './bestsellers';
+import * as seasonal from './seasonal';
+import * as carousel from './carousel';
+import * as giftGuide from './gift-guide';
+import * as brandSpotlight from './brand-spotlight';
 
 export type SceneComponentProps = {
   props: any;
@@ -45,6 +50,31 @@ const entries: Record<string, TemplateEntry> = {
     meta: hero.meta as unknown as TemplateMeta<unknown>,
     fields: hero.fields,
     Scene: hero.HeroScene as unknown as ComponentType<SceneComponentProps>,
+  },
+  [bestsellers.meta.id]: {
+    meta: bestsellers.meta as unknown as TemplateMeta<unknown>,
+    fields: bestsellers.fields,
+    Scene: bestsellers.BestsellersScene as unknown as ComponentType<SceneComponentProps>,
+  },
+  [seasonal.meta.id]: {
+    meta: seasonal.meta as unknown as TemplateMeta<unknown>,
+    fields: seasonal.fields,
+    Scene: seasonal.SeasonalScene as unknown as ComponentType<SceneComponentProps>,
+  },
+  [carousel.meta.id]: {
+    meta: carousel.meta as unknown as TemplateMeta<unknown>,
+    fields: carousel.fields,
+    Scene: carousel.CarouselScene as unknown as ComponentType<SceneComponentProps>,
+  },
+  [giftGuide.meta.id]: {
+    meta: giftGuide.meta as unknown as TemplateMeta<unknown>,
+    fields: giftGuide.fields,
+    Scene: giftGuide.GiftGuideScene as unknown as ComponentType<SceneComponentProps>,
+  },
+  [brandSpotlight.meta.id]: {
+    meta: brandSpotlight.meta as unknown as TemplateMeta<unknown>,
+    fields: brandSpotlight.fields,
+    Scene: brandSpotlight.BrandSpotlightScene as unknown as ComponentType<SceneComponentProps>,
   },
 };
 
