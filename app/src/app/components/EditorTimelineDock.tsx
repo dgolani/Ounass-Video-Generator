@@ -81,6 +81,25 @@ function formatTc(s: number) {
   return `${sec}.${d}`;
 }
 
+/** Soft-snap `value` to the nearest target within `threshold` seconds.
+ *  Returns the original value if nothing is near enough. */
+function snap(value: number, targets: readonly number[], threshold: number): number {
+  let best = value;
+  let bestDelta = threshold;
+  for (const t of targets) {
+    const d = Math.abs(t - value);
+    if (d < bestDelta) {
+      bestDelta = d;
+      best = t;
+    }
+  }
+  return best;
+}
+
+/** Snap threshold in seconds — ~5px of slop at 42 px/sec. Tight enough
+ *  that it doesn't feel magnetic, generous enough to actually help. */
+const SNAP_THRESHOLD_SEC = 0.12;
+
 const transportIconBtn: CSSProperties = {
   width: 32,
   height: 32,
@@ -335,20 +354,16 @@ export function EditorTimelineDock({
     scrollToTime(time);
   }, [time, scrollToTime, playing, cinemaMode]);
 
+  /** User scroll just moves the viewport. Seeking happens via click-to-
+   *  track or via the cinema rail. The lock stays — it prevents the
+   *  programmatic playhead-follow from fighting with a user scroll. */
   const onScroll = () => {
     if (programmaticScroll.current) return;
-    const el = scrollRef.current;
-    if (!el) return;
     userScrollLock.current = true;
     if (scrollUnlockTimer.current) clearTimeout(scrollUnlockTimer.current);
     scrollUnlockTimer.current = setTimeout(() => {
       userScrollLock.current = false;
     }, 160);
-    const centerPx = el.scrollLeft + el.clientWidth / 2 - TIMELINE_LEFT_INSET_PX;
-    const globalT = (centerPx / Math.max(1, displayTrackW)) * timelineExtentSec;
-    const local = globalT - videoClipStartSec;
-    const clamped = Math.min(duration, Math.max(0, local));
-    onSeek(clamped);
   };
 
   const seekFromClientX = (clientX: number) => {
@@ -412,6 +427,24 @@ export function EditorTimelineDock({
     [duration],
   );
 
+  /** Snap targets for music anchor/end (in local video seconds).
+   *  Includes video bounds + every scene boundary. */
+  const musicSnapTargets = useMemo(() => {
+    const ts = new Set<number>([0, duration]);
+    for (const s of videoScenes) {
+      ts.add(Math.min(Math.max(0, s.start), duration));
+      ts.add(Math.min(Math.max(0, s.end), duration));
+    }
+    return [...ts].sort((a, b) => a - b);
+  }, [videoScenes, duration]);
+
+  /** Snap targets for video duration — whole seconds within legal range. */
+  const videoDurationSnapTargets = useMemo(() => {
+    const ts: number[] = [];
+    for (let s = MIN_VIDEO_DURATION; s <= MAX_VIDEO_DURATION; s++) ts.push(s);
+    return ts;
+  }, []);
+
   const onClipPointerMove = useCallback(
     (e: React.PointerEvent) => {
       const d = dragRef.current;
@@ -429,10 +462,18 @@ export function EditorTimelineDock({
           na -= ne - duration;
           ne = duration;
         }
+        // Snap the anchor; end follows to preserve clip length.
+        const snapped = snap(na, musicSnapTargets, SNAP_THRESHOLD_SEC);
+        const delta = snapped - na;
+        na += delta;
+        ne += delta;
         const { a, e } = applyClipBounds(na, ne);
         onPatch({ musicAnchorVideoTime: a, musicEndVideoTime: e });
       } else if (d.kind === 'trimL') {
         let na = d.a0 + dSec;
+        na = Math.min(na, d.e0 - MIN_CLIP_SEC);
+        na = Math.max(0, na);
+        na = snap(na, musicSnapTargets, SNAP_THRESHOLD_SEC);
         na = Math.min(na, d.e0 - MIN_CLIP_SEC);
         na = Math.max(0, na);
         onPatch({ musicAnchorVideoTime: na });
@@ -440,10 +481,13 @@ export function EditorTimelineDock({
         let ne = d.e0 + dSec;
         ne = Math.max(ne, d.a0 + MIN_CLIP_SEC);
         ne = Math.min(duration, ne);
+        ne = snap(ne, musicSnapTargets, SNAP_THRESHOLD_SEC);
+        ne = Math.max(ne, d.a0 + MIN_CLIP_SEC);
+        ne = Math.min(duration, ne);
         onPatch({ musicEndVideoTime: ne });
       }
     },
-    [applyClipBounds, duration, onPatch, pxPerSec],
+    [applyClipBounds, duration, musicSnapTargets, onPatch, pxPerSec],
   );
 
   const endClipInteraction = useCallback((e: React.PointerEvent) => {
@@ -510,16 +554,25 @@ export function EditorTimelineDock({
       if (d.kind === 'move') {
         let ns = d.s0 + dSec;
         ns = Math.min(Math.max(0, ns), MAX_TIMELINE_EXTENT_SEC - d.d0);
+        // Snap clip start to 0 (start of global timeline) when nearby.
+        ns = snap(ns, [0], SNAP_THRESHOLD_SEC);
         onPatch({ videoClipStartSec: ns });
       } else if (d.kind === 'trimL') {
         let ns = d.s0 + dSec;
         ns = Math.min(ns, e0 - MIN_VIDEO_DURATION);
         ns = Math.max(0, ns);
+        ns = snap(ns, [0], SNAP_THRESHOLD_SEC);
         let newD = e0 - ns;
+        newD = snap(
+          newD,
+          videoDurationSnapTargets,
+          SNAP_THRESHOLD_SEC,
+        );
         newD = Math.min(MAX_VIDEO_DURATION, Math.max(MIN_VIDEO_DURATION, newD));
         onPatch({ videoClipStartSec: ns, duration: newD });
       } else {
         let newD = d.d0 + dSec;
+        newD = snap(newD, videoDurationSnapTargets, SNAP_THRESHOLD_SEC);
         newD = Math.min(MAX_VIDEO_DURATION, Math.max(MIN_VIDEO_DURATION, newD));
         if (d.s0 + newD > MAX_TIMELINE_EXTENT_SEC) {
           newD = MAX_TIMELINE_EXTENT_SEC - d.s0;
@@ -528,7 +581,7 @@ export function EditorTimelineDock({
         onPatch({ duration: newD });
       }
     },
-    [onPatch, pxPerSec],
+    [onPatch, pxPerSec, videoDurationSnapTargets],
   );
 
   const onVideoClipPointerDown = (e: React.PointerEvent, kind: VideoClipDrag['kind']) => {
@@ -886,7 +939,7 @@ export function EditorTimelineDock({
                         display: 'block',
                         width: '100%',
                         minWidth: 0,
-                        fontSize: 6,
+                        fontSize: 8,
                         fontWeight: 700,
                         letterSpacing: '0.04em',
                         textTransform: 'uppercase',
@@ -1581,17 +1634,29 @@ export function EditorTimelineDock({
                     title="Trim video start (global timeline)"
                     style={{
                       position: 'absolute',
-                      left: -6,
-                      top: -2,
-                      width: 14,
-                      height: VIDEO_LANE_H - 6,
-                      borderRadius: 3,
-                      background: VIDEO_TRIM,
+                      left: -14,
+                      top: -8,
+                      width: 28,
+                      height: VIDEO_LANE_H + 4,
                       cursor: 'ew-resize',
-                      boxShadow: '0 2px 6px rgba(0,0,0,0.45)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
                       zIndex: 4,
+                      touchAction: 'none',
                     }}
-                  />
+                  >
+                    <div
+                      style={{
+                        width: 6,
+                        height: VIDEO_LANE_H - 10,
+                        borderRadius: 3,
+                        background: VIDEO_TRIM,
+                        boxShadow: '0 2px 6px rgba(0,0,0,0.45)',
+                        pointerEvents: 'none',
+                      }}
+                    />
+                  </div>
                   <div
                     data-timeline-no-seek
                     onPointerDown={(e) => onVideoClipPointerDown(e, 'move')}
@@ -1639,7 +1704,7 @@ export function EditorTimelineDock({
                             display: 'block',
                             width: '100%',
                             minWidth: 0,
-                            fontSize: 7,
+                            fontSize: 10,
                             fontWeight: 700,
                             letterSpacing: '0.03em',
                             textTransform: 'uppercase',
@@ -1665,17 +1730,29 @@ export function EditorTimelineDock({
                     title="Trim / extend video end (duration)"
                     style={{
                       position: 'absolute',
-                      right: -6,
-                      top: -2,
-                      width: 14,
-                      height: VIDEO_LANE_H - 6,
-                      borderRadius: 3,
-                      background: VIDEO_TRIM,
+                      right: -14,
+                      top: -8,
+                      width: 28,
+                      height: VIDEO_LANE_H + 4,
                       cursor: 'ew-resize',
-                      boxShadow: '0 2px 6px rgba(0,0,0,0.45)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
                       zIndex: 4,
+                      touchAction: 'none',
                     }}
-                  />
+                  >
+                    <div
+                      style={{
+                        width: 6,
+                        height: VIDEO_LANE_H - 10,
+                        borderRadius: 3,
+                        background: VIDEO_TRIM,
+                        boxShadow: '0 2px 6px rgba(0,0,0,0.45)',
+                        pointerEvents: 'none',
+                      }}
+                    />
+                  </div>
                 </div>
               </div>
 
@@ -1720,17 +1797,29 @@ export function EditorTimelineDock({
                       title="Trim start on timeline"
                       style={{
                         position: 'absolute',
-                        left: -6,
-                        top: -2,
-                        width: 14,
-                        height: MUSIC_LANE_H - 6,
-                        borderRadius: 3,
-                        background: TRIM_GOLD,
+                        left: -14,
+                        top: -8,
+                        width: 28,
+                        height: MUSIC_LANE_H + 4,
                         cursor: 'ew-resize',
-                        boxShadow: '0 2px 6px rgba(0,0,0,0.45)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
                         zIndex: 4,
+                        touchAction: 'none',
                       }}
-                    />
+                    >
+                      <div
+                        style={{
+                          width: 6,
+                          height: MUSIC_LANE_H - 10,
+                          borderRadius: 3,
+                          background: TRIM_GOLD,
+                          boxShadow: '0 2px 6px rgba(0,0,0,0.45)',
+                          pointerEvents: 'none',
+                        }}
+                      />
+                    </div>
                     <div
                       data-timeline-no-seek
                       onPointerDown={(e) => onClipPointerDown(e, 'move')}
@@ -1812,17 +1901,29 @@ export function EditorTimelineDock({
                       title="Trim end on timeline"
                       style={{
                         position: 'absolute',
-                        right: -6,
-                        top: -2,
-                        width: 14,
-                        height: MUSIC_LANE_H - 6,
-                        borderRadius: 3,
-                        background: TRIM_GOLD,
+                        right: -14,
+                        top: -8,
+                        width: 28,
+                        height: MUSIC_LANE_H + 4,
                         cursor: 'ew-resize',
-                        boxShadow: '0 2px 6px rgba(0,0,0,0.45)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
                         zIndex: 4,
+                        touchAction: 'none',
                       }}
-                    />
+                    >
+                      <div
+                        style={{
+                          width: 6,
+                          height: MUSIC_LANE_H - 10,
+                          borderRadius: 3,
+                          background: TRIM_GOLD,
+                          boxShadow: '0 2px 6px rgba(0,0,0,0.45)',
+                          pointerEvents: 'none',
+                        }}
+                      />
+                    </div>
                   </div>
                 ) : (
                   <div style={{ position: 'relative', height: '100%' }}>

@@ -3,7 +3,12 @@ import { quickHash } from '../../lib/quickHash';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Stage, useStageController } from '../../engine';
 import { useProject } from '../../store/projects';
-import type { Project } from '../../store/types';
+import {
+  editablesEqual,
+  editableToPatch,
+  projectToEditable,
+  type EditableState,
+} from '../../store/editableState';
 import { getTemplate } from '../../templates/registry';
 import { Button } from '../../ui/primitives';
 import { EditorBrandPanel, splitEditorFields } from '../components/EditorBrandPanel';
@@ -15,20 +20,56 @@ import { useFilmstripCapture } from '../hooks/useFilmstripCapture';
 import { getMusicTrack, resolveAudioUrl } from '../../lib/musicTracks';
 import { useHistory } from '../../lib/useHistory';
 
+/** Clamp music anchor/end against the current duration. Called on every
+ *  timeline patch so a shorter video automatically pulls the music bed
+ *  inside bounds (was a separate useEffect before; inlining avoids a
+ *  double-save and keeps the history stack clean). */
+function normalizeEditable(e: EditableState): EditableState {
+  const d = e.duration;
+  const maxAnchor = Math.max(0, d - 0.05);
+  const anchor = Math.min(Math.max(0, e.musicAnchorVideoTime), maxAnchor);
+  const minEnd = Math.min(d, anchor + 0.15);
+  const end = Math.min(d, Math.max(minEnd, e.musicEndVideoTime));
+  if (
+    anchor === e.musicAnchorVideoTime &&
+    end === e.musicEndVideoTime
+  ) {
+    return e;
+  }
+  return { ...e, musicAnchorVideoTime: anchor, musicEndVideoTime: end };
+}
+
+const EMPTY_EDITABLE: EditableState = {
+  props: undefined,
+  aspectIndex: 0,
+  duration: 9,
+  videoClipStartSec: 0,
+  backgroundTrackId: null,
+  musicVolume: 0.35,
+  musicAnchorVideoTime: 0,
+  musicTrimStartSec: 0,
+  musicEndVideoTime: 9,
+};
+
 export function Editor() {
   const { id } = useParams<{ id: string }>();
   const nav = useNavigate();
   const { project, save } = useProject(id);
 
+  // Single history stack for everything the user can mutate in the editor:
+  // template props + aspect + duration + all music/timeline fields.
+  // Undo now rolls back timeline drags alongside text edits.
   const {
-    value: localProps,
-    set: setLocalProps,
+    value: editable,
+    set: setEditable,
     reset: resetHistory,
     undo,
     redo,
     canUndo,
     canRedo,
-  } = useHistory<unknown>(project?.props);
+  } = useHistory<EditableState>(
+    project ? projectToEditable(project) : EMPTY_EDITABLE,
+  );
 
   const [localName, setLocalName] = useState<string>(project?.name ?? '');
   const [savedHint, setSavedHint] = useState<string>('');
@@ -40,26 +81,32 @@ export function Editor() {
   const videoTimeRef = useRef(0);
   const getVideoTime = useCallback(() => videoTimeRef.current, []);
 
+  // Rehydrate history when switching projects.
   useEffect(() => {
     if (project) {
-      resetHistory(project.props);
+      resetHistory(projectToEditable(project));
       setLocalName(project.name);
     }
   }, [project?.id]);
 
-  // Debounced autosave of props
+  // Debounced autosave: whenever the editable state diverges from what's
+  // in the project store, push a patch. Works identically for prop edits,
+  // timeline drags, and undo/redo.
   useEffect(() => {
-    if (!project || localProps === project.props) return;
+    if (!project) return;
+    const projectEditable = projectToEditable(project);
+    if (editablesEqual(editable, projectEditable)) return;
     const h = setTimeout(() => {
-      const res = save({ props: localProps });
+      const res = save(editableToPatch(editable));
       if (res.ok) setSavedHint('Saved');
       else if (res.error === 'quota') setSavedHint('Storage full — drop an image or two');
       setTimeout(() => setSavedHint(''), 2400);
     }, 400);
     return () => clearTimeout(h);
-  }, [localProps]);
+  }, [editable, project, save]);
 
-  // Commit name on blur
+  // Commit name on blur (name stays outside history by design — it's
+  // edited via a single blur-commit flow, not a drag/typing burst).
   const commitName = () => {
     if (!project) return;
     if (localName.trim() && localName !== project.name) {
@@ -67,12 +114,35 @@ export function Editor() {
     }
   };
 
+  // ── Setters exposed to children (all route through the unified history)
+  const setLocalProps = useCallback(
+    (nextProps: unknown) => {
+      setEditable((prev) => ({ ...prev, props: nextProps }));
+    },
+    [setEditable],
+  );
+
+  const onTimelinePatch = useCallback(
+    (patch: Partial<EditableState>) => {
+      setEditable((prev) => normalizeEditable({ ...prev, ...patch }));
+    },
+    [setEditable],
+  );
+
+  const onAspectChange = useCallback(
+    (i: number) => {
+      setEditable((prev) => ({ ...prev, aspectIndex: i }));
+    },
+    [setEditable],
+  );
+
   const template = project ? getTemplate(project.templateId) : null;
-  const aspectIndex = project?.aspectIndex ?? 0;
+  const aspectIndex = editable.aspectIndex;
   const aspect = template?.meta.aspects[aspectIndex];
-  const duration = project?.duration ?? template?.meta.defaultDuration ?? 9;
+  const duration = editable.duration;
   const defaultDuration = template?.meta.defaultDuration ?? 9;
   const timeScale = duration / defaultDuration;
+  const localProps = editable.props;
 
   const controller = useStageController({
     duration,
@@ -100,8 +170,8 @@ export function Editor() {
     if (!project || !aspect) return '';
     const raw = JSON.stringify(localProps);
     const fp = raw.length > 14000 ? raw.slice(0, 14000) : raw;
-    return `${project.id}-${aspect.width}x${aspect.height}-${duration}-${project.videoClipStartSec}-${quickHash(fp)}`;
-  }, [project?.id, aspect, duration, project?.videoClipStartSec, localProps]);
+    return `${project.id}-${aspect.width}x${aspect.height}-${duration}-${editable.videoClipStartSec}-${quickHash(fp)}`;
+  }, [project?.id, aspect, duration, editable.videoClipStartSec, localProps]);
 
   const filmstripCanvasBg =
     (localProps as { colors?: { background?: string } })?.colors?.background ?? '#0A0A0A';
@@ -132,9 +202,36 @@ export function Editor() {
     return () => window.removeEventListener('keydown', onKey, true);
   }, [cinemaMode]);
 
-  const musicTrack = project ? getMusicTrack(project.backgroundTrackId) : null;
+  // Nudge keys: ',' / '.' = ±1 frame, Shift for ±10 frames.
+  // Scoped to the editor route. Ignored when focus is in a text input.
+  useEffect(() => {
+    const FRAME = 1 / 30;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== '.' && e.key !== ',' && e.key !== '>' && e.key !== '<') return;
+      const target = e.target as HTMLElement | null;
+      if (
+        target &&
+        (target.tagName === 'INPUT' ||
+          target.tagName === 'TEXTAREA' ||
+          target.isContentEditable)
+      ) {
+        return;
+      }
+      e.preventDefault();
+      const forward = e.key === '.' || e.key === '>';
+      const step = (e.shiftKey ? 10 : 1) * FRAME * (forward ? 1 : -1);
+      controller.setTime((t) => {
+        const next = t + step;
+        return Math.max(0, Math.min(duration, next));
+      });
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [controller, duration]);
+
+  const musicTrack = project ? getMusicTrack(editable.backgroundTrackId) : null;
   const musicSrc =
-    musicTrack && project && project.musicVolume >= 0.001
+    musicTrack && editable.musicVolume >= 0.001
       ? resolveAudioUrl(musicTrack.src)
       : null;
 
@@ -142,30 +239,13 @@ export function Editor() {
     audioRef,
     src: musicSrc,
     enabled: Boolean(musicSrc),
-    volume: project?.musicVolume ?? 0.35,
-    anchorVideoTime: project?.musicAnchorVideoTime ?? 0,
-    trimStartSec: project?.musicTrimStartSec ?? 0,
-    musicEndVideoTime: project?.musicEndVideoTime ?? duration,
+    volume: editable.musicVolume,
+    anchorVideoTime: editable.musicAnchorVideoTime,
+    trimStartSec: editable.musicTrimStartSec,
+    musicEndVideoTime: editable.musicEndVideoTime,
     playing: controller.playing,
     getVideoTime,
   });
-
-  useEffect(() => {
-    if (!project) return;
-    const d = project.duration;
-    const maxA = Math.max(0, d - 0.05);
-    const minEnd = Math.min(d, project.musicAnchorVideoTime + 0.15);
-    const patches: Partial<
-      Pick<Project, 'musicAnchorVideoTime' | 'musicEndVideoTime'>
-    > = {};
-    if (project.musicAnchorVideoTime > maxA + 1e-6) {
-      patches.musicAnchorVideoTime = maxA;
-    }
-    if (project.musicEndVideoTime > d + 1e-6 || project.musicEndVideoTime < minEnd - 1e-6) {
-      patches.musicEndVideoTime = Math.min(d, Math.max(minEnd, project.musicEndVideoTime));
-    }
-    if (Object.keys(patches).length) save(patches);
-  }, [project?.id, project?.duration, project?.musicAnchorVideoTime, project?.musicEndVideoTime, save]);
 
   if (!project || !template || !aspect) {
     return (
@@ -262,7 +342,7 @@ export function Editor() {
 
         <div style={{ flex: 1 }} />
 
-        {/* Undo/redo */}
+        {/* Undo/redo — covers props AND timeline mutations now */}
         <div style={{ display: 'flex', gap: 4 }}>
           <Button
             size="sm"
@@ -288,7 +368,7 @@ export function Editor() {
         <AspectSwitcher
           aspects={template.meta.aspects}
           index={aspectIndex}
-          onChange={(i) => save({ aspectIndex: i })}
+          onChange={onAspectChange}
         />
 
         <Button variant="primary" size="sm" onClick={() => setExportOpen(true)}>
@@ -345,7 +425,7 @@ export function Editor() {
             controller={controller}
             chromeless
             canvasRef={canvasRef}
-            compositionStartSec={project.videoClipStartSec}
+            compositionStartSec={editable.videoClipStartSec}
             onChromelessCanvasActivate={() => setCinemaMode(true)}
             onChromelessLetterboxPointerDown={() => setCinemaMode((c) => !c)}
           >
@@ -374,7 +454,7 @@ export function Editor() {
         >
           <EditorTimelineDock
             duration={duration}
-            videoClipStartSec={project.videoClipStartSec}
+            videoClipStartSec={editable.videoClipStartSec}
             videoScenes={scaledVideoScenes}
             time={controller.time}
             playing={controller.playing}
@@ -382,21 +462,21 @@ export function Editor() {
             filmstripImages={filmstripImages}
             filmstripStatus={filmstripStatus}
             filmstripError={filmstripError}
-            backgroundTrackId={project.backgroundTrackId}
-            musicVolume={project.musicVolume}
-            musicAnchorVideoTime={project.musicAnchorVideoTime}
-            musicTrimStartSec={project.musicTrimStartSec}
-            musicEndVideoTime={project.musicEndVideoTime}
-            onPatch={(patch) => save(patch)}
+            backgroundTrackId={editable.backgroundTrackId}
+            musicVolume={editable.musicVolume}
+            musicAnchorVideoTime={editable.musicAnchorVideoTime}
+            musicTrimStartSec={editable.musicTrimStartSec}
+            musicEndVideoTime={editable.musicEndVideoTime}
+            onPatch={onTimelinePatch}
             onPlayPause={controller.togglePlay}
             onReset={controller.reset}
             cinemaMode={cinemaMode}
             onExitCinema={() => setCinemaMode(false)}
           />
-          {musicTrack && project.musicVolume >= 0.001 ? (
+          {musicTrack && editable.musicVolume >= 0.001 ? (
             <audio
               ref={audioRef}
-              key={project.backgroundTrackId}
+              key={editable.backgroundTrackId ?? ''}
               src={resolveAudioUrl(musicTrack.src)}
               preload="auto"
             />
@@ -429,11 +509,11 @@ export function Editor() {
         width={aspect.width}
         height={aspect.height}
         duration={duration}
-        backgroundTrackId={project.backgroundTrackId}
-        musicVolume={project.musicVolume}
-        musicAnchorVideoTime={project.musicAnchorVideoTime}
-        musicTrimStartSec={project.musicTrimStartSec}
-        musicEndVideoTime={project.musicEndVideoTime}
+        backgroundTrackId={editable.backgroundTrackId}
+        musicVolume={editable.musicVolume}
+        musicAnchorVideoTime={editable.musicAnchorVideoTime}
+        musicTrimStartSec={editable.musicTrimStartSec}
+        musicEndVideoTime={editable.musicEndVideoTime}
       />
     </div>
   );
