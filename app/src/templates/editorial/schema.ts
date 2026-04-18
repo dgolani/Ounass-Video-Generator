@@ -1,4 +1,4 @@
-import { firstNPlaceholders } from '../../assets/placeholders';
+import { photos } from '../../assets/placeholders';
 
 export type EditorialProduct = {
   id: string;
@@ -41,8 +41,6 @@ export type EditorialProps = {
   colors: EditorialColors;
 };
 
-const placeholders = firstNPlaceholders(4);
-
 export const defaultProps: EditorialProps = {
   masthead: 'Volume XII',
   issueDate: "Autumn · 2026",
@@ -52,10 +50,10 @@ export const defaultProps: EditorialProps = {
   byline: 'Four pieces · One story',
 
   products: [
-    { id: 'e1', src: placeholders[0], name: 'Silk Wrap Dress',       category: 'Dress' },
-    { id: 'e2', src: placeholders[1], name: 'Wide-leg Trouser',      category: 'Tailoring' },
-    { id: 'e3', src: placeholders[2], name: 'Sculpted Blouse',       category: 'Top' },
-    { id: 'e4', src: placeholders[3], name: 'Structured Tote',       category: 'Accessory' },
+    { id: 'e1', src: photos.dress,    name: 'Silk Slip Dress',          category: 'Dress' },
+    { id: 'e2', src: photos.trouser,  name: 'Wide-leg Trouser',         category: 'Tailoring' },
+    { id: 'e3', src: photos.blouse,   name: 'Sculpted Shoulder Blouse', category: 'Top' },
+    { id: 'e4', src: photos.handbag,  name: 'Pashli Mini Bag',          category: 'Accessory' },
   ],
 
   featureCaption: "A study in restraint — soft fabrics, deliberate lines, a quiet confidence that carries the season.",

@@ -1,11 +1,7 @@
 // Phillip Lim template — schema & default props.
 // Phase 0: types + defaults only. Phase 1 reads this to generate the editor panel.
 
-import skirt from './images/skirt.png';
-import trouser from './images/trouser.png';
-import top from './images/top.png';
-import denim from './images/denim.png';
-import dress from './images/dress.png';
+import { photos } from '../../assets/placeholders';
 
 export type PhillipLimProduct = {
   id: string;
@@ -65,11 +61,11 @@ export const defaultProps: PhillipLimProps = {
   act2TitleLine2: 'Wardrobe',
 
   products: [
-    { id: 'skirt',   src: skirt,   name: 'Eyelet Wrap Midi Skirt',      price: '2,480 AED', color: 'Midnight' },
-    { id: 'trouser', src: trouser, name: 'Drawstring Wide-leg Trouser', price: '1,890 AED', color: 'Ivory' },
-    { id: 'top',     src: top,     name: 'Structured Shoulder Top',     price: '2,120 AED', color: 'Noir' },
-    { id: 'denim',   src: denim,   name: 'Pashli Denim Mini Bag',       price: '3,650 AED', color: 'Indigo' },
-    { id: 'dress',   src: dress,   name: 'Printed Silk Midi Dress',     price: '4,280 AED', color: 'Emerald' },
+    { id: 'p1', src: photos.dress,     name: 'Silk Slip Dress',          price: '4,280 AED', color: 'Midnight' },
+    { id: 'p2', src: photos.trouser,   name: 'Wide-leg Wool Trouser',    price: '1,890 AED', color: 'Ivory' },
+    { id: 'p3', src: photos.blouse,    name: 'Sculpted Shoulder Blouse', price: '2,120 AED', color: 'Noir' },
+    { id: 'p4', src: photos.outerwear, name: 'Belted Camel Coat',        price: '4,920 AED', color: 'Camel' },
+    { id: 'p5', src: photos.handbag,   name: 'Pashli Mini Bag',          price: '3,650 AED', color: 'Indigo' },
   ],
 
   outroKicker: '— Exclusively at —',
