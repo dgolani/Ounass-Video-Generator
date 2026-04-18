@@ -49,10 +49,13 @@ export const fields: FieldDescriptor[] = [
   { kind: 'text', path: 'ctaText', label: 'CTA text' },
   { kind: 'text', path: 'ctaFooter', label: 'CTA footer' },
 
-  { kind: 'section', label: 'Social chrome' },
-  { kind: 'text', path: 'igHandle', label: 'IG handle' },
-  { kind: 'text', path: 'igSubtitle', label: 'IG subtitle' },
-  { kind: 'text', path: 'watermark', label: 'Watermark' },
+  { kind: 'section', label: 'Watermark' },
+  {
+    kind: 'text',
+    path: 'watermark',
+    label: 'Boutique signature',
+    placeholder: 'Leave blank to hide',
+  },
 
   { kind: 'section', label: 'Colors' },
   { kind: 'color', path: 'colors.background', label: 'Background' },

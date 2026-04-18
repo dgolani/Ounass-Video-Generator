@@ -136,7 +136,7 @@ function Reveal({ props, T, s }: ActProps) {
           opacity: kickerOp,
           fontFamily: 'Nunito Sans, sans-serif',
           fontWeight: 700,
-          fontSize: wh(14),
+          fontSize: wh(22),
           letterSpacing: `${wh(8)}px`,
           textTransform: 'uppercase',
           color: colors.accent,
@@ -222,7 +222,7 @@ function Copy({ props, T, s }: ActProps) {
           fontFamily: 'Fraunces, serif',
           fontStyle: 'italic',
           fontWeight: 300,
-          fontSize: wh(28),
+          fontSize: wh(34),
           color: colors.paper,
           textShadow: '0 2px 12px rgba(0,0,0,0.6)',
         }}
@@ -237,21 +237,21 @@ function Copy({ props, T, s }: ActProps) {
           left: w(80),
           bottom: h(320),
           opacity: productIn,
-          padding: `${wh(14)}px ${wh(18)}px`,
-          background: 'rgba(10,8,6,0.55)',
+          padding: `${wh(18)}px ${wh(24)}px`,
+          background: 'rgba(10,8,6,0.6)',
           backdropFilter: 'blur(6px)',
-          borderLeft: `2px solid ${colors.accent}`,
+          borderLeft: `3px solid ${colors.accent}`,
         }}
       >
         <div
           style={{
             fontFamily: 'Nunito Sans, sans-serif',
             fontWeight: 700,
-            fontSize: wh(10),
-            letterSpacing: `${wh(2.5)}px`,
+            fontSize: wh(20),
+            letterSpacing: `${wh(3)}px`,
             textTransform: 'uppercase',
             color: colors.accent,
-            marginBottom: wh(4),
+            marginBottom: wh(8),
           }}
         >
           {product.category}
@@ -260,10 +260,10 @@ function Copy({ props, T, s }: ActProps) {
           style={{
             fontFamily: 'Fraunces, serif',
             fontWeight: 300,
-            fontSize: wh(28),
+            fontSize: wh(36),
             lineHeight: 1.1,
             color: colors.paper,
-            marginBottom: wh(4),
+            marginBottom: wh(8),
           }}
         >
           {product.name}
@@ -272,7 +272,7 @@ function Copy({ props, T, s }: ActProps) {
           style={{
             fontFamily: 'Nunito Sans, sans-serif',
             fontWeight: 700,
-            fontSize: wh(16),
+            fontSize: wh(26),
             color: colors.paper,
           }}
         >
@@ -361,11 +361,11 @@ function CTA({ props, T, s }: ActProps) {
             background: colors.accent,
             color: colors.background,
             border: 0,
-            padding: `${wh(28)}px ${wh(72)}px`,
+            padding: `${wh(32)}px ${wh(80)}px`,
             fontFamily: 'Nunito Sans, sans-serif',
             fontWeight: 700,
-            fontSize: wh(16),
-            letterSpacing: `${wh(4)}px`,
+            fontSize: wh(26),
+            letterSpacing: `${wh(5)}px`,
             textTransform: 'uppercase',
             cursor: 'pointer',
             position: 'relative',
@@ -386,14 +386,14 @@ function CTA({ props, T, s }: ActProps) {
         </button>
         <div
           style={{
-            marginTop: wh(24),
+            marginTop: wh(26),
             fontFamily: 'Nunito Sans, sans-serif',
             fontWeight: 700,
-            fontSize: wh(11),
+            fontSize: wh(22),
             letterSpacing: `${wh(3)}px`,
             textTransform: 'uppercase',
             color: colors.paper,
-            opacity: 0.55,
+            opacity: 0.6,
           }}
         >
           {ctaFooter}

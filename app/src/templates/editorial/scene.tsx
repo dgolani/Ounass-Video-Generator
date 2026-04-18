@@ -78,7 +78,7 @@ function Masthead({ props, T, s }: ActProps) {
           alignItems: 'baseline',
           opacity: mastheadOp,
           fontFamily: 'Nunito Sans, sans-serif',
-          fontSize: wh(14),
+          fontSize: wh(22),
           fontWeight: 700,
           letterSpacing: `${wh(4)}px`,
           textTransform: 'uppercase',
@@ -144,12 +144,12 @@ function Masthead({ props, T, s }: ActProps) {
         <div
           style={{
             fontFamily: 'Nunito Sans, sans-serif',
-            fontSize: wh(16),
+            fontSize: wh(24),
             fontWeight: 700,
             letterSpacing: `${wh(6)}px`,
             textTransform: 'uppercase',
             color: colors.ink,
-            opacity: 0.6,
+            opacity: 0.68,
           }}
         >
           — {byline} —
@@ -189,9 +189,9 @@ function Grid({ props, T, s }: ActProps) {
           top: h(160),
           display: 'flex',
           justifyContent: 'space-between',
-          opacity: op * 0.7,
+          opacity: op * 0.8,
           fontFamily: 'Nunito Sans, sans-serif',
-          fontSize: wh(12),
+          fontSize: wh(22),
           fontWeight: 700,
           letterSpacing: `${wh(3)}px`,
           textTransform: 'uppercase',
@@ -269,7 +269,7 @@ function Grid({ props, T, s }: ActProps) {
                 style={{
                   fontFamily: 'Nunito Sans, sans-serif',
                   fontWeight: 700,
-                  fontSize: wh(9),
+                  fontSize: wh(16),
                   letterSpacing: `${wh(2)}px`,
                   textTransform: 'uppercase',
                   color: colors.accent,
@@ -282,8 +282,12 @@ function Grid({ props, T, s }: ActProps) {
                   fontFamily: 'Fraunces, serif',
                   fontStyle: 'italic',
                   fontWeight: 300,
-                  fontSize: wh(18),
+                  fontSize: wh(22),
                   color: colors.ink,
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  maxWidth: '75%',
                 }}
               >
                 {p.name}
@@ -309,7 +313,7 @@ function Grid({ props, T, s }: ActProps) {
             display: 'flex',
             justifyContent: 'space-between',
             fontFamily: 'Nunito Sans, sans-serif',
-            fontSize: wh(11),
+            fontSize: wh(20),
             fontWeight: 700,
             letterSpacing: `${wh(2.5)}px`,
             textTransform: 'uppercase',
@@ -407,11 +411,11 @@ function Feature({ props, T, s }: ActProps) {
           style={{
             fontFamily: 'Nunito Sans, sans-serif',
             fontWeight: 700,
-            fontSize: wh(10),
+            fontSize: wh(22),
             letterSpacing: `${wh(3)}px`,
             textTransform: 'uppercase',
             color: colors.accent,
-            marginBottom: wh(14),
+            marginBottom: wh(18),
           }}
         >
           N° 01 — {hero.category}
@@ -421,10 +425,10 @@ function Feature({ props, T, s }: ActProps) {
             fontFamily: 'Fraunces, serif',
             fontStyle: 'italic',
             fontWeight: 300,
-            fontSize: wh(28),
+            fontSize: wh(34),
             lineHeight: 1.35,
             color: colors.ink,
-            opacity: 0.85,
+            opacity: 0.9,
           }}
         >
           "{featureCaption}"
@@ -490,7 +494,7 @@ function Signature({ props, T, s }: ActProps) {
           opacity: fadeIn,
           fontFamily: 'Nunito Sans, sans-serif',
           fontWeight: 700,
-          fontSize: wh(14),
+          fontSize: wh(22),
           letterSpacing: `${wh(5)}px`,
           textTransform: 'uppercase',
           color: colors.accent,
@@ -549,7 +553,7 @@ function Signature({ props, T, s }: ActProps) {
           fontFamily: 'Fraunces, serif',
           fontStyle: 'italic',
           fontWeight: 300,
-          fontSize: wh(32),
+          fontSize: wh(38),
           color: colors.accent,
         }}
       >
@@ -576,11 +580,11 @@ function Signature({ props, T, s }: ActProps) {
             background: colors.ink,
             color: colors.paper,
             border: 0,
-            padding: `${wh(26)}px ${wh(64)}px`,
+            padding: `${wh(32)}px ${wh(76)}px`,
             fontFamily: 'Nunito Sans, sans-serif',
             fontWeight: 700,
-            fontSize: wh(16),
-            letterSpacing: `${wh(4)}px`,
+            fontSize: wh(26),
+            letterSpacing: `${wh(5)}px`,
             textTransform: 'uppercase',
             cursor: 'pointer',
             position: 'relative',
@@ -601,14 +605,14 @@ function Signature({ props, T, s }: ActProps) {
         </button>
         <div
           style={{
-            marginTop: wh(22),
+            marginTop: wh(24),
             fontFamily: 'Nunito Sans, sans-serif',
             fontWeight: 700,
-            fontSize: wh(11),
+            fontSize: wh(22),
             letterSpacing: `${wh(2.5)}px`,
             textTransform: 'uppercase',
             color: colors.ink,
-            opacity: 0.5,
+            opacity: 0.55,
           }}
         >
           {ctaFooter}

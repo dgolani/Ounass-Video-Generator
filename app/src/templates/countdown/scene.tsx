@@ -96,7 +96,7 @@ function Hook({ props, T, s }: ActProps) {
           opacity: kickerOp,
           fontFamily: 'Nunito Sans, sans-serif',
           fontWeight: 700,
-          fontSize: wh(16),
+          fontSize: wh(24),
           letterSpacing: `${wh(8)}px`,
           textTransform: 'uppercase',
           color: colors.accent,
@@ -196,12 +196,12 @@ function Body({ props, T, s }: ActProps) {
           left: w(100),
           top: h(380),
           display: 'inline-block',
-          padding: `${wh(10)}px ${wh(20)}px`,
+          padding: `${wh(12)}px ${wh(22)}px`,
           background: colors.accent,
           color: colors.background,
           fontFamily: 'Nunito Sans, sans-serif',
           fontWeight: 700,
-          fontSize: wh(13),
+          fontSize: wh(22),
           letterSpacing: `${wh(3)}px`,
           textTransform: 'uppercase',
         }}
@@ -265,11 +265,11 @@ function Body({ props, T, s }: ActProps) {
           bottom: H * 0.12,
           fontFamily: 'Nunito Sans, sans-serif',
           fontWeight: 700,
-          fontSize: wh(12),
+          fontSize: wh(20),
           letterSpacing: `${wh(3)}px`,
           textTransform: 'uppercase',
           color: colors.accent,
-          opacity: 0.72,
+          opacity: 0.8,
         }}
       >
         {terms}
@@ -374,10 +374,10 @@ function CTA({ props, T, s }: ActProps) {
             background: colors.accent,
             color: colors.background,
             border: 0,
-            padding: `${wh(30)}px ${wh(76)}px`,
+            padding: `${wh(34)}px ${wh(84)}px`,
             fontFamily: 'Nunito Sans, sans-serif',
             fontWeight: 700,
-            fontSize: wh(18),
+            fontSize: wh(28),
             letterSpacing: `${wh(5)}px`,
             textTransform: 'uppercase',
             cursor: 'pointer',
@@ -400,14 +400,14 @@ function CTA({ props, T, s }: ActProps) {
 
         <div
           style={{
-            marginTop: wh(24),
+            marginTop: wh(26),
             fontFamily: 'Nunito Sans, sans-serif',
             fontWeight: 700,
-            fontSize: wh(11),
+            fontSize: wh(22),
             letterSpacing: `${wh(3)}px`,
             textTransform: 'uppercase',
             color: colors.paper,
-            opacity: 0.55,
+            opacity: 0.6,
           }}
         >
           {ctaFooter}

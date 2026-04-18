@@ -98,7 +98,7 @@ function Act1Title({ props, T, s }: ActProps) {
           color: colors.accent,
           fontFamily: 'Nunito Sans, sans-serif',
           fontWeight: 700,
-          fontSize: wh(18),
+          fontSize: wh(22),
           letterSpacing: `${wh(6)}px`,
           textTransform: 'uppercase',
           opacity: subOpacity,
@@ -282,10 +282,10 @@ function Act2Columns({ props, T, s }: ActProps) {
                   color: colors.accent,
                   fontFamily: 'Nunito Sans, sans-serif',
                   fontWeight: 700,
-                  fontSize: wh(14),
+                  fontSize: wh(22),
                   letterSpacing: `${wh(4)}px`,
                   textTransform: 'uppercase',
-                  marginBottom: wh(10),
+                  marginBottom: wh(14),
                 }}
               >
                 {act2Kicker}
@@ -295,7 +295,7 @@ function Act2Columns({ props, T, s }: ActProps) {
                   color: colors.paper,
                   fontFamily: 'Fraunces, serif',
                   fontWeight: 300,
-                  fontSize: wh(54),
+                  fontSize: wh(64),
                   letterSpacing: '-0.01em',
                   lineHeight: 1.05,
                 }}
@@ -406,20 +406,20 @@ function Act3Filmstrip({ props, T, s, focusOverride, onFocusClick }: Act3Props) 
             position: 'absolute',
             left: wh(28),
             bottom: wh(28),
-            padding: `${wh(14)}px ${wh(20)}px`,
+            padding: `${wh(18)}px ${wh(24)}px`,
             background: 'rgba(245,243,239,0.95)',
-            minWidth: wh(260),
+            minWidth: wh(320),
           }}
         >
           <div
             style={{
               fontFamily: 'Nunito Sans, sans-serif',
               fontWeight: 700,
-              fontSize: wh(10),
-              letterSpacing: `${wh(2.5)}px`,
+              fontSize: wh(20),
+              letterSpacing: `${wh(3)}px`,
               color: colors.accentDark,
               textTransform: 'uppercase',
-              marginBottom: wh(6),
+              marginBottom: wh(10),
             }}
           >
             {brand} · {product.color}
@@ -428,11 +428,11 @@ function Act3Filmstrip({ props, T, s, focusOverride, onFocusClick }: Act3Props) 
             style={{
               fontFamily: 'Fraunces, serif',
               fontWeight: 300,
-              fontSize: wh(24),
+              fontSize: wh(34),
               lineHeight: 1.1,
               color: '#1A1A1A',
               letterSpacing: '-0.01em',
-              marginBottom: wh(8),
+              marginBottom: wh(10),
             }}
           >
             {product.name}
@@ -441,7 +441,7 @@ function Act3Filmstrip({ props, T, s, focusOverride, onFocusClick }: Act3Props) 
             style={{
               fontFamily: 'Nunito Sans, sans-serif',
               fontWeight: 700,
-              fontSize: wh(16),
+              fontSize: wh(28),
               color: '#1A1A1A',
             }}
           >
@@ -530,7 +530,7 @@ function Act3Filmstrip({ props, T, s, focusOverride, onFocusClick }: Act3Props) 
             fontFamily: 'Fraunces, serif',
             fontWeight: 300,
             fontStyle: 'italic',
-            fontSize: wh(28),
+            fontSize: wh(34),
             color: colors.paper,
             letterSpacing: '-0.01em',
           }}
@@ -541,7 +541,7 @@ function Act3Filmstrip({ props, T, s, focusOverride, onFocusClick }: Act3Props) 
           style={{
             fontFamily: 'Nunito Sans, sans-serif',
             fontWeight: 700,
-            fontSize: wh(11),
+            fontSize: wh(22),
             letterSpacing: `${wh(3)}px`,
             color: colors.accent,
             textTransform: 'uppercase',
@@ -661,7 +661,7 @@ function Act4Outro({ props, T, s }: ActProps) {
           style={{
             fontFamily: 'Nunito Sans, sans-serif',
             fontWeight: 700,
-            fontSize: wh(14),
+            fontSize: wh(22),
             letterSpacing: `${wh(8)}px`,
             color: colors.accent,
             textTransform: 'uppercase',
@@ -704,7 +704,7 @@ function Act4Outro({ props, T, s }: ActProps) {
             fontFamily: 'Fraunces, serif',
             fontStyle: 'italic',
             fontWeight: 300,
-            fontSize: wh(30),
+            fontSize: wh(36),
             color: 'rgba(245,243,239,0.72)',
             letterSpacing: '0.01em',
             opacity: tagOp,
@@ -734,11 +734,11 @@ function Act4Outro({ props, T, s }: ActProps) {
             background: colors.accent,
             color: colors.background,
             border: 0,
-            padding: `${wh(28)}px ${wh(72)}px`,
+            padding: `${wh(32)}px ${wh(80)}px`,
             fontFamily: 'Nunito Sans, sans-serif',
             fontWeight: 700,
-            fontSize: wh(16),
-            letterSpacing: `${wh(4)}px`,
+            fontSize: wh(26),
+            letterSpacing: `${wh(5)}px`,
             textTransform: 'uppercase',
             cursor: 'pointer',
             position: 'relative',
@@ -760,10 +760,10 @@ function Act4Outro({ props, T, s }: ActProps) {
 
         <div
           style={{
-            marginTop: wh(28),
+            marginTop: wh(30),
             fontFamily: 'Nunito Sans, sans-serif',
             fontWeight: 700,
-            fontSize: wh(11),
+            fontSize: wh(22),
             letterSpacing: `${wh(3)}px`,
             color: 'rgba(245,243,239,0.5)',
             textTransform: 'uppercase',
@@ -773,148 +773,6 @@ function Act4Outro({ props, T, s }: ActProps) {
         </div>
       </div>
     </>
-  );
-}
-
-// ── Instagram chrome ───────────────────────────────────────────────────
-function InstagramChrome({ props, T, s }: ActProps) {
-  const { time: t } = useTimeline();
-  const { colors, igHandle, igSubtitle } = props;
-  const { w, h, wh } = s;
-  const op = interpolate([T(1.0), T(1.5)], [0, 1], Easing.easeOutCubic)(t);
-
-  return (
-    <>
-      <div
-        style={{
-          position: 'absolute',
-          top: h(80),
-          left: w(40),
-          display: 'flex',
-          alignItems: 'center',
-          gap: wh(12),
-          opacity: op * 0.9,
-          pointerEvents: 'none',
-        }}
-      >
-        <div
-          style={{
-            width: wh(44),
-            height: wh(44),
-            borderRadius: '50%',
-            background: `linear-gradient(135deg, ${colors.accentDark}, ${colors.paper})`,
-            padding: wh(2),
-          }}
-        >
-          <div
-            style={{
-              width: '100%',
-              height: '100%',
-              borderRadius: '50%',
-              background: colors.background,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontFamily: 'Fraunces, serif',
-              fontSize: wh(18),
-              fontWeight: 400,
-              color: colors.paper,
-            }}
-          >
-            {igHandle.charAt(0).toUpperCase()}
-          </div>
-        </div>
-        <div>
-          <div
-            style={{
-              fontFamily: 'Nunito Sans',
-              fontSize: wh(16),
-              fontWeight: 700,
-              color: colors.paper,
-            }}
-          >
-            {igHandle}
-          </div>
-          <div
-            style={{
-              fontFamily: 'Nunito Sans',
-              fontSize: wh(12),
-              fontWeight: 400,
-              color: 'rgba(245,243,239,0.7)',
-            }}
-          >
-            {igSubtitle}
-          </div>
-        </div>
-      </div>
-
-      <div
-        style={{
-          position: 'absolute',
-          right: w(40),
-          bottom: h(380),
-          display: 'flex',
-          flexDirection: 'column',
-          gap: wh(32),
-          alignItems: 'center',
-          opacity: op * 0.85,
-          pointerEvents: 'none',
-        }}
-      >
-        <IGIcon
-          s={s}
-          label="12.4K"
-          path="M12 21s-7-4.35-7-10a5 5 0 019-3 5 5 0 019 3c0 5.65-7 10-7 10z"
-        />
-        <IGIcon
-          s={s}
-          label="284"
-          path="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z"
-        />
-        <IGIcon
-          s={s}
-          label="Share"
-          path="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8M16 6l-4-4-4 4M12 2v13"
-        />
-      </div>
-    </>
-  );
-}
-
-function IGIcon({ path, label, s }: { path: string; label: string; s: Scale }) {
-  return (
-    <div
-      style={{
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        gap: s.wh(6),
-      }}
-    >
-      <svg
-        width={s.wh(34)}
-        height={s.wh(34)}
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="#F5F3EF"
-        strokeWidth="1.6"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      >
-        <path d={path} />
-      </svg>
-      <div
-        style={{
-          fontFamily: 'Nunito Sans',
-          fontSize: s.wh(11),
-          fontWeight: 700,
-          color: '#F5F3EF',
-          letterSpacing: '0.5px',
-        }}
-      >
-        {label}
-      </div>
-    </div>
   );
 }
 
@@ -1012,7 +870,7 @@ export function LookbookScene({
         />
       </div>
 
-      {time >= T(2.0) && time < T(7.0) && (
+      {watermark && time >= T(2.0) && time < T(7.0) && (
         <div
           style={{
             position: 'absolute',
@@ -1020,7 +878,7 @@ export function LookbookScene({
             bottom: h(60),
             fontFamily: 'Fraunces, serif',
             fontWeight: 300,
-            fontSize: wh(28),
+            fontSize: wh(34),
             fontStyle: 'italic',
             color: 'rgba(245,243,239,0.85)',
             letterSpacing: '-0.01em',
@@ -1047,8 +905,6 @@ export function LookbookScene({
           }}
         />
       )}
-
-      <InstagramChrome props={props} T={T} s={s} />
     </div>
   );
 }
