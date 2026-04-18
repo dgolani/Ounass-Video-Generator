@@ -1,0 +1,466 @@
+// Seasonal Campaign — SS editorial refrain + floating products + dark
+// sun-lit hold. Ported from the Claude-Design HTML prototype
+// `02-seasonal-campaign`. Three-word serif crossfade, ticker scrolls,
+// products stagger-in then drift, final frame blooms over dark ink.
+
+import { Easing, clamp, interpolate, useTimeline } from '../../engine';
+import type { SeasonalProps } from './schema';
+import { BoutiqueLogo } from '../BoutiqueLogo';
+
+const BASE_W = 1080;
+const BASE_H = 1920;
+
+type Scale = {
+  W: number;
+  H: number;
+  w: (px: number) => number;
+  h: (px: number) => number;
+  wh: (px: number) => number;
+};
+
+function makeScale(W: number, H: number): Scale {
+  const sw = W / BASE_W;
+  const sh = H / BASE_H;
+  return {
+    W,
+    H,
+    w: (px) => px * sw,
+    h: (px) => px * sh,
+    wh: (px) => px * Math.min(sw, sh),
+  };
+}
+
+type SceneProps = {
+  props: SeasonalProps;
+  timeScale?: number;
+  width?: number;
+  height?: number;
+};
+
+const WORD_PER = 3.0;
+const FINAL_IN = 11.5;
+
+export function SeasonalScene({
+  props,
+  timeScale = 1,
+  width = BASE_W,
+  height = BASE_H,
+}: SceneProps) {
+  const { time } = useTimeline();
+  const T = (x: number) => x * timeScale;
+  const s = makeScale(width, height);
+  const { w, h, wh } = s;
+  const {
+    colors,
+    boutiqueName,
+    sideEditorialLine,
+    tickerItems,
+    word1,
+    word2,
+    word3,
+    products,
+    seasonChip,
+    finalKicker,
+    finalHeadline,
+    finalSubline,
+    ctaButton,
+    logo,
+  } = props;
+
+  const words = [word1, word2, word3];
+
+  // Word phase: three 3-second phases, then freeze word 3 until FINAL_IN.
+  let activeWordIdx: number;
+  let localPhase: number;
+  if (time < T(WORD_PER)) {
+    activeWordIdx = 0;
+    localPhase = time / T(WORD_PER);
+  } else if (time < T(WORD_PER * 2)) {
+    activeWordIdx = 1;
+    localPhase = (time - T(WORD_PER)) / T(WORD_PER);
+  } else if (time < T(WORD_PER * 3)) {
+    activeWordIdx = 2;
+    localPhase = (time - T(WORD_PER * 2)) / T(WORD_PER);
+  } else {
+    activeWordIdx = 2;
+    localPhase = 1;
+  }
+
+  // Word transform
+  let wordScale = 1;
+  let wordRot = 0;
+  let wordOp = 0;
+  let wordDy = 0;
+  if (time < T(FINAL_IN)) {
+    if (localPhase < 0.18) {
+      const p = localPhase / 0.18;
+      wordScale = interpolate([0, 1], [1.25, 1], Easing.easeOutExpo)(p);
+      wordRot = interpolate([0, 1], [-3, 0], Easing.easeOutExpo)(p);
+      wordDy = interpolate([0, 1], [60, 0], Easing.easeOutExpo)(p);
+      wordOp = interpolate([0, 1], [0, 1], Easing.easeOutCubic)(p);
+    } else if (localPhase > 0.82) {
+      const p = (localPhase - 0.82) / 0.18;
+      wordScale = interpolate([0, 1], [1, 0.92], Easing.easeInCubic)(p);
+      wordRot = interpolate([0, 1], [0, 2], Easing.easeInCubic)(p);
+      wordDy = interpolate([0, 1], [0, -40], Easing.easeInCubic)(p);
+      wordOp = interpolate([0, 1], [1, 0], Easing.easeInCubic)(p);
+    } else {
+      const p = (localPhase - 0.18) / 0.64;
+      wordScale = 1 + Math.sin(p * Math.PI) * 0.015;
+      wordOp = 1;
+    }
+  } else {
+    wordOp = 0;
+  }
+
+  // Ticker scroll offset — wraps on a 2400px base cycle
+  const scrollX = (time * 180) % 2400;
+
+  // Final frame opacity + sun scale
+  const finalT = time - T(FINAL_IN);
+  const finalP = clamp(finalT / Math.max(T(0.8), 0.01), 0, 1);
+  const finalOp = time >= T(FINAL_IN)
+    ? interpolate([0, 1], [0, 1], Easing.easeOutCubic)(finalP)
+    : 0;
+  const sunScale = time >= T(FINAL_IN)
+    ? interpolate([0, 1], [0.8, 1], Easing.easeOutExpo)(finalP)
+    : 0.8;
+
+  return (
+    <div
+      style={{
+        position: 'absolute',
+        inset: 0,
+        background: colors.cream,
+        color: colors.ink,
+        overflow: 'hidden',
+      }}
+    >
+      {/* Background gradient wash (copper tinted radials over cream → bone) */}
+      <div
+        style={{
+          position: 'absolute',
+          inset: 0,
+          background: `radial-gradient(ellipse at 20% 15%, rgba(184,114,83,0.18), transparent 55%), radial-gradient(ellipse at 85% 85%, rgba(184,114,83,0.10), transparent 60%), linear-gradient(180deg, ${colors.cream} 0%, ${colors.backgroundDeep} 100%)`,
+          zIndex: 0,
+          opacity: time < T(FINAL_IN) ? 1 : 1 - finalOp,
+        }}
+      />
+
+      {/* Top brand line */}
+      <div
+        style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          height: h(90),
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 5,
+          opacity: time < T(FINAL_IN) ? 1 : 1 - finalOp,
+        }}
+      >
+        <BoutiqueLogo
+          logo={logo}
+          boutiqueName={boutiqueName}
+          color={colors.ink}
+          width={w(320)}
+          height={h(60)}
+          fontSize={wh(28)}
+          fontWeight={800}
+          letterSpacing="0.5em"
+        />
+      </div>
+
+      {/* Ticker */}
+      <div
+        style={{
+          position: 'absolute',
+          top: h(90),
+          left: 0,
+          right: 0,
+          height: h(44),
+          display: 'flex',
+          alignItems: 'center',
+          overflow: 'hidden',
+          zIndex: 5,
+          borderTop: '1px solid rgba(0,0,0,0.12)',
+          borderBottom: '1px solid rgba(0,0,0,0.12)',
+          opacity: time < T(FINAL_IN) ? 1 : 1 - finalOp,
+        }}
+      >
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: w(48),
+            whiteSpace: 'nowrap',
+            fontFamily: 'Nunito Sans, sans-serif',
+            fontSize: wh(18),
+            fontWeight: 700,
+            letterSpacing: '0.4em',
+            textTransform: 'uppercase',
+            color: colors.ink,
+            transform: `translateX(${-scrollX * (w(1) / 1)}px)`,
+          }}
+        >
+          {/* Repeat items 3x so the scroll always fills the strip */}
+          {Array.from({ length: 3 }).flatMap((_, r) =>
+            tickerItems.map((item, i) => [
+              <span key={`${r}-${i}-t`}>{item}</span>,
+              <span
+                key={`${r}-${i}-d`}
+                style={{
+                  display: 'inline-block',
+                  width: w(8),
+                  height: w(8),
+                  background: colors.accent,
+                  borderRadius: '50%',
+                }}
+              />,
+            ]),
+          )}
+        </div>
+      </div>
+
+      {/* Giant serif refrain */}
+      <div
+        style={{
+          position: 'absolute',
+          inset: 0,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1,
+          pointerEvents: 'none',
+          opacity: time < T(FINAL_IN) ? 1 : 0,
+        }}
+      >
+        <div
+          style={{
+            fontFamily: 'Fraunces, serif',
+            fontStyle: 'italic',
+            fontWeight: 300,
+            fontSize: wh(520),
+            lineHeight: 0.9,
+            letterSpacing: '-0.04em',
+            color: colors.accent,
+            whiteSpace: 'nowrap',
+            textAlign: 'center',
+            opacity: wordOp,
+            transform: `translateY(${h(wordDy)}px) scale(${wordScale}) rotate(${wordRot}deg)`,
+          }}
+        >
+          {words[activeWordIdx]}
+        </div>
+      </div>
+
+      {/* Floating products */}
+      <div
+        style={{
+          position: 'absolute',
+          inset: 0,
+          zIndex: 3,
+          pointerEvents: 'none',
+          opacity: time < T(FINAL_IN) ? 1 : 1 - finalOp,
+        }}
+      >
+        {products.map((p, i) => {
+          const inStart = T(1.0 + i * 0.55);
+          const inEnd = inStart + T(0.8);
+          const outStart = T(9.5 + i * 0.08);
+          const outEnd = outStart + T(0.8);
+
+          let op = 0;
+          let tx = 0;
+          let ty = 0;
+          let sc = p.size;
+          const rot = p.rotation;
+
+          if (time < inStart) {
+            op = 0;
+          } else if (time < inEnd) {
+            const lp = (time - inStart) / (inEnd - inStart);
+            op = interpolate([0, 1], [0, 1], Easing.easeOutCubic)(lp);
+            ty = interpolate([0, 1], [60, 0], Easing.easeOutExpo)(lp);
+            sc = interpolate([0, 1], [0.8 * p.size, p.size], Easing.easeOutExpo)(lp);
+          } else if (time < outStart) {
+            op = 1;
+            const lp = (time - inEnd) * 0.4;
+            ty = Math.sin(lp + i) * 8;
+            tx = Math.cos(lp + i * 0.7) * 6;
+          } else if (time < outEnd) {
+            const lp = (time - outStart) / (outEnd - outStart);
+            op = interpolate([0, 1], [1, 0], Easing.easeInCubic)(lp);
+            ty = interpolate([0, 1], [0, -40], Easing.easeInCubic)(lp);
+            sc = interpolate([0, 1], [p.size, p.size * 0.95], Easing.easeInCubic)(lp);
+          } else {
+            op = 0;
+          }
+
+          return (
+            <div
+              key={p.id}
+              style={{
+                position: 'absolute',
+                left: w(p.x),
+                top: h(p.y),
+                width: w(340),
+                height: h(510),
+                background: colors.cream,
+                boxShadow: `0 ${h(12)}px ${h(40)}px rgba(0,0,0,0.18)`,
+                overflow: 'hidden',
+                opacity: op,
+                transform: `translate(${w(tx)}px, ${h(ty)}px) rotate(${rot}deg) scale(${sc})`,
+              }}
+            >
+              <img
+                src={p.src}
+                alt=""
+                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+              />
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Side editorial line (rotated 90°) */}
+      <div
+        style={{
+          position: 'absolute',
+          right: w(48),
+          top: '50%',
+          transform: 'translateY(-50%) rotate(90deg)',
+          transformOrigin: 'right center',
+          fontFamily: 'Nunito Sans, sans-serif',
+          fontSize: wh(20),
+          fontWeight: 700,
+          letterSpacing: '0.6em',
+          textTransform: 'uppercase',
+          color: 'rgba(0,0,0,0.60)',
+          zIndex: 6,
+          opacity: time < T(FINAL_IN) ? 1 : 1 - finalOp,
+        }}
+      >
+        {sideEditorialLine}
+      </div>
+
+      {/* Final frame — dark ink hold with glowing copper sun */}
+      <div
+        style={{
+          position: 'absolute',
+          inset: 0,
+          zIndex: 20,
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          background: colors.inkDeep,
+          color: '#fff',
+          opacity: finalOp,
+          pointerEvents: finalOp > 0.5 ? 'auto' : 'none',
+        }}
+      >
+        <div
+          style={{
+            width: wh(380),
+            height: wh(380),
+            borderRadius: '50%',
+            border: '1px solid rgba(255,255,255,0.25)',
+            display: 'grid',
+            placeItems: 'center',
+            position: 'relative',
+            marginBottom: h(70),
+            transform: `scale(${sunScale})`,
+          }}
+        >
+          <div
+            style={{
+              position: 'absolute',
+              inset: wh(30),
+              borderRadius: '50%',
+              background: `radial-gradient(circle, ${colors.accent} 0%, ${colors.accentDark} 100%)`,
+              boxShadow: `0 0 ${wh(120)}px rgba(184,114,83,0.5)`,
+            }}
+          />
+          <span
+            style={{
+              position: 'relative',
+              zIndex: 2,
+              fontFamily: 'Fraunces, serif',
+              fontStyle: 'italic',
+              fontSize: wh(110),
+              color: colors.cream,
+              letterSpacing: '-0.02em',
+            }}
+          >
+            {seasonChip}
+          </span>
+        </div>
+        <div
+          style={{
+            fontFamily: 'Nunito Sans, sans-serif',
+            fontSize: wh(26),
+            fontWeight: 700,
+            letterSpacing: '0.5em',
+            textTransform: 'uppercase',
+            color: colors.accent,
+            marginBottom: h(18),
+          }}
+        >
+          {finalKicker}
+        </div>
+        <div
+          style={{
+            fontFamily: 'Fraunces, serif',
+            fontStyle: 'italic',
+            fontWeight: 300,
+            fontSize: wh(128),
+            lineHeight: 1,
+            letterSpacing: '-0.02em',
+            marginBottom: h(14),
+            textAlign: 'center',
+          }}
+        >
+          {finalHeadline}
+        </div>
+        <div
+          style={{
+            fontFamily: 'Nunito Sans, sans-serif',
+            fontSize: wh(26),
+            fontWeight: 400,
+            letterSpacing: '0.2em',
+            color: 'rgba(255,255,255,0.7)',
+            marginBottom: h(48),
+            textTransform: 'uppercase',
+          }}
+        >
+          {finalSubline}
+        </div>
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            alert('Tapping through…');
+          }}
+          style={{
+            padding: `${h(22)}px ${w(64)}px`,
+            background: colors.accent,
+            color: '#fff',
+            fontFamily: 'Nunito Sans, sans-serif',
+            fontSize: wh(26),
+            fontWeight: 800,
+            letterSpacing: '0.35em',
+            textTransform: 'uppercase',
+            border: 0,
+            borderRadius: wh(4),
+            cursor: 'pointer',
+          }}
+        >
+          {ctaButton}
+        </button>
+      </div>
+    </div>
+  );
+}
