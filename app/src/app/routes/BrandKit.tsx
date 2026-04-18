@@ -95,12 +95,13 @@ export function BrandKitRoute() {
             </Field>
             <Field
               label="Boutique logo"
-              hint="Used as the outro wordmark in templates that support it. Transparent PNG recommended. Leave empty to use text wordmark."
+              hint="SVG only — the wordmark is recoloured to match each template's palette, so one file works on every background. Leave empty to fall back to a text wordmark."
             >
               <ImageDropZone
                 url={brand.logo ?? ''}
                 aspectRatio={16 / 9}
                 size="large"
+                svgOnly
                 onImage={(dataURL) => update('logo', dataURL)}
                 onClear={() => update('logo', undefined)}
               />

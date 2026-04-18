@@ -1,5 +1,6 @@
 import { Easing, interpolate, useTimeline } from '../../engine';
 import type { CountdownProps } from './schema';
+import { BoutiqueLogo } from '../BoutiqueLogo';
 
 const BASE_W = 1080;
 const BASE_H = 1920;
@@ -326,31 +327,14 @@ function CTA({ props, T, s }: ActProps) {
           transform: `translateY(${nameY}px)`,
         }}
       >
-        {logo ? (
-          <img
-            src={logo}
-            alt={boutiqueName}
-            style={{
-              display: 'inline-block',
-              maxWidth: w(680),
-              maxHeight: h(300),
-              objectFit: 'contain',
-            }}
-          />
-        ) : (
-          <div
-            style={{
-              fontFamily: 'Fraunces, serif',
-              fontWeight: 300,
-              fontSize: wh(160),
-              lineHeight: 0.9,
-              color: colors.paper,
-              letterSpacing: '-0.03em',
-            }}
-          >
-            {boutiqueName}
-          </div>
-        )}
+        <BoutiqueLogo
+          logo={logo}
+          boutiqueName={boutiqueName}
+          color={colors.paper}
+          width={w(680)}
+          height={h(300)}
+          fontSize={wh(160)}
+        />
       </div>
 
       {/* CTA */}
