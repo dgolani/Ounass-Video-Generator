@@ -164,7 +164,7 @@ VideoAds/
         │
         ├── ui/
         │   ├── primitives.tsx  ← Button/Field/TextField/Textarea/ColorField/Section/Stack/Empty.
-        │   └── Slider.tsx      ← Horizontal slider used for the duration control.
+        │   └── Slider.tsx      ← Horizontal slider (e.g. music volume in timeline dock; project duration via video-lane trim).
         │
         └── app/                 ← Editor app shell + routes + components.
             ├── Shell.tsx       ← Sidebar + topbar; Outlet for routes.
@@ -397,7 +397,7 @@ Full rationale: see [ROADMAP.md](ROADMAP.md) and the project memory file at `~/.
 |---|---|---|
 | 0 — Foundation | ✅ | Vite scaffold, engine extracted, Phillip Lim ported. |
 | 1 — Editor shell | ✅ | Routes, 3-pane editor, schema-driven properties panel. |
-| 2 — Customization depth | ✅ | Image upload, product CRUD, undo/redo, duration slider w/ act scaling, aspect switcher, Brand Kit. |
+| 2 — Customization depth | ✅ | Image upload, product CRUD, undo/redo, editable **duration** (timeline video trim + `timeScale` act scaling), aspect switcher, Brand Kit. |
 | 3 — Multi-template | ✅ | Logo upload + in-scene rendering, multi-aspect Phillip Lim, 3 new templates (editorial, countdown, hero), 8 SVG luxury placeholders. |
 | 4 — Export | ✅ | Frame-by-frame → ffmpeg.wasm → MP4. Verified with Sale Countdown 5s × 1:1 → 8.2 MB. |
 | 5 — Polish | ⬜ | Not started. Candidates listed below. |
@@ -455,7 +455,7 @@ In the running preview:
 4. In editor:
    - Edit a text field → canvas updates within 400ms
    - Click an aspect pill → canvas re-lays out
-   - Drag duration slider → timeline scene layout scales + canvas timing scales (`timeScale`)
+   - Adjust project duration (video clip **right** trim on `EditorTimelineDock`) → timeline scene layout scales + canvas timing scales (`timeScale`)
    - Click ↶/↷ → undo/redo works
 5. Brand Kit `/brand` — boutique name + 4 colors + logo dropzone all editable; "Saved" flashes
 6. Export (use a 5s × 1:1 project for speed):
