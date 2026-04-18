@@ -3,7 +3,10 @@ import { clamp } from './math';
 
 export type TimelineContextValue = {
   time: number;
+  /** Playback length (local timeline span). */
   duration: number;
+  /** Seconds skipped at the beginning of the scaled composition (editor trim). */
+  compositionStartSec: number;
   playing: boolean;
   setTime: (t: number) => void;
   setPlaying: (p: boolean | ((prev: boolean) => boolean)) => void;
@@ -12,6 +15,7 @@ export type TimelineContextValue = {
 export const TimelineContext = createContext<TimelineContextValue>({
   time: 0,
   duration: 10,
+  compositionStartSec: 0,
   playing: false,
   setTime: () => {},
   setPlaying: () => {},

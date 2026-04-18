@@ -925,7 +925,7 @@ export function LookbookScene({
   width = BASE_W,
   height = BASE_H,
 }: SceneProps) {
-  const { time, duration } = useTimeline();
+  const { time, duration, compositionStartSec } = useTimeline();
   const T = (x: number) => x * timeScale;
   const s = makeScale(width, height);
   const { w, h, wh } = s;
@@ -1005,7 +1005,7 @@ export function LookbookScene({
         <div
           style={{
             height: '100%',
-            width: `${clamp(time / duration, 0, 1) * 100}%`,
+            width: `${clamp((time - compositionStartSec) / duration, 0, 1) * 100}%`,
             background: colors.accent,
             transition: 'width 0.1s linear',
           }}

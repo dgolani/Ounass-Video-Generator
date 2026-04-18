@@ -13,7 +13,7 @@
 - **Stack:** Vite 6 + React 19 + TypeScript, single-page app, localStorage for state, ffmpeg.wasm for encoding.
 - **Live demo:** `cd app && npm run dev` → http://localhost:5173. Or via Claude Preview MCP: configured in `.claude/launch.json` as `vag-dev`.
 - **Last session ended:** Phase 4 verified end-to-end (Sale Countdown 5s × 1:1 → 8.2 MB MP4).
-- **Read order from here:** §1 Quick start → §3 Mental model → §6 How to add a new template → §9 Gotchas.
+- **Read order from here:** §1 Quick start → §3 Mental model → §6 How to add a new template → §9 Gotchas. **§18 Git workflow** describes how we branch and merge (sequential contributors—see there).
 
 ---
 
@@ -45,7 +45,7 @@ There's no separate build step in dev. `npm run build` runs `tsc -b && vite buil
 
 ## 2. What this is, in three sentences
 
-The marketer opens the app, picks a template (Phillip Lim, Editorial, Sale Countdown, or Hero), and lands in a 3-pane editor — outline / live canvas / properties panel auto-generated from the template's field schema. They tweak copy/images/colors/duration/aspect; everything autosaves to localStorage. When they're happy, Export rasterizes the canvas frame-by-frame in the browser and pipes the PNGs through ffmpeg.wasm to produce an MP4 (yuv420p, social-ready).
+The marketer opens the app, picks a template (Lookbook, Editorial, Sale Countdown, or Hero), and lands in a 3-pane editor — **brand kit column** (products + logo + colors when present) / **live canvas + layered timeline** / **properties panel** for the remaining fields from the template's `fields[]`. They tweak copy/images/colors/duration/aspect; everything autosaves to localStorage. **Scene timing** is reflected in `meta.scenes` (scaled with duration) and surfaced on the **timeline video bar** (markers + scene names), not a separate left outline list. When they're happy, Export rasterizes the canvas frame-by-frame in the browser and pipes the PNGs through ffmpeg.wasm to produce an MP4 (yuv420p, social-ready).
 
 There is **no backend**. No login. No accounts. No Ounass API access (Kasada blocks it). The whole tool is one user × one browser. Eventually deploys to Vercel free tier with zero serverless functions.
 
@@ -57,7 +57,7 @@ There is **no backend**. No login. No accounts. No Ounass API access (Kasada blo
                     ┌──────────────────────────────────┐
                     │          Template registry       │
                     │  src/templates/registry.ts       │
-                    │  4 entries today: phillip-lim,   │
+                    │  4 entries today: lookbook,      │
                     │  editorial, countdown, hero      │
                     └────┬───────────────┬─────────────┘
                          │ meta          │ Scene + fields
@@ -66,12 +66,12 @@ There is **no backend**. No login. No accounts. No Ounass API access (Kasada blo
    │                  EDITOR (one route)             │
    │  src/app/routes/Editor.tsx                      │
    │                                                 │
-   │  ┌────────┐  ┌──────────────┐  ┌─────────────┐  │
-   │  │Outline │  │   Stage      │  │ Properties  │  │
-   │  │(scenes)│  │ + Scene      │  │ (auto-gen   │  │
-   │  │        │  │ + PlaybackBar│  │  from       │  │
-   │  │        │  │              │  │  fields[])  │  │
-   │  └────────┘  └──────┬───────┘  └─────────────┘  │
+   │  ┌────────────┐  ┌──────────────┐  ┌─────────────┐  │
+   │  │EditorBrand │  │   Stage      │  │ Properties  │  │
+   │  │Panel       │  │ + Scene      │  │ (remaining   │  │
+   │  │PRODUCTS / │  │ + Editor     │  │  fields[])   │  │
+   │  │BRAND KIT   │  │ TimelineDock │  │             │  │
+   │  └────────────┘  └──────┬───────┘  └─────────────┘  │
    └─────────────────────┼───────────────────────────┘
                          │ shared StageController
                          │ (time, playing, setTime)
@@ -84,7 +84,7 @@ There is **no backend**. No login. No accounts. No Ounass API access (Kasada blo
 
 Three rules of the architecture:
 
-1. **The Editor never branches on template id.** Adding a new template = registering it in `registry.ts`. Zero editor edits. (Verified: `grep -r "phillip-lim\|editorial\|countdown\|hero" src/app/` returns 0 matches.)
+1. **The Editor never branches on template id.** Adding a new template = registering it in `registry.ts`. Zero editor edits. (Verified: `grep -r "lookbook\|editorial\|countdown\|hero" src/app/` returns 0 matches.)
 2. **Templates are pure data + one component.** A template = `{ meta, fields, defaultProps, Scene }`. Scene is a pure function of `(props, time)` that reads time via `useTimeline()`.
 3. **Scenes are dimension-agnostic.** Every scene receives `width` + `height` props and uses `makeScale(W, H)` helpers (`w(px)`, `h(px)`, `wh(px)`). No hardcoded pixel literals — they all read through the helpers so any aspect just works.
 
@@ -145,8 +145,8 @@ VideoAds/
         │                         heroSilhouette, salePlaceholder.
         │
         ├── store/
-        │   ├── types.ts        ← Project = { id, name, templateId, props, aspectIndex,
-        │   │                                   duration, createdAt, updatedAt }
+        │   ├── types.ts        ← Project includes template props + aspectIndex, duration,
+        │   │                     background music (track id, volume, anchor, trim), timestamps
         │   ├── projects.ts     ← localStorage CRUD + useProjects/useProject hooks.
         │   │                     Throws StorageQuotaError on quota; surfaced in Editor.
         │   └── brand.ts        ← Brand kit (boutique name + 4 colors + optional logo).
@@ -155,10 +155,12 @@ VideoAds/
         ├── lib/
         │   ├── path.ts         ← getPath/setPath dot-notation. Powers the properties
         │   │                     panel — works for nested keys like 'product.image'.
+        │   ├── quickHash.ts    ← Tiny string fingerprint (filmstrip cache keys).
         │   ├── uid.ts          ← Single shared id generator.
         │   ├── image.ts        ← resizeImageToDataURL — caps uploads at 1080px JPEG q=0.85.
         │   ├── useHistory.ts   ← Undo/redo with debounced commits. Cmd-Z / Cmd-Shift-Z.
-        │   └── export.ts       ← !! THE EXPORT PIPELINE. ffmpeg gotchas captured at top.
+        │   ├── export.ts       ← !! THE EXPORT PIPELINE. ffmpeg gotchas captured at top.
+        │   └── musicTracks.ts  ← Curated beds (`public/audio/`) + resolveAudioUrl.
         │
         ├── ui/
         │   ├── primitives.tsx  ← Button/Field/TextField/Textarea/ColorField/Section/Stack/Empty.
@@ -169,16 +171,18 @@ VideoAds/
             ├── routes/
             │   ├── Dashboard.tsx
             │   ├── Gallery.tsx ← Lists templates from listTemplates(); applyBrand on create.
-            │   ├── Editor.tsx  ← The 3-pane editor. ~280 lines.
+            │   ├── Editor.tsx  ← The 3-pane editor (brand column + stage + properties).
             │   └── BrandKit.tsx
             └── components/
-                ├── Outline.tsx
+                ├── EditorBrandPanel.tsx  ← Left column: PRODUCTS + BRAND KIT; splitEditorFields().
+                ├── Outline.tsx            ← Legacy scene list UI; not mounted by Editor (timeline owns scenes).
                 ├── PropertiesPanel.tsx  ← Renders any template's fields[] generically.
-                │                          Exports ImageDropZone (reused by BrandKit).
+                │                          Exports ImageDropZone (reused by BrandKit). `compact` prop for left column.
                 ├── TemplatePreview.tsx  ← Live mini-render of a template scene; played
                 │                          on hover from gallery + dashboard cards.
                 │                          Mounts paused by default; multi-instance safe
                 │                          (keyboard: false, no persistKey).
+                ├── EditorTimelineDock.tsx  ← Layered timeline (filmstrip + music + playhead)
                 └── ExportModal.tsx
 ```
 
@@ -230,7 +234,7 @@ The only valid `kind`s are `section | text | color | image | productList`. If a 
 `productList` has knobs: `imagePath` (which key holds the image), `newProductTemplate` (default shape for + Add), `minProducts` / `maxProducts`, `addLabel`. Phillip Lim uses 2/10. Editorial uses 4/4 (fixed grid).
 
 ### 5.4 State + persistence
-- All projects: `localStorage['vag:projects:v1']` — array of Project.
+- All projects: `localStorage['vag:projects:v1']` — array of Project (includes `backgroundTrackId`, `musicVolume`, `musicAnchorVideoTime`, `musicTrimStartSec` for timeline + export).
 - Brand kit: `localStorage['vag:brand:v1']` — single object.
 - Per-project playhead: `localStorage['project:<id>:t']` — last seek position.
 - Hooks (`useProjects`, `useProject`, `useBrand`) listen to a custom CustomEvent bus AND the native `storage` event so cross-tab edits stay in sync.
@@ -270,7 +274,7 @@ The only valid `kind`s are `section | text | color | image | productList`. If a 
    };
    ```
 4. **`fields.ts`** — declare which props are editable. Group with `{ kind: 'section', label: 'Brand' }` headers.
-5. **`scene.tsx`** — copy the makeScale + ActProps boilerplate from `phillip-lim/scene.tsx`. Each Act receives `{ props, T, s }`. Wrap every time literal in `T(...)` and every pixel in `s.w/s.h/s.wh`. Single-aspect-coded scenes are not allowed.
+5. **`scene.tsx`** — copy the makeScale + ActProps boilerplate from `lookbook/scene.tsx`. Each Act receives `{ props, T, s }`. Wrap every time literal in `T(...)` and every pixel in `s.w/s.h/s.wh`. Single-aspect-coded scenes are not allowed.
 6. **`index.ts`** — `export { FooScene } from './scene'; export { meta } from './meta'; export { fields } from './fields'; export { defaultProps, type FooProps } from './schema';`
 7. **Register in `src/templates/registry.ts`** (3-line addition).
 8. `npx tsc -b --noEmit` → must pass.
@@ -284,7 +288,7 @@ The only valid `kind`s are `section | text | color | image | productList`. If a 
 - **New text/color field:** add to `schema.ts` (with default), reference in `scene.tsx`, add an entry in `fields.ts`. Three files. No registry change.
 - **New image field:** same as above, but use `kind: 'image'` in fields.ts (it'll auto-render the drop zone).
 - **New aspect:** add to `meta.ts` `aspects[]`. Scene already adapts because of the ratio helpers. Verify visually in editor.
-- **Per-act timing tweak:** edit the `T(...)` bounds inside the scene's Act components. Update the `meta.scenes[]` outline ranges so the left-pane Outline stays accurate.
+- **Per-act timing tweak:** edit the `T(...)` bounds inside the scene's Act components. Update the `meta.scenes[]` ranges so the **timeline** scene markers and segment labels stay accurate (Editor passes scaled scenes into `EditorTimelineDock`).
 - **Add a new act:** new component in `scene.tsx`, render it from the root `<Foo>Scene`. Add to `meta.scenes`. Wrap all times in `T()`.
 
 ---
@@ -451,7 +455,7 @@ In the running preview:
 4. In editor:
    - Edit a text field → canvas updates within 400ms
    - Click an aspect pill → canvas re-lays out
-   - Drag duration slider → outline times update + canvas timing scales
+   - Drag duration slider → timeline scene layout scales + canvas timing scales (`timeScale`)
    - Click ↶/↷ → undo/redo works
 5. Brand Kit `/brand` — boutique name + 4 colors + logo dropzone all editable; "Saved" flashes
 6. Export (use a 5s × 1:1 project for speed):
@@ -489,7 +493,7 @@ cd app && npm run build
 rm -rf app/node_modules/.vite
 
 # Find any place that branches on template id (should be empty!)
-grep -rn "phillip-lim\|editorial\|countdown\|hero" app/src/app
+grep -rn "lookbook\|editorial\|countdown\|hero" app/src/app
 
 # Find any hardcoded pixel literal in a scene (should be wrapped in w/h/wh)
 grep -nE "top: [0-9]+|left: [0-9]+|fontSize: [0-9]+" app/src/templates/*/scene.tsx
@@ -510,4 +514,33 @@ Order of operations:
 
 ---
 
-**Last meaningful update:** 2026-04-18 — Phase 5 polish in progress: shared photo set adopted across all templates (1.5 MB JPEGs at 1080×1620), `phillip-lim` template renamed to `lookbook` (brand-neutral), hover-to-play `<TemplatePreview>` wired into both Gallery and Dashboard cards. Gotchas #9 and #10 captured. Next likely thread: more Phase 5 polish (keyboard shortcuts, preview-frame-at-non-zero, performance), or another template.
+## 18. Git workflow (sequential contributors)
+
+Contributors **never work in parallel** on this repo—only one active stream at a time (different people or different sessions, but not overlapping). The process stays light.
+
+### 18.1 `main` and starting a session
+
+- **`main`** is the source of truth: it should stay runnable and typeclean.
+- **Before any work:** `git checkout main` → `git pull` so you are building on the latest tree (including HANDOFF/ROADMAP).
+
+### 18.2 Branches: named by task, not by person
+
+- **Non-trivial or risky change** (feature, refactor, anything you might want to drop cleanly): create a **short-lived branch** named for the work, e.g. `feature/export-music`, `fix/editor-autosave`. Finish it, merge to `main`, delete the branch.
+- **Tiny, obvious fix** (one-liner, typo): committing **directly on `main`** after the pull is fine.
+- **Do not** use long-lived personal branches (“my branch” / per-tool identity). **Do not** add a `develop` layer unless the team explicitly decides it needs one—we do not need it for sequential work.
+
+### 18.3 Merge and paper trail
+
+- Merge task branches into **`main`** when the task is done (self-merge is OK).
+- A **PR with a one-line description** is optional but useful as a history log; use it when you want review or an audit trail.
+
+### 18.4 Docs and quality
+
+- **HANDOFF.md** = how to run, conventions, gotchas. **ROADMAP.md** = phased history and rationale. Update them **in the same merge** as the code when behavior, setup, or conventions change (same rule as the banner at the top of this file).
+- Before merge: at minimum **`cd app && npx tsc -b --noEmit`**; for user-visible changes, match **§14 Verification checklist** where it applies.
+
+**MAINTENANCE — update §18 when you:** rename the default branch, start parallel development for real, or add a required review / CI gate.
+
+---
+
+**Last meaningful update:** 2026-04-18 — **Editor:** left **`EditorBrandPanel`** (PRODUCTS, then BRAND KIT: logo + colors; ~288px column); **`EditorTimelineDock`** scene markers + proportional scene-name segments on the video lane (from scaled `meta.scenes`); `PropertiesPanel` `compact` + right-hand field split. **`Outline.tsx`** unused by Editor (kept for reference). Docs: root **README**, **ROADMAP** Phase 1 + 5b, **app/README**. **§18** sequential Git workflow unchanged.

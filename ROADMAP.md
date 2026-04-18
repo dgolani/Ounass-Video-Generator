@@ -10,7 +10,7 @@ SaaS-style video ad builder for the Ounass marketing team. Marketers pick a temp
 |---|---|
 | **Stack** | Vite + React + TypeScript |
 | **Customization depth for MVP** | **Tier 1**: text, images, products, colors, logo, CTA, duration, aspect ratio. **Tier 2** (per-act timing + easing) stubbed behind an "Advanced" disclosure. **Tier 3** (add/reorder/remove acts) deferred. |
-| **Export pipeline** | MediaRecorder → WebM, then client-side ffmpeg.wasm transcode to MP4. Server-side headless-Chrome render deferred to post-MVP. |
+| **Export pipeline** | Frame-by-frame DOM → PNG sequence → **ffmpeg.wasm** → H.264 MP4 (client-only). Server-side headless render deferred unless requirements change. |
 
 Change any of these mid-build → flag to user first. Drifting silently costs a lot because architecture branches off each.
 
@@ -59,9 +59,9 @@ App chrome (nav, routes). Template gallery view. Editor view with three panes: s
 - Path helpers: `src/lib/path.ts` — `getPath`/`setPath` with immutable array/object cloning for nested writes.
 - Engine refactor: `useStageController` hook split out of `Stage`. Stage now takes `controller` + `chromeless` props so editor can hoist time state and share it with the outline + its own playback bar. Backward break: old standalone `<Stage duration=… persistKey=…>` usage replaced everywhere.
 - UI primitives: `src/ui/primitives.tsx` — `Button` (primary/secondary/ghost/danger), `Field`, `TextField`, `Textarea`, `ColorField`, `Section`, `Stack`, `Empty`.
-- Routes: `Dashboard` (empty state + project cards w/ open/delete), `Gallery` (template cards, click → create project → nav to editor), `Editor` (top bar w/ editable name + autosave indicator, 3-pane grid: `Outline` / `Stage(chromeless)` + `PlaybackBar` / `PropertiesPanel`).
+- Routes: `Dashboard` (empty state + project cards w/ open/delete), `Gallery` (template cards, click → create project → nav to editor), `Editor` (top bar w/ editable name + autosave indicator, 3-pane grid: **`EditorBrandPanel`** (products + brand kit) / `Stage(chromeless)` + **`EditorTimelineDock`** / `PropertiesPanel`).
 - `PropertiesPanel` auto-generates inputs from `fields[]` via `getPath`/`setPath`. `productList` renders per-product sub-cards (thumbnail + name/price/color). Debounced autosave (400ms) writes to localStorage with a "Saved" flash.
-- **Verified**: created a project from the gallery → edited Brand to "TEST BRAND" → reloaded → edit persisted → canvas still shows "TEST BRAND · NOIR" in the product card. Outline correctly highlights the active act. No console errors.
+- **Verified**: created a project from the gallery → edited Brand to "TEST BRAND" → reloaded → edit persisted → canvas still shows "TEST BRAND · NOIR" in the product card. No console errors.
 
 ### Phase 2 — Customization depth (Tier 1) ✅ (complete 2026-04-18)
 Product catalog CRUD (add/remove/reorder products, upload images). Brand Kit page (colors, boutique defaults). Aspect-ratio switcher UI. Duration slider with proportional act scaling. Undo/redo. Autosave w/ quota handling.
@@ -76,7 +76,7 @@ Product catalog CRUD (add/remove/reorder products, upload images). Brand Kit pag
 - **Image upload:** `src/lib/image.ts` (`resizeImageToDataURL`: 1080px JPEG q=0.85, ~300 KB data URLs from 4K photos). `ImageDropZone` in `PropertiesPanel` with click-to-pick + drag-drop. Storage-quota errors surface in the Editor as "Storage full — drop an image or two".
 - **Product CRUD:** `FieldDescriptor.productList` gained `imagePath`, `newProductTemplate`, `addLabel`, `minProducts`, `maxProducts`. Phillip Lim declares min 2 / max 10. Per-row ↑/↓/× buttons with disabled-state honoring bounds. "+ Add product" generates a new row with a uid.
 - **Undo/redo:** `src/lib/useHistory.ts` — linear stack, debounced commits (300ms), max depth 50, keyboard ⌘Z / ⌘⇧Z (ignored while typing). Top-bar buttons ↶ / ↷ with canUndo/canRedo disabled state. `resetHistory` called when switching projects.
-- **Duration slider + scene time scaling:** Compact `Slider` (5–20s, 0.5s step) in the top bar. Scene receives `timeScale` prop (`duration / defaultDuration`); Phillip Lim's 4 acts wrap every time literal in `T(x) = x * timeScale`. Outline scene ranges are pre-scaled before rendering. Confirmed end-to-end: slider → 12s → Act 1 ends 2.8s, Act 4 starts 9.3s.
+- **Duration slider + scene time scaling:** Compact `Slider` (5–20s, 0.5s step) in the top bar. Scene receives `timeScale` prop (`duration / defaultDuration`); multi-act templates wrap every time literal in `T(x) = x * timeScale`. `meta.scenes` is scaled the same way for the **timeline** (markers + segment labels on the video lane), not a separate left outline list. Confirmed end-to-end: slider → 12s → act boundaries move with duration.
 - **Aspect switcher UI:** Pill selector keyed off `meta.aspects`. For Phillip Lim (single aspect) it shows the label disabled; multi-aspect templates will activate it automatically in Phase 3.
 - **Brand Kit:** New route `/brand` with boutique name + 4 color fields + Reset. Store `src/store/brand.ts` with `useBrand`, `applyBrand(defaults, brand)` deep-merge helper. Gallery's "Use template" pipes through `applyBrand` so new projects inherit the kit. Verified end-to-end: set `boutiqueName="TEST BOUTIQUE"` + 4 orange-ish colors → new project's `props.boutiqueName` and `props.colors` picked up the overrides.
 - **Scene hardening:** Act 2 columns, Act 3 hero card, and Act 3 thumbnails now render a placeholder block when a product has no image (prevents empty-`src` Chrome warnings when the marketer adds a product before uploading).
@@ -154,6 +154,28 @@ Frame-by-frame DOM rasterization → ffmpeg.wasm → H.264 MP4 download. Client-
 
 ### Phase 5 — Polish
 Keyboard shortcuts (space, arrows, cmd-z). Shareable preview URLs (read-only). Onboarding empty states. Error states for failed renders. Dashboard polish. Tier-2 "Advanced" disclosure surfaces per-act timing/easing.
+
+### Phase 5b — Audio & layered timeline (in progress, 2026-04-18)
+
+**Visual target:** Consumer-style editors (Instagram Reels / CapCut pattern): **video as a layer** (filmstrip / thumbnails + optional trim handles), **music as a layer** below, **fixed vertical playhead** with tracks scrolling horizontally, clear empty state (“Add audio”). A reference screenshot was shared in-session (2026-04-18); optionally commit a copy under `docs/references/` for permanent design anchor.
+
+#### Landed (incremental)
+- **Project model:** `backgroundTrackId`, `musicVolume`, `musicAnchorVideoTime`, `musicTrimStartSec`, `musicEndVideoTime`, `videoClipStartSec`, `duration` on `Project` (and related export paths); normalized on read for older saves.
+- **Editor:** `EditorTimelineDock.tsx` — **fixed center playhead** + horizontally scrollable **time ruler** + **filmstrip** (JPEG thumbnails via `html-to-image` samples + `useFilmstripCapture`); **video (cyan) lane** with slip/trim handles, **scene start markers** (click to seek), and **per-scene name strips** proportional to act length (from `meta.scenes` × `timeScale`); **music lane** with draggable bronze clip + **“Add audio”** empty state; sound mix popover; `useEditorMusicPreview.ts` ties `<audio>` to `useStageController`. **Cinema mode** slim rail reuses markers + labels.
+- **Editor — left column:** `EditorBrandPanel.tsx` + `splitEditorFields()` — **PRODUCTS** block first (when `productList` / `products` exists), then **BRAND KIT** (logo + all color fields). Right `PropertiesPanel` receives `fields` minus those paths. Grid left column **~288px**. `Outline.tsx` remains in the tree as legacy; **Editor** does not import it.
+- **Export:** `export.ts` muxes music with **volume + `atrim` (trim) + `adelay` (anchor)** + looped bed + `-shortest`; **Export modal** summarizes editor audio (no duplicate controls).
+- **Curated beds:** `src/lib/musicTracks.ts` + `public/audio/` (replace placeholder with licensed tracks before ship).
+
+#### Next steps (ordered — build toward the reference UI)
+1. **Timeline polish** — Pinch / modifier+wheel **zoom** of `PX_PER_SEC`; optional **snap** grid (0.1s / 0.25s); reduce scroll↔seek fighting during drag.
+2. **Video layer (trim UI)** — **Yellow in/out** handles only when export supports **sub-range** distinct from full project duration (today duration = edit length; filmstrip is seek + preview).
+3. **Audio row polish** — **Waveform** via **Wavesurfer.js v7** + **Regions** (`@wavesurfer/react`) for in-file trim/slip; optional richer “Add audio” picker when multiple beds ship.
+4. **Gestures / feel** — `@use-gesture/react` or pointer refinements; optional haptic-style audio slip.
+5. **Export parity** — Any new timeline keys (fade, trim end, multiple stems) ship with `export.ts` + HANDOFF note if non-obvious.
+
+#### Libraries vs custom (decision log)
+- **There is no turnkey npm package** that drops a Reels-grade timeline onto a **custom React DOM stage** like ours. Every serious product composes pieces.
+- **Pragmatic stack:** **Custom** scroll + playhead + filmstrip data (we own the clock: `useStageController`). **Wavesurfer** (or **Peaks.js** + custom canvas) for the **music waveform + regions** when we need waveform editing. Avoid adopting a full “non-linear editor” engine unless we commit to its data model for years.
 
 ---
 
