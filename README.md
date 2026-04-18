@@ -36,6 +36,9 @@ Add a new template = one folder + one entry in `src/templates/registry.ts`. The 
 
 - **[HANDOFF.md](HANDOFF.md)** — read this first if you're picking up the project. Architecture, conventions, gotchas, recipes for adding templates / debugging exports.
 - **[ROADMAP.md](ROADMAP.md)** — phase-by-phase log of what shipped and why.
+- **[app/README.md](app/README.md)** — app-level commands and a short map of the editor panes (brand column, timeline scenes, properties).
+
+**Editor (recent):** the left column is a **brand kit** surface (**PRODUCTS**, then **BRAND KIT**: logo + colors). **Scene names and cuts** are shown on the **timeline video (cyan) bar** (`EditorTimelineDock`), driven from each template’s `meta.scenes` scaled to the project duration—not a separate scenes outline pane.
 
 ## Stack
 

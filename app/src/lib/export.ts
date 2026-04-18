@@ -21,6 +21,7 @@ export type ExportProgress =
   | { stage: 'loading'; message: string }
   | { stage: 'fonts'; message: string }
   | { stage: 'rendering'; frame: number; total: number }
+  | { stage: 'loading_audio'; message: string }
   | { stage: 'encoding'; message: string }
   | { stage: 'done' };
 
@@ -32,6 +33,16 @@ export type ExportOptions = {
   duration: number;
   fps?: number;
   crf?: number;
+  /** Fetched into ffmpeg and muxed; omit or null = video-only */
+  audioUrl?: string | null;
+  /** 0–1; values below ~0.001 skip the audio track */
+  audioVolume?: number;
+  /** Seconds of silence at the start of the output timeline before the bed enters */
+  musicAnchorVideoTime?: number;
+  /** Seconds to skip from the beginning of the source file */
+  musicTrimStartSec?: number;
+  /** Video timeline second where music should be silent after (≤ duration) */
+  musicEndVideoTime?: number;
   onProgress?: (p: ExportProgress) => void;
   signal?: AbortSignal;
 };
@@ -44,6 +55,11 @@ export async function exportVideoToMP4({
   duration,
   fps = 30,
   crf = 22,
+  audioUrl = null,
+  audioVolume = 0.35,
+  musicAnchorVideoTime = 0,
+  musicTrimStartSec = 0,
+  musicEndVideoTime = 0,
   onProgress = () => {},
   signal,
 }: ExportOptions): Promise<Blob> {
@@ -123,26 +139,95 @@ export async function exportVideoToMP4({
     }
     abort();
 
+    const vol = Math.min(1, Math.max(0, audioVolume));
+    const useAudio = Boolean(audioUrl?.trim()) && vol >= 0.001;
+
+    if (useAudio && audioUrl) {
+      onProgress({ stage: 'loading_audio', message: 'Loading music…' });
+      const audioData = await fetchFile(audioUrl);
+      await ffmpeg.writeFile('bgm.mp3', audioData);
+      abort();
+    }
+
     // Encode to MP4. libx264 + yuv420p = maximum platform compatibility
-    // (IG / TikTok / YouTube / native players).
-    onProgress({ stage: 'encoding', message: 'Encoding MP4…' });
-    await ffmpeg.exec([
-      '-framerate',
-      String(fps),
-      '-i',
-      'f-%05d.png',
-      '-c:v',
-      'libx264',
-      '-pix_fmt',
-      'yuv420p',
-      '-preset',
-      'fast',
-      '-crf',
-      String(crf),
-      '-movflags',
-      '+faststart',
-      'out.mp4',
-    ]);
+    // (IG / TikTok / YouTube / native players). Optional AAC bed from bgm.mp3.
+    onProgress({
+      stage: 'encoding',
+      message: useAudio ? 'Encoding MP4 (video + music)…' : 'Encoding MP4…',
+    });
+
+    if (useAudio) {
+      const volStr = vol.toFixed(4);
+      const trim = Math.min(120, Math.max(0, musicTrimStartSec));
+      const anchor = Math.min(Math.max(0, musicAnchorVideoTime), Math.max(0, duration - 0.01));
+      const end = Math.min(
+        duration,
+        Math.max(anchor + 0.12, musicEndVideoTime > 0 ? musicEndVideoTime : duration),
+      );
+      const trimStr = trim.toFixed(3);
+      const delayMs = Math.round(anchor * 1000);
+      const delayArg = `${delayMs}|${delayMs}`;
+      const fadeSt = Math.max(0, end - 0.1);
+      const wholeSamples = Math.max(4800, Math.round(duration * 48000));
+      const tailPad = end < duration - 0.03;
+      const base =
+        trim > 0.0005
+          ? `[1:a]atrim=start=${trimStr},asetpts=PTS-STARTPTS,volume=${volStr},adelay=${delayArg}`
+          : `[1:a]volume=${volStr},adelay=${delayArg}`;
+      const filter = tailPad
+        ? `${base},afade=t=out:st=${fadeSt.toFixed(3)}:d=0.08,apad=whole_len=${wholeSamples}[aout]`
+        : `${base}[aout]`;
+      await ffmpeg.exec([
+        '-framerate',
+        String(fps),
+        '-i',
+        'f-%05d.png',
+        '-stream_loop',
+        '-1',
+        '-i',
+        'bgm.mp3',
+        '-filter_complex',
+        filter,
+        '-map',
+        '0:v',
+        '-map',
+        '[aout]',
+        '-c:v',
+        'libx264',
+        '-pix_fmt',
+        'yuv420p',
+        '-preset',
+        'fast',
+        '-crf',
+        String(crf),
+        '-c:a',
+        'aac',
+        '-b:a',
+        '192k',
+        '-movflags',
+        '+faststart',
+        '-shortest',
+        'out.mp4',
+      ]);
+    } else {
+      await ffmpeg.exec([
+        '-framerate',
+        String(fps),
+        '-i',
+        'f-%05d.png',
+        '-c:v',
+        'libx264',
+        '-pix_fmt',
+        'yuv420p',
+        '-preset',
+        'fast',
+        '-crf',
+        String(crf),
+        '-movflags',
+        '+faststart',
+        'out.mp4',
+      ]);
+    }
     abort();
 
     const data = await ffmpeg.readFile('out.mp4');

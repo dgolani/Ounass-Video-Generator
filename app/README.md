@@ -1,54 +1,33 @@
-# React + TypeScript + Vite
+# VideoAds app (Vite)
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Browser-only editor and export pipeline for the VideoAds / Ounass marketing tool. Source of truth for commands and tooling lives here.
 
-Currently, two official plugins are available:
+## Commands
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default tseslint.config({
-  extends: [
-    // Remove ...tseslint.configs.recommended and replace with this
-    ...tseslint.configs.recommendedTypeChecked,
-    // Alternatively, use this for stricter rules
-    ...tseslint.configs.strictTypeChecked,
-    // Optionally, add this for stylistic rules
-    ...tseslint.configs.stylisticTypeChecked,
-  ],
-  languageOptions: {
-    // other options...
-    parserOptions: {
-      project: ['./tsconfig.node.json', './tsconfig.app.json'],
-      tsconfigRootDir: import.meta.dirname,
-    },
-  },
-})
+```bash
+npm install
+npm run dev          # http://localhost:5173
+npm run build        # tsc -b && vite production bundle
+npm run lint
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+Typecheck only:
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default tseslint.config({
-  plugins: {
-    // Add the react-x and react-dom plugins
-    'react-x': reactX,
-    'react-dom': reactDom,
-  },
-  rules: {
-    // other rules...
-    // Enable its recommended typescript rules
-    ...reactX.configs['recommended-typescript'].rules,
-    ...reactDom.configs.recommended.rules,
-  },
-})
+```bash
+npx tsc -b --noEmit
 ```
+
+## Layout (editor)
+
+- **Left column (~288px):** `EditorBrandPanel` — **PRODUCTS** (when the template has `productList` at `products`), then **BRAND KIT** (logo at path `logo` + all `color` fields). Renders through `PropertiesPanel` with `compact` padding. Remaining `fields` stay in the right-hand Properties column (paths excluded from the left list).
+- **Center:** `Stage` (chromeless) + `EditorTimelineDock` — ruler, filmstrip, **video lane** (cyan) with scene boundary markers, proportional **scene name** segments (from `template.meta.scenes` scaled by project duration), music lane, playhead.
+- **Right:** `PropertiesPanel` for non–brand-kit fields.
+
+Scene list UI previously lived in `Outline.tsx`; the Editor route no longer uses it — scenes are driven from `meta.scenes` on the timeline instead.
+
+## Stack notes
+
+- Vite 6, React 19, TypeScript; `vite.config.ts` excludes `@ffmpeg/ffmpeg` from `optimizeDeps` (see repo `HANDOFF.md` for ffmpeg gotchas).
+- Curated music beds: `src/lib/musicTracks.ts` + files under `public/audio/` (see `public/audio/README.md`).
+
+For architecture, conventions, and how to add templates, read the repo root **[HANDOFF.md](../HANDOFF.md)** and **[ROADMAP.md](../ROADMAP.md)**.

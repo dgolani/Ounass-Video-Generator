@@ -5,6 +5,7 @@ import {
   useRef,
   useState,
   type CSSProperties,
+  type PointerEvent,
   type ReactNode,
   type RefObject,
 } from 'react';
@@ -23,7 +24,22 @@ type StageProps = {
   /** Caller-provided ref to the inner canvas element. Used by the export
    *  pipeline to rasterize the scene at its native dimensions. */
   canvasRef?: RefObject<HTMLDivElement | null>;
+  /** Trim offset on the composition timeline (seconds). */
+  compositionStartSec?: number;
+  /** Editor chromeless: fired from capture phase on the canvas shell (e.g. expand preview). */
+  onChromelessCanvasActivate?: (e: PointerEvent<HTMLDivElement>) => void;
+  /** Editor chromeless: direct hit on letterbox around the scaled canvas (e.g. toggle preview size). */
+  onChromelessLetterboxPointerDown?: (e: PointerEvent<HTMLDivElement>) => void;
 };
+
+function isLikelyInteractiveTarget(el: EventTarget | null): boolean {
+  if (!(el instanceof HTMLElement)) return false;
+  return Boolean(
+    el.closest(
+      'button, a, input, textarea, select, option, label, [role="button"], [role="slider"], [role="tab"], [contenteditable="true"]',
+    ),
+  );
+}
 
 export function Stage({
   width,
@@ -33,6 +49,9 @@ export function Stage({
   chromeless = false,
   children,
   canvasRef,
+  compositionStartSec = 0,
+  onChromelessCanvasActivate,
+  onChromelessLetterboxPointerDown,
 }: StageProps) {
   const { time, setTime, playing, togglePlay, reset, duration } = controller;
   const [hoverTime, setHoverTime] = useState<number | null>(null);
@@ -66,13 +85,14 @@ export function Stage({
 
   const ctxValue = useMemo<TimelineContextValue>(
     () => ({
-      time: displayTime,
+      time: compositionStartSec + displayTime,
       duration,
+      compositionStartSec,
       playing,
       setTime,
       setPlaying: controller.setPlaying,
     }),
-    [displayTime, duration, playing, setTime, controller.setPlaying],
+    [compositionStartSec, displayTime, duration, playing, setTime, controller.setPlaying],
   );
 
   return (
@@ -98,9 +118,20 @@ export function Stage({
           overflow: 'hidden',
           minHeight: 0,
         }}
+        onPointerDown={(e) => {
+          if (!chromeless || !onChromelessLetterboxPointerDown) return;
+          if (e.target !== e.currentTarget) return;
+          onChromelessLetterboxPointerDown(e);
+        }}
       >
         <div
           ref={canvasRef}
+          onPointerDownCapture={(e) => {
+            if (!chromeless || !onChromelessCanvasActivate) return;
+            if (e.button !== 0) return;
+            if (isLikelyInteractiveTarget(e.target)) return;
+            onChromelessCanvasActivate(e);
+          }}
           style={{
             width,
             height,

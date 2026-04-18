@@ -110,6 +110,10 @@ export function useStageController({
     return () => window.removeEventListener('keydown', onKey);
   }, [duration, keyboard]);
 
+  useEffect(() => {
+    setTime((t) => clamp(t, 0, duration));
+  }, [duration]);
+
   const reset = useCallback(() => setTime(0), []);
   const togglePlay = useCallback(() => setPlaying((p) => !p), []);
 

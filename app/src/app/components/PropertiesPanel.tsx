@@ -17,11 +17,17 @@ type Props = {
   fields: FieldDescriptor[];
   value: unknown;
   onChange: (next: unknown) => void;
+  /** Tighter padding for the narrow left brand column */
+  compact?: boolean;
 };
 
-export function PropertiesPanel({ fields, value, onChange }: Props) {
+export function PropertiesPanel({ fields, value, onChange, compact }: Props) {
   return (
-    <div style={{ padding: '20px 24px 80px' }}>
+    <div
+      style={{
+        padding: compact ? '16px 16px 48px' : '20px 24px 80px',
+      }}
+    >
       {fields.map((field, i) => {
         if (field.kind === 'section') {
           return <Section key={i} label={field.label} />;

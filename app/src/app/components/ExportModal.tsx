@@ -6,6 +6,7 @@ import {
   type ExportProgress,
 } from '../../lib/export';
 import type { StageController } from '../../engine';
+import { getMusicTrack, resolveAudioUrl } from '../../lib/musicTracks';
 
 type Props = {
   open: boolean;
@@ -16,6 +17,11 @@ type Props = {
   width: number;
   height: number;
   duration: number;
+  backgroundTrackId: string | null;
+  musicVolume: number;
+  musicAnchorVideoTime: number;
+  musicTrimStartSec: number;
+  musicEndVideoTime: number;
 };
 
 type Phase = 'idle' | 'running' | 'done' | 'error';
@@ -29,6 +35,11 @@ export function ExportModal({
   width,
   height,
   duration,
+  backgroundTrackId,
+  musicVolume,
+  musicAnchorVideoTime,
+  musicTrimStartSec,
+  musicEndVideoTime,
 }: Props) {
   const [phase, setPhase] = useState<Phase>('idle');
   const [progress, setProgress] = useState<ExportProgress | null>(null);
@@ -60,12 +71,21 @@ export function ExportModal({
     abortRef.current = abort;
 
     try {
+      const track = getMusicTrack(backgroundTrackId);
+      const audioUrl =
+        track && musicVolume >= 0.001 ? resolveAudioUrl(track.src) : null;
+
       const blob = await exportVideoToMP4({
         canvasEl,
         controller,
         width,
         height,
         duration,
+        audioUrl,
+        audioVolume: musicVolume,
+        musicAnchorVideoTime,
+        musicTrimStartSec,
+        musicEndVideoTime,
         onProgress: setProgress,
         signal: abort.signal,
       });
@@ -75,7 +95,6 @@ export function ExportModal({
       if ((e as DOMException)?.name === 'AbortError') {
         setPhase('idle');
       } else {
-        // eslint-disable-next-line no-console
         console.error('[Export] failed:', e);
         const msg =
           e instanceof Error && e.message
@@ -169,7 +188,7 @@ export function ExportModal({
                 fontFamily: 'var(--mono)',
                 fontSize: 11,
                 color: 'var(--editor-text-dim)',
-                margin: '16px 0 24px',
+                margin: '16px 0 20px',
                 padding: '12px 14px',
                 background: 'var(--editor-panel-2)',
                 borderRadius: 'var(--r-md)',
@@ -186,6 +205,54 @@ export function ExportModal({
               <span>Engine</span>
               <span>html-to-image → ffmpeg.wasm</span>
             </div>
+
+            <div
+              style={{
+                marginBottom: 20,
+                padding: '12px 14px',
+                background: 'var(--editor-panel-2)',
+                borderRadius: 'var(--r-md)',
+                border: '1px solid var(--editor-border)',
+              }}
+            >
+              <div
+                style={{
+                  fontFamily: 'var(--sans)',
+                  fontSize: 10,
+                  fontWeight: 700,
+                  letterSpacing: '0.14em',
+                  textTransform: 'uppercase',
+                  color: 'var(--editor-accent)',
+                  marginBottom: 8,
+                }}
+              >
+                Audio (from editor)
+              </div>
+              <p
+                style={{
+                  margin: 0,
+                  fontFamily: 'var(--sans)',
+                  fontSize: 12,
+                  lineHeight: 1.55,
+                  color: 'var(--editor-text-dim)',
+                }}
+              >
+                {getMusicTrack(backgroundTrackId) && musicVolume >= 0.001 ? (
+                  <>
+                    <strong style={{ color: 'var(--editor-text)' }}>
+                      {getMusicTrack(backgroundTrackId)!.label}
+                    </strong>
+                    <br />
+                    Volume {(musicVolume * 100).toFixed(0)}% · Clip{' '}
+                    {musicAnchorVideoTime.toFixed(1)}–{musicEndVideoTime.toFixed(1)}s · File in{' '}
+                    {musicTrimStartSec.toFixed(1)}s
+                  </>
+                ) : (
+                  <>No music — add a track in the timeline below the canvas.</>
+                )}
+              </p>
+            </div>
+
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
               <Button variant="ghost" onClick={onClose}>
                 Cancel
@@ -278,18 +345,22 @@ function RunningView({
         ? progress.message
         : progress?.stage === 'rendering'
           ? `Rendering frame ${progress.frame} of ${progress.total}`
-          : progress?.stage === 'encoding'
+          : progress?.stage === 'loading_audio'
             ? progress.message
-            : 'Starting…';
+            : progress?.stage === 'encoding'
+              ? progress.message
+              : 'Starting…';
 
   const pct =
     progress?.stage === 'rendering'
       ? (progress.frame / progress.total) * 100
-      : progress?.stage === 'encoding'
-        ? 100
-        : progress?.stage === 'loading' || progress?.stage === 'fonts'
-          ? 5
-          : 0;
+      : progress?.stage === 'loading_audio'
+        ? 92
+        : progress?.stage === 'encoding'
+          ? 100
+          : progress?.stage === 'loading' || progress?.stage === 'fonts'
+            ? 5
+            : 0;
 
   return (
     <>

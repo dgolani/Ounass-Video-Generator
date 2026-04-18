@@ -4,12 +4,70 @@ import type { Project } from './types';
 const KEY = 'vag:projects:v1';
 const CHANNEL = 'vag:projects:changed';
 
+const MIN_VIDEO_DURATION = 5;
+const MAX_VIDEO_DURATION = 20;
+const MAX_TIMELINE_EXTENT_SEC = 20;
+
+function normalizeProject(raw: Project): Project {
+  const vol = raw.musicVolume;
+  const musicVolume =
+    typeof vol === 'number' && Number.isFinite(vol) && vol >= 0 && vol <= 1
+      ? vol
+      : 0.35;
+  let L =
+    typeof raw.duration === 'number' && Number.isFinite(raw.duration) && raw.duration > 0
+      ? raw.duration
+      : 9;
+  L = Math.min(MAX_VIDEO_DURATION, Math.max(MIN_VIDEO_DURATION, L));
+
+  let vStart =
+    typeof raw.videoClipStartSec === 'number' && Number.isFinite(raw.videoClipStartSec)
+      ? raw.videoClipStartSec
+      : 0;
+  vStart = Math.min(Math.max(0, vStart), MAX_TIMELINE_EXTENT_SEC - MIN_VIDEO_DURATION);
+  if (vStart + L > MAX_TIMELINE_EXTENT_SEC) {
+    L = Math.max(MIN_VIDEO_DURATION, MAX_TIMELINE_EXTENT_SEC - vStart);
+  }
+
+  let anchor =
+    typeof raw.musicAnchorVideoTime === 'number' && Number.isFinite(raw.musicAnchorVideoTime)
+      ? raw.musicAnchorVideoTime
+      : 0;
+  const maxAnchor = Math.max(0, L - 0.05);
+  anchor = Math.min(Math.max(0, anchor), maxAnchor);
+  let trimS =
+    typeof raw.musicTrimStartSec === 'number' && Number.isFinite(raw.musicTrimStartSec)
+      ? raw.musicTrimStartSec
+      : 0;
+  trimS = Math.min(Math.max(0, trimS), 120);
+  let end =
+    typeof raw.musicEndVideoTime === 'number' && Number.isFinite(raw.musicEndVideoTime)
+      ? raw.musicEndVideoTime
+      : L;
+  const minEnd = anchor + 0.15;
+  end = Math.min(Math.max(minEnd, end), L);
+  return {
+    ...raw,
+    backgroundTrackId:
+      raw.backgroundTrackId === undefined || raw.backgroundTrackId === ''
+        ? null
+        : raw.backgroundTrackId,
+    musicVolume,
+    musicAnchorVideoTime: anchor,
+    musicTrimStartSec: trimS,
+    musicEndVideoTime: end,
+    duration: L,
+    videoClipStartSec: vStart,
+  };
+}
+
 function readAll(): Project[] {
   try {
     const raw = localStorage.getItem(KEY);
     if (!raw) return [];
     const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : [];
+    if (!Array.isArray(parsed)) return [];
+    return parsed.map((p) => normalizeProject(p as Project));
   } catch {
     return [];
   }
@@ -52,7 +110,13 @@ export function createProject(
     id: uid(),
     createdAt: now,
     updatedAt: now,
+    backgroundTrackId: null,
+    musicVolume: 0.35,
+    musicAnchorVideoTime: 0,
+    musicTrimStartSec: 0,
     ...init,
+    musicEndVideoTime: init.duration,
+    videoClipStartSec: 0,
   };
   const all = readAll();
   all.unshift(project);

@@ -1,17 +1,18 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { quickHash } from '../../lib/quickHash';
 import { useNavigate, useParams } from 'react-router-dom';
-import {
-  PlaybackBar,
-  Stage,
-  useStageController,
-} from '../../engine';
+import { Stage, useStageController } from '../../engine';
 import { useProject } from '../../store/projects';
+import type { Project } from '../../store/types';
 import { getTemplate } from '../../templates/registry';
 import { Button } from '../../ui/primitives';
-import { Slider } from '../../ui/Slider';
-import { Outline } from '../components/Outline';
+import { EditorBrandPanel, splitEditorFields } from '../components/EditorBrandPanel';
 import { PropertiesPanel } from '../components/PropertiesPanel';
 import { ExportModal } from '../components/ExportModal';
+import { EditorTimelineDock } from '../components/EditorTimelineDock';
+import { useEditorMusicPreview } from '../hooks/useEditorMusicPreview';
+import { useFilmstripCapture } from '../hooks/useFilmstripCapture';
+import { getMusicTrack, resolveAudioUrl } from '../../lib/musicTracks';
 import { useHistory } from '../../lib/useHistory';
 
 export function Editor() {
@@ -32,7 +33,12 @@ export function Editor() {
   const [localName, setLocalName] = useState<string>(project?.name ?? '');
   const [savedHint, setSavedHint] = useState<string>('');
   const [exportOpen, setExportOpen] = useState(false);
+  /** Expanded preview: timeline collapses with transition for a larger stage */
+  const [cinemaMode, setCinemaMode] = useState(false);
   const canvasRef = useRef<HTMLDivElement | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const videoTimeRef = useRef(0);
+  const getVideoTime = useCallback(() => videoTimeRef.current, []);
 
   useEffect(() => {
     if (project) {
@@ -71,11 +77,17 @@ export function Editor() {
   const controller = useStageController({
     duration,
     loop: true,
-    autoplay: true,
+    autoplay: false,
     persistKey: project ? `project:${project.id}` : undefined,
   });
 
-  const scaledScenes = useMemo(() => {
+  const { leftPaneFields, rightPaneFields } = useMemo(() => {
+    if (!template) return { leftPaneFields: [], rightPaneFields: [] };
+    return splitEditorFields(template.fields);
+  }, [template]);
+
+  /** Scene ranges in local video time (0…duration), scaled when duration ≠ template default */
+  const scaledVideoScenes = useMemo(() => {
     if (!template) return [];
     return template.meta.scenes.map((s) => ({
       ...s,
@@ -83,6 +95,77 @@ export function Editor() {
       end: s.end * timeScale,
     }));
   }, [template, timeScale]);
+
+  const filmstripRevision = useMemo(() => {
+    if (!project || !aspect) return '';
+    const raw = JSON.stringify(localProps);
+    const fp = raw.length > 14000 ? raw.slice(0, 14000) : raw;
+    return `${project.id}-${aspect.width}x${aspect.height}-${duration}-${project.videoClipStartSec}-${quickHash(fp)}`;
+  }, [project?.id, aspect, duration, project?.videoClipStartSec, localProps]);
+
+  const filmstripCanvasBg =
+    (localProps as { colors?: { background?: string } })?.colors?.background ?? '#0A0A0A';
+
+  const { images: filmstripImages, status: filmstripStatus, error: filmstripError } =
+    useFilmstripCapture({
+      canvasRef,
+      duration,
+      controller,
+      revision: filmstripRevision,
+      aspectW: aspect?.width ?? 1080,
+      aspectH: aspect?.height ?? 1920,
+      enabled: Boolean(filmstripRevision),
+      captureBackground: filmstripCanvasBg,
+    });
+
+  videoTimeRef.current = controller.time;
+
+  useEffect(() => {
+    if (!cinemaMode) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        setCinemaMode(false);
+      }
+    };
+    window.addEventListener('keydown', onKey, true);
+    return () => window.removeEventListener('keydown', onKey, true);
+  }, [cinemaMode]);
+
+  const musicTrack = project ? getMusicTrack(project.backgroundTrackId) : null;
+  const musicSrc =
+    musicTrack && project && project.musicVolume >= 0.001
+      ? resolveAudioUrl(musicTrack.src)
+      : null;
+
+  useEditorMusicPreview({
+    audioRef,
+    src: musicSrc,
+    enabled: Boolean(musicSrc),
+    volume: project?.musicVolume ?? 0.35,
+    anchorVideoTime: project?.musicAnchorVideoTime ?? 0,
+    trimStartSec: project?.musicTrimStartSec ?? 0,
+    musicEndVideoTime: project?.musicEndVideoTime ?? duration,
+    playing: controller.playing,
+    getVideoTime,
+  });
+
+  useEffect(() => {
+    if (!project) return;
+    const d = project.duration;
+    const maxA = Math.max(0, d - 0.05);
+    const minEnd = Math.min(d, project.musicAnchorVideoTime + 0.15);
+    const patches: Partial<
+      Pick<Project, 'musicAnchorVideoTime' | 'musicEndVideoTime'>
+    > = {};
+    if (project.musicAnchorVideoTime > maxA + 1e-6) {
+      patches.musicAnchorVideoTime = maxA;
+    }
+    if (project.musicEndVideoTime > d + 1e-6 || project.musicEndVideoTime < minEnd - 1e-6) {
+      patches.musicEndVideoTime = Math.min(d, Math.max(minEnd, project.musicEndVideoTime));
+    }
+    if (Object.keys(patches).length) save(patches);
+  }, [project?.id, project?.duration, project?.musicAnchorVideoTime, project?.musicEndVideoTime, save]);
 
   if (!project || !template || !aspect) {
     return (
@@ -109,7 +192,7 @@ export function Editor() {
       style={{
         display: 'grid',
         gridTemplateRows: '56px 1fr',
-        gridTemplateColumns: '240px 1fr 360px',
+        gridTemplateColumns: '288px 1fr 360px',
         gridTemplateAreas: `
           "top top top"
           "left center right"
@@ -208,23 +291,12 @@ export function Editor() {
           onChange={(i) => save({ aspectIndex: i })}
         />
 
-        {/* Duration slider */}
-        <Slider
-          compact
-          value={duration}
-          min={5}
-          max={20}
-          step={0.5}
-          suffix="s"
-          onChange={(d) => save({ duration: d })}
-        />
-
         <Button variant="primary" size="sm" onClick={() => setExportOpen(true)}>
           Export
         </Button>
       </div>
 
-      {/* Left pane: outline */}
+      {/* Left pane: logo, products, colors */}
       <div
         style={{
           gridArea: 'left',
@@ -233,11 +305,10 @@ export function Editor() {
           overflow: 'auto',
         }}
       >
-        <Outline
-          scenes={scaledScenes}
-          duration={duration}
-          time={controller.time}
-          onSeek={(t) => controller.setTime(t)}
+        <EditorBrandPanel
+          leftPaneFields={leftPaneFields}
+          value={localProps}
+          onChange={setLocalProps}
         />
       </div>
 
@@ -253,7 +324,17 @@ export function Editor() {
           minHeight: 0,
         }}
       >
-        <div style={{ position: 'relative', flex: 1, minHeight: 0 }}>
+        <div
+          style={{
+            position: 'relative',
+            flex: 1,
+            minHeight: 0,
+            transition: 'box-shadow 0.55s cubic-bezier(0.33, 1, 0.68, 1)',
+            boxShadow: cinemaMode
+              ? 'inset 0 0 0 1px rgba(255,255,255,0.06), 0 0 80px rgba(0,0,0,0.35)'
+              : 'none',
+          }}
+        >
           <Stage
             width={aspect.width}
             height={aspect.height}
@@ -264,6 +345,9 @@ export function Editor() {
             controller={controller}
             chromeless
             canvasRef={canvasRef}
+            compositionStartSec={project.videoClipStartSec}
+            onChromelessCanvasActivate={() => setCinemaMode(true)}
+            onChromelessLetterboxPointerDown={() => setCinemaMode((c) => !c)}
           >
             <Scene
               props={localProps}
@@ -275,20 +359,48 @@ export function Editor() {
         </div>
         <div
           style={{
-            padding: '12px 24px',
+            flexShrink: 0,
+            maxHeight: cinemaMode ? 132 : 560,
+            overflow: 'hidden',
+            paddingTop: cinemaMode ? 6 : 12,
+            paddingBottom: cinemaMode ? 6 : 12,
+            paddingLeft: cinemaMode ? 16 : 24,
+            paddingRight: cinemaMode ? 16 : 24,
             borderTop: '1px solid var(--editor-border)',
             background: 'var(--editor-panel)',
+            transition:
+              'max-height 0.52s cubic-bezier(0.32, 0.72, 0, 1), padding 0.48s cubic-bezier(0.32, 0.72, 0, 1)',
           }}
         >
-          <PlaybackBar
+          <EditorTimelineDock
+            duration={duration}
+            videoClipStartSec={project.videoClipStartSec}
+            videoScenes={scaledVideoScenes}
             time={controller.time}
-            duration={controller.duration}
             playing={controller.playing}
+            onSeek={controller.setTime}
+            filmstripImages={filmstripImages}
+            filmstripStatus={filmstripStatus}
+            filmstripError={filmstripError}
+            backgroundTrackId={project.backgroundTrackId}
+            musicVolume={project.musicVolume}
+            musicAnchorVideoTime={project.musicAnchorVideoTime}
+            musicTrimStartSec={project.musicTrimStartSec}
+            musicEndVideoTime={project.musicEndVideoTime}
+            onPatch={(patch) => save(patch)}
             onPlayPause={controller.togglePlay}
             onReset={controller.reset}
-            onSeek={controller.setTime}
-            onHover={() => {}}
+            cinemaMode={cinemaMode}
+            onExitCinema={() => setCinemaMode(false)}
           />
+          {musicTrack && project.musicVolume >= 0.001 ? (
+            <audio
+              ref={audioRef}
+              key={project.backgroundTrackId}
+              src={resolveAudioUrl(musicTrack.src)}
+              preload="auto"
+            />
+          ) : null}
         </div>
       </div>
 
@@ -302,7 +414,7 @@ export function Editor() {
         }}
       >
         <PropertiesPanel
-          fields={template.fields}
+          fields={rightPaneFields}
           value={localProps}
           onChange={setLocalProps}
         />
@@ -317,6 +429,11 @@ export function Editor() {
         width={aspect.width}
         height={aspect.height}
         duration={duration}
+        backgroundTrackId={project.backgroundTrackId}
+        musicVolume={project.musicVolume}
+        musicAnchorVideoTime={project.musicAnchorVideoTime}
+        musicTrimStartSec={project.musicTrimStartSec}
+        musicEndVideoTime={project.musicEndVideoTime}
       />
     </div>
   );
