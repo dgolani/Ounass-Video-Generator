@@ -89,6 +89,7 @@ function ProjectCard({ project }: { project: Project }) {
           props={project.props}
           duration={project.duration}
           aspectIndex={project.aspectIndex}
+          posterSeed={project.id}
           playing={hovered}
         />
       ) : (

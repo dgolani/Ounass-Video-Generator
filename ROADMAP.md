@@ -1,6 +1,6 @@
-# Ounass Video Ad Generator — Roadmap
+# Ounass Cutroom — Roadmap
 
-SaaS-style video ad builder for the Ounass marketing team. Marketers pick a template, customize products/text/colors/duration/aspect, preview in-browser, and export a video file.
+**Cut. Brand. Ship.** — In-browser video ad builder for the Ounass marketing team: templates, brand kit, timeline, and MP4 export.
 
 ---
 

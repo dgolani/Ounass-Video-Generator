@@ -1,6 +1,6 @@
-# VideoAds app (Vite)
+# Ounass Cutroom (Vite app)
 
-Browser-only editor and export pipeline for the VideoAds / Ounass marketing tool. Source of truth for commands and tooling lives here.
+**Cut. Brand. Ship.** — Browser-only editor and export pipeline for Ounass marketing. Source of truth for commands and tooling lives here.
 
 ## Commands
 

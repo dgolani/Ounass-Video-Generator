@@ -10,11 +10,37 @@ type Props = {
   props?: unknown;
   /** Override duration (e.g. for projects with custom duration). */
   duration?: number;
-  /** When true, autoplay loops. When false, paused at frame 0. */
+  /** When true, autoplay loops. When false, paused on a deterministic poster frame (not t=0). */
   playing: boolean;
   /** Aspect index into template.meta.aspects[]. Default 0 (the primary aspect). */
   aspectIndex?: number;
+  /**
+   * Seed for the **paused** poster frame (deterministic pseudo-random time in
+   * the clip so cards are not stuck at t=0 where many ads are still black).
+   * Defaults to `template.meta.id`. Pass **`project.id`** on dashboard cards
+   * so each project gets its own poster moment.
+   */
+  posterSeed?: string;
 };
+
+/** 0..1 from string; stable for the same seed (card identity). */
+function stableUnitRandom(seed: string): number {
+  let h = 2166136261;
+  for (let i = 0; i < seed.length; i++) {
+    h ^= seed.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return ((h >>> 0) % 10_000) / 10_000;
+}
+
+/** Pick a time away from the ends so fades / outros are less likely. */
+function posterTimeFromSeed(seed: string, durationSec: number): number {
+  const d = Math.max(0.05, durationSec);
+  const u = stableUnitRandom(seed);
+  const inset = Math.min(0.14 * d, d * 0.35);
+  const span = Math.max(d - 2 * inset, 0.1);
+  return inset + u * span;
+}
 
 /**
  * A live, paused-by-default mini-render of a template scene.
@@ -29,6 +55,7 @@ export function TemplatePreview({
   duration,
   playing,
   aspectIndex = 0,
+  posterSeed,
 }: Props) {
   const aspect = template.meta.aspects[aspectIndex] ?? template.meta.aspects[0];
   const dur = duration ?? template.meta.defaultDuration;
@@ -48,23 +75,33 @@ export function TemplatePreview({
     [props, template, brand],
   );
 
+  const posterKey = useMemo(() => {
+    const base = posterSeed ?? template.meta.id;
+    return `${base}-a${aspectIndex}-d${Math.round(dur * 100)}`;
+  }, [posterSeed, template.meta.id, aspectIndex, dur]);
+
+  const posterTime = useMemo(() => posterTimeFromSeed(posterKey, dur), [posterKey, dur]);
+
   const controller = useStageController({
     duration: dur,
     loop: true,
-    autoplay: false,        // start paused; play only when hovered
-    keyboard: false,        // multiple stages per page → no global keyboard
+    autoplay: false, // start paused; play only when hovered
+    keyboard: false, // multiple stages per page → no global keyboard
+    initialTime: posterTime,
   });
 
-  // Drive play state from the prop. Reset to start when leaving hover so
-  // the next hover always begins from the opening frame.
+  const { setTime, setPlaying } = controller;
+
+  // Drive play state from the prop. When idle, park on a seeded “poster”
+  // time instead of 0 so thumbnails are not blank on fade-in opens.
   useEffect(() => {
     if (playing) {
-      controller.setPlaying(true);
-    } else {
-      controller.setPlaying(false);
-      controller.setTime(0);
+      setPlaying(true);
+      return;
     }
-  }, [playing]);
+    setPlaying(false);
+    setTime(posterTime);
+  }, [playing, posterTime, setPlaying, setTime]);
 
   return (
     <div

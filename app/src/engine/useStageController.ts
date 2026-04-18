@@ -16,6 +16,8 @@ type Options = {
   loop?: boolean;
   autoplay?: boolean;
   persistKey?: string;
+  /** Initial playhead when `persistKey` is unset (e.g. gallery poster frame). Ignored if `persistKey` is set. */
+  initialTime?: number;
   /** When false, skip the window keydown listener (space, arrows, home).
    *  Set false for multiple stages on one page (gallery/dashboard previews)
    *  so they don't all toggle on a single key press. Default true. */
@@ -27,16 +29,22 @@ export function useStageController({
   loop = true,
   autoplay = true,
   persistKey,
+  initialTime,
   keyboard = true,
 }: Options): StageController {
   const [time, setTime] = useState<number>(() => {
-    if (!persistKey) return 0;
-    try {
-      const v = parseFloat(localStorage.getItem(persistKey + ':t') || '0');
-      return isFinite(v) ? clamp(v, 0, duration) : 0;
-    } catch {
-      return 0;
+    if (persistKey) {
+      try {
+        const v = parseFloat(localStorage.getItem(persistKey + ':t') || '0');
+        return isFinite(v) ? clamp(v, 0, duration) : 0;
+      } catch {
+        return 0;
+      }
     }
+    if (typeof initialTime === 'number' && Number.isFinite(initialTime)) {
+      return clamp(initialTime, 0, duration);
+    }
+    return 0;
   });
   const [playing, setPlaying] = useState<boolean>(autoplay);
 

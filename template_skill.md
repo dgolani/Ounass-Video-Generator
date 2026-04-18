@@ -2,7 +2,7 @@
 
 ## When to use this skill
 
-Invoke when the user asks to add a new template to the Ounass Video Ad Generator — a browser-only React + TypeScript app (Vite 6, React 19) where marketers build 9:16 vertical ads and export them to MP4 via `ffmpeg.wasm`. The existing templates live at `app/src/templates/<slug>/` and are registered in `app/src/templates/registry.ts`. This skill turns a one-paragraph creative brief into a drop-in template folder plus a registry entry.
+Invoke when the user asks to add a new template to **Ounass Cutroom** (*Cut. Brand. Ship.*) — a browser-only React + TypeScript app (Vite 6, React 19) where marketers build vertical ads and export them to MP4 via `ffmpeg.wasm`. The existing templates live at `app/src/templates/<slug>/` and are registered in `app/src/templates/registry.ts`. This skill turns a one-paragraph creative brief into a drop-in template folder plus a registry entry.
 
 Do **not** use this skill for: modifying shared engine code, changing the template contract itself, or authoring export-pipeline changes. Those are out of scope.
 

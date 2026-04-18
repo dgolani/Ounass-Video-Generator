@@ -1,6 +1,6 @@
-# Ounass Video Ad Generator
+# Ounass Cutroom
 
-A browser-only SaaS-style video ad generator for the Ounass marketing team. Pick a template → edit text/images/colors/duration/aspect → preview live → export an MP4. No backend; runs free-tier on Vercel.
+**Cut. Brand. Ship.** — A browser-only video ad builder for the Ounass marketing team: pick a template, edit in the editor, preview live, export an MP4. No backend; runs free-tier on Vercel.
 
 ## Quick start
 

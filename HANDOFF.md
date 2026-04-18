@@ -1,4 +1,4 @@
-# HANDOFF — Ounass Video Ad Generator
+# HANDOFF — Ounass Cutroom
 
 **Audience:** any AI coder or human engineer who's been dropped into this project cold. Read this top-to-bottom **before** the ROADMAP. The ROADMAP is "what we built and why"; this is "how to keep building it without re-discovering everything painful."
 
@@ -8,7 +8,7 @@
 
 ## 0. TL;DR (45 seconds)
 
-- **Product:** SaaS-style video ad generator for the Ounass marketing team. Marketer picks a template → edits text/images/colors → previews live → exports an MP4. **Free-tier hostable** (Vercel static + client-side render).
+- **Product:** **Ounass Cutroom** — *Cut. Brand. Ship.* Marketers pick a template → edit in-browser → preview live → export an MP4. **Free-tier hostable** (Vercel static + client-side render).
 - **Status:** Phases 0–4 complete (foundation → editor → customization → multi-template → MP4 export). Phase 5 = polish, not started.
 - **Stack:** Vite 6 + React 19 + TypeScript, single-page app, localStorage for state, ffmpeg.wasm for encoding.
 - **Live demo:** `cd app && npm run dev` → http://localhost:5173. Or via Claude Preview MCP: configured in `.claude/launch.json` as `vag-dev`.
@@ -45,7 +45,7 @@ There's no separate build step in dev. `npm run build` runs `tsc -b && vite buil
 
 ## 2. What this is, in three sentences
 
-The marketer opens the app, picks a template (Lookbook, Editorial, Sale Countdown, or Hero), and lands in a 3-pane editor — **brand kit column** (products + logo + colors when present) / **live canvas + layered timeline** / **properties panel** for the remaining fields from the template's `fields[]`. They tweak copy/images/colors/duration/aspect; everything autosaves to localStorage. **Scene timing** is reflected in `meta.scenes` (scaled with duration) and surfaced on the **timeline video bar** (markers + scene names), not a separate left outline list. When they're happy, Export rasterizes the canvas frame-by-frame in the browser and pipes the PNGs through ffmpeg.wasm to produce an MP4 (yuv420p, social-ready).
+The marketer opens **Ounass Cutroom**, picks a template (Lookbook, Editorial, Sale Countdown, or Hero), and lands in a 3-pane editor — **brand kit column** (products + logo + colors when present) / **live canvas + layered timeline** / **properties panel** for the remaining fields from the template's `fields[]`. They tweak copy/images/colors/duration/aspect; everything autosaves to localStorage. **Scene timing** is reflected in `meta.scenes` (scaled with duration) and surfaced on the **timeline video bar** (markers + scene names), not a separate left outline list. When they're happy, Export rasterizes the canvas frame-by-frame in the browser and pipes the PNGs through ffmpeg.wasm to produce an MP4 (yuv420p, social-ready).
 
 There is **no backend**. No login. No accounts. No Ounass API access (Kasada blocks it). The whole tool is one user × one browser. Eventually deploys to Vercel free tier with zero serverless functions.
 

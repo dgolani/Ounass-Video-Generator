@@ -53,15 +53,27 @@ export function Shell() {
           <div
             style={{
               fontFamily: 'var(--serif)',
-              fontSize: 22,
+              fontSize: 24,
               fontWeight: 300,
               lineHeight: 1.1,
-              letterSpacing: '-0.01em',
+              letterSpacing: '-0.02em',
             }}
           >
-            Video Ad
-            <br />
-            Generator
+            Cutroom
+          </div>
+          <div
+            style={{
+              fontFamily: 'var(--sans)',
+              fontSize: 10,
+              fontWeight: 700,
+              letterSpacing: '0.14em',
+              textTransform: 'uppercase',
+              color: 'var(--editor-text-dim)',
+              marginTop: 10,
+              lineHeight: 1.45,
+            }}
+          >
+            Cut. Brand. Ship.
           </div>
         </div>
 
