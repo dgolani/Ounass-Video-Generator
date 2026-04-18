@@ -2,34 +2,44 @@ import { useMemo } from 'react';
 import type { FieldDescriptor } from '../../templates/fields';
 import { PropertiesPanel } from './PropertiesPanel';
 
+function isBrandColumnImage(f: FieldDescriptor): f is Extract<FieldDescriptor, { kind: 'image' }> {
+  return f.kind === 'image' && (f.path === 'logo' || f.brandColumn === true);
+}
+
+function isBrandColumnProductList(
+  f: FieldDescriptor,
+): f is Extract<FieldDescriptor, { kind: 'productList' }> {
+  return f.kind === 'productList' && (f.path === 'products' || f.brandColumn === true);
+}
+
+function isBrandColumnColor(f: FieldDescriptor): f is Extract<FieldDescriptor, { kind: 'color' }> {
+  return f.kind === 'color' && f.brandColumn !== false;
+}
+
 /** Paths surfaced in the left “brand” column (also stripped from the right Properties list). */
 export function collectBrandColumnExcludePaths(fields: FieldDescriptor[]): Set<string> {
   const ex = new Set<string>();
-  if (fields.some((f) => f.kind === 'image' && f.path === 'logo')) {
-    ex.add('logo');
-  }
-  if (fields.some((f) => f.kind === 'productList' && f.path === 'products')) {
-    ex.add('products');
-  }
   for (const f of fields) {
-    if (f.kind === 'color') ex.add(f.path);
+    if (isBrandColumnImage(f) || isBrandColumnProductList(f) || isBrandColumnColor(f)) {
+      ex.add(f.path);
+    }
   }
   return ex;
 }
 
 function buildLeftPanelFields(fields: FieldDescriptor[]): FieldDescriptor[] {
   const out: FieldDescriptor[] = [];
-  const products = fields.find((f) => f.kind === 'productList' && f.path === 'products');
-  if (products) {
+  const productFields = fields.filter(isBrandColumnProductList);
+  if (productFields.length) {
     out.push({ kind: 'section', label: 'PRODUCTS' });
-    out.push(products);
+    out.push(...productFields);
   }
-  const logo = fields.find((f) => f.kind === 'image' && f.path === 'logo');
-  const colors = fields.filter((f) => f.kind === 'color');
-  if (logo || colors.length) {
+  const brandImages = fields.filter(isBrandColumnImage);
+  const colorFields = fields.filter(isBrandColumnColor);
+  if (brandImages.length || colorFields.length) {
     out.push({ kind: 'section', label: 'BRAND KIT' });
-    if (logo) out.push(logo);
-    out.push(...colors);
+    out.push(...brandImages);
+    out.push(...colorFields);
   }
   return out;
 }
