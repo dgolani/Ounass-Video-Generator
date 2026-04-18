@@ -1,9 +1,9 @@
-// Phillip Lim template — schema & default props.
-// Phase 0: types + defaults only. Phase 1 reads this to generate the editor panel.
+// Lookbook template — schema & default props.
+// 4-act vertical: title whisper → column reveal → filmstrip → boutique outro.
 
 import { photos } from '../../assets/placeholders';
 
-export type PhillipLimProduct = {
+export type LookbookProduct = {
   id: string;
   src: string;
   name: string;
@@ -11,14 +11,14 @@ export type PhillipLimProduct = {
   color: string;
 };
 
-export type PhillipLimColors = {
+export type LookbookColors = {
   background: string;
   paper: string;
   accent: string;
   accentDark: string;
 };
 
-export type PhillipLimProps = {
+export type LookbookProps = {
   // Act 1 — title whisper
   kicker: string;
   brand: string;
@@ -30,7 +30,7 @@ export type PhillipLimProps = {
   act2TitleLine2: string;
 
   // Products (used by Acts 2 & 3)
-  products: PhillipLimProduct[];
+  products: LookbookProduct[];
 
   // Act 4 — outro + CTA
   outroKicker: string;
@@ -48,12 +48,12 @@ export type PhillipLimProps = {
    *  place of the Fraunces wordmark text. */
   logo?: string;
 
-  colors: PhillipLimColors;
+  colors: LookbookColors;
 };
 
-export const defaultProps: PhillipLimProps = {
-  kicker: "On Ounass · Spring '26",
-  brand: '3.1 Phillip Lim',
+export const defaultProps: LookbookProps = {
+  kicker: "Spring · 2026",
+  brand: 'Atelier',
   tagline: 'a study in quiet power',
 
   act2Kicker: 'Five Pieces · One Mood',
@@ -71,7 +71,7 @@ export const defaultProps: PhillipLimProps = {
   outroKicker: '— Exclusively at —',
   boutiqueName: 'Ounass',
   boutiqueTagline: 'The definitive home of luxury.',
-  ctaText: 'Shop 3.1 Phillip Lim',
+  ctaText: 'Shop the Lookbook',
   ctaFooter: 'Tap · Delivered in 60 minutes · Dubai & Abu Dhabi',
 
   igHandle: 'ounass',

@@ -1,11 +1,11 @@
-import { defaultProps, type PhillipLimProps } from './schema';
+import { defaultProps, type LookbookProps } from './schema';
 import type { TemplateMeta } from '../types';
 
-export const meta: TemplateMeta<PhillipLimProps> = {
-  id: 'phillip-lim',
-  name: 'Phillip Lim — Quiet Power',
+export const meta: TemplateMeta<LookbookProps> = {
+  id: 'lookbook',
+  name: 'Lookbook — Quiet Power',
   description:
-    'Four-act luxury vertical ad: title whisper, filmstrip reveal, product hero, boutique outro.',
+    'Four-act luxury vertical ad: title whisper, column reveal of five pieces, filmstrip with product details, boutique outro with CTA.',
   defaultDuration: 9,
   aspects: [
     { label: '9:16 (Story)', width: 1080, height: 1920 },

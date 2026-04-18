@@ -25,7 +25,7 @@ Phase 5 (polish) candidates: see [ROADMAP.md](ROADMAP.md#phase-5-candidates-not-
 
 | Template | Duration | Aspects | Schema shape |
 |---|---|---|---|
-| **Phillip Lim — Quiet Power** | 9s | 9:16 / 4:5 / 1:1 | 4 acts, 5-column grid, filmstrip |
+| **Lookbook — Quiet Power** | 9s | 9:16 / 4:5 / 1:1 | 4 acts, 5-column grid, filmstrip |
 | **Editorial — The Edit** | 9s | 9:16 / 4:5 / 1:1 | Magazine 2×2 grid + feature zoom |
 | **Sale Countdown — Blowout** | 7s | 9:16 / 4:5 / 1:1 | No products — promo copy + CTA |
 | **Hero — Single Piece** | 8s | 9:16 / 4:5 / 1:1 | Single product, Ken-Burns zoom |

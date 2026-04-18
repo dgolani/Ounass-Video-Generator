@@ -6,7 +6,7 @@ import {
   interpolate,
   useTimeline,
 } from '../../engine';
-import type { PhillipLimProps } from './schema';
+import type { LookbookProps } from './schema';
 
 // Base canvas — the choreography was designed on 1080×1920. All pixel
 // literals below refer to this base. Scaling to any other canvas comes
@@ -37,14 +37,14 @@ function makeScale(W: number, H: number): Scale {
 }
 
 type SceneProps = {
-  props: PhillipLimProps;
+  props: LookbookProps;
   timeScale?: number;
   width?: number;
   height?: number;
 };
 
 type ActProps = {
-  props: PhillipLimProps;
+  props: LookbookProps;
   T: (x: number) => number;
   s: Scale;
 };
@@ -919,7 +919,7 @@ function IGIcon({ path, label, s }: { path: string; label: string; s: Scale }) {
 }
 
 // ── Root scene ─────────────────────────────────────────────────────────
-export function PhillipLimScene({
+export function LookbookScene({
   props,
   timeScale = 1,
   width = BASE_W,

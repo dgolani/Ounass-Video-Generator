@@ -127,11 +127,12 @@ VideoAds/
         │
         ├── templates/
         │   ├── types.ts        ← Shared TemplateMeta / AspectRatio / SceneOutline.
-        │   │                     !! Lifted out of phillip-lim/meta.ts in Phase 3 to
-        │   │                        break the implicit Phillip-Lim-as-parent leak.
+        │   │                     !! Lifted out of (legacy) phillip-lim/meta.ts in Phase 3
+        │   │                        to break the implicit-parent leak.
         │   ├── fields.ts       ← FieldDescriptor union (section/text/color/image/productList).
         │   ├── registry.ts     ← Add template = register here. Type SceneComponentProps.
-        │   ├── phillip-lim/    ← The luxury 4-act vertical (5 columns + filmstrip + outro).
+        │   ├── lookbook/       ← 4-act luxury vertical (5 columns + filmstrip + outro).
+        │   │                     Renamed from phillip-lim in Phase 5 to be brand-neutral.
         │   ├── editorial/      ← Magazine 2×2 grid + feature zoom + signature.
         │   ├── countdown/      ← Bold promo, no products, diagonal swash.
         │   └── hero/           ← Single product, full-frame Ken-Burns zoom.
@@ -174,6 +175,10 @@ VideoAds/
                 ├── Outline.tsx
                 ├── PropertiesPanel.tsx  ← Renders any template's fields[] generically.
                 │                          Exports ImageDropZone (reused by BrandKit).
+                ├── TemplatePreview.tsx  ← Live mini-render of a template scene; played
+                │                          on hover from gallery + dashboard cards.
+                │                          Mounts paused by default; multi-instance safe
+                │                          (keyboard: false, no persistKey).
                 └── ExportModal.tsx
 ```
 
@@ -344,6 +349,17 @@ import ffmpegWasmURL from '@ffmpeg/core/wasm?url'; // → /dist/esm/ffmpeg-core.
 **Symptom:** Pre-Phase-4 Stage applied `transform: scale(N)` to the inner canvas to fit the viewport. html-to-image rasterized the *visually-scaled* element, not the native 1080×1920.
 **Fix:** Stage now exposes a `canvasRef` prop. Editor passes its own ref so it can target the inner canvas directly. Export call also passes `style: { transform: 'none' }` to html-to-image as belt-and-braces.
 
+### Gotcha #9 — Multiple Stages on one page conflict on the global keyboard listener
+**Symptom:** Press space anywhere on the gallery — all 4 mini-previews toggle play/pause at once.
+**Cause:** `useStageController` registers a window keydown listener (space/arrows/home). Each `<TemplatePreview>` instantiates a controller, so N previews = N listeners.
+**Fix:** `useStageController({ keyboard: false })` disables that listener for previews. The Editor still gets the default `keyboard: true`. **Always pass `keyboard: false` for any controller used outside the main Editor.**
+
+### Gotcha #10 — Headless tabs throttle requestAnimationFrame to ~1 Hz
+**Symptom:** Hover-to-play looks stuck in Claude Preview MCP (or any headless Chrome). Time hook reads a stale value across seconds.
+**Cause:** Chrome throttles RAF aggressively when a tab isn't visible/focused. The MCP browser context falls into the throttled bucket.
+**Implication:** Don't trust the MCP preview to verify hover-play visually — verify by inspecting React fiber state instead (proves wiring), then trust real-browser playback.
+**Confirmed working:** dispatching `mouseenter` flips `hovered=true` on the card, `playing=true` on the preview's controller, time hook is writable. In a real focused tab the animation plays at 60fps.
+
 ### Gotcha #8 — localStorage quota at ~5 MB
 **Symptom:** Saving fails silently after the marketer uploads 8+ high-res product images.
 **Fix:** `resizeImageToDataURL` caps at 1080px JPEG q=0.85 (~200–400 KB each). `writeAll` throws `StorageQuotaError`; Editor surfaces "Storage full — drop an image or two".
@@ -494,4 +510,4 @@ Order of operations:
 
 ---
 
-**Last meaningful update:** 2026-04-18 — Phase 4 (export) shipped + verified. Next likely thread: replace SVG placeholders with PNGs from user, or start Phase 5.
+**Last meaningful update:** 2026-04-18 — Phase 5 polish in progress: shared photo set adopted across all templates (1.5 MB JPEGs at 1080×1620), `phillip-lim` template renamed to `lookbook` (brand-neutral), hover-to-play `<TemplatePreview>` wired into both Gallery and Dashboard cards. Gotchas #9 and #10 captured. Next likely thread: more Phase 5 polish (keyboard shortcuts, preview-frame-at-non-zero, performance), or another template.

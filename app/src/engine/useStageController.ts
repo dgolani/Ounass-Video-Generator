@@ -16,6 +16,10 @@ type Options = {
   loop?: boolean;
   autoplay?: boolean;
   persistKey?: string;
+  /** When false, skip the window keydown listener (space, arrows, home).
+   *  Set false for multiple stages on one page (gallery/dashboard previews)
+   *  so they don't all toggle on a single key press. Default true. */
+  keyboard?: boolean;
 };
 
 export function useStageController({
@@ -23,6 +27,7 @@ export function useStageController({
   loop = true,
   autoplay = true,
   persistKey,
+  keyboard = true,
 }: Options): StageController {
   const [time, setTime] = useState<number>(() => {
     if (!persistKey) return 0;
@@ -80,6 +85,7 @@ export function useStageController({
 
   // Keyboard controls
   useEffect(() => {
+    if (!keyboard) return;
     const onKey = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement | null;
       if (
@@ -102,7 +108,7 @@ export function useStageController({
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [duration]);
+  }, [duration, keyboard]);
 
   const reset = useCallback(() => setTime(0), []);
   const togglePlay = useCallback(() => setPlaying((p) => !p), []);

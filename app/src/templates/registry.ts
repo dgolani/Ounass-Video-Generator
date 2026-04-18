@@ -5,7 +5,7 @@ import type { ComponentType } from 'react';
 import type { FieldDescriptor } from './fields';
 import type { TemplateMeta, AspectRatio, SceneOutline } from './types';
 
-import * as phillipLim from './phillip-lim';
+import * as lookbook from './lookbook';
 import * as editorial from './editorial';
 import * as countdown from './countdown';
 import * as hero from './hero';
@@ -26,10 +26,10 @@ export type TemplateEntry = {
 export type { TemplateMeta, AspectRatio, SceneOutline };
 
 const entries: Record<string, TemplateEntry> = {
-  [phillipLim.meta.id]: {
-    meta: phillipLim.meta as unknown as TemplateMeta<unknown>,
-    fields: phillipLim.fields,
-    Scene: phillipLim.PhillipLimScene as unknown as ComponentType<SceneComponentProps>,
+  [lookbook.meta.id]: {
+    meta: lookbook.meta as unknown as TemplateMeta<unknown>,
+    fields: lookbook.fields,
+    Scene: lookbook.LookbookScene as unknown as ComponentType<SceneComponentProps>,
   },
   [editorial.meta.id]: {
     meta: editorial.meta as unknown as TemplateMeta<unknown>,
