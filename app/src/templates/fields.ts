@@ -32,6 +32,10 @@ export type FieldDescriptor =
       /** Aspect ratio hint for the preview thumbnail (e.g. 16/9, 1). Default 1. */
       aspectRatio?: number;
       hint?: string;
+      /** Restrict uploads to SVG only. Stored as a `data:image/svg+xml`
+       *  URL and recoloured by templates via CSS mask-image. Use for
+       *  boutique/brand logos. */
+      svgOnly?: boolean;
     }
   | {
       kind: 'productList';

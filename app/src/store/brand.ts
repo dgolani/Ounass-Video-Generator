@@ -1,9 +1,12 @@
 import { useEffect, useState } from 'react';
+import ounassLogoRaw from '../assets/ounass-logo.svg?raw';
+import { sanitizeSvg, svgToDataURL } from '../lib/logo';
 
 export type BrandKit = {
   boutiqueName: string;
-  /** Logo as a data URL. Templates that declare a `logo` prop use this
-   *  as the default when a new project is created. */
+  /** Logo as a data URL. SVG-only going forward — the `<BoutiqueLogo>`
+   *  component detects SVG and recolours it to match each template's
+   *  palette. Legacy raster uploads still render (without recolour). */
   logo?: string;
   colors: {
     background: string;
@@ -14,9 +17,13 @@ export type BrandKit = {
   updatedAt: number;
 };
 
+/** Default boutique logo — the vendored Ounass SVG wordmark. Encoded
+ *  once at module load so the brand kit ships with it preselected. */
+export const OUNASS_LOGO_DATA_URL = svgToDataURL(sanitizeSvg(ounassLogoRaw));
+
 export const DEFAULT_BRAND: BrandKit = {
   boutiqueName: 'Ounass',
-  logo: undefined,
+  logo: OUNASS_LOGO_DATA_URL,
   colors: {
     background: '#0A0A0A',
     paper: '#F5F3EF',

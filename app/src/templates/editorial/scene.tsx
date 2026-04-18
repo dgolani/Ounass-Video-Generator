@@ -1,5 +1,6 @@
 import { Easing, clamp, interpolate, useTimeline } from '../../engine';
 import type { EditorialProps } from './schema';
+import { BoutiqueLogo } from '../BoutiqueLogo';
 
 const BASE_W = 1080;
 const BASE_H = 1920;
@@ -514,31 +515,14 @@ function Signature({ props, T, s }: ActProps) {
           opacity: fadeIn,
         }}
       >
-        {logo ? (
-          <img
-            src={logo}
-            alt={boutiqueName}
-            style={{
-              display: 'inline-block',
-              maxWidth: w(700),
-              maxHeight: h(280),
-              objectFit: 'contain',
-            }}
-          />
-        ) : (
-          <div
-            style={{
-              fontFamily: 'Fraunces, serif',
-              fontWeight: 300,
-              fontSize: wh(180),
-              lineHeight: 0.9,
-              color: colors.ink,
-              letterSpacing: '-0.03em',
-            }}
-          >
-            {boutiqueName}
-          </div>
-        )}
+        <BoutiqueLogo
+          logo={logo}
+          boutiqueName={boutiqueName}
+          color={colors.ink}
+          width={w(700)}
+          height={h(280)}
+          fontSize={wh(180)}
+        />
       </div>
 
       {/* Signature scroll */}

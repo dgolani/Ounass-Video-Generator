@@ -11,6 +11,12 @@ import {
 import type { FieldDescriptor } from '../../templates/fields';
 import { getPath, setPath } from '../../lib/path';
 import { resizeImageToDataURL } from '../../lib/image';
+import {
+  isSvgFile,
+  readFileAsText,
+  sanitizeSvg,
+  svgToDataURL,
+} from '../../lib/logo';
 import { uid } from '../../lib/uid';
 
 type Props = {
@@ -301,6 +307,7 @@ export function ImageDropZone({
   onClear,
   aspectRatio,
   size = 'small',
+  svgOnly = false,
 }: {
   url: string;
   onImage: (dataURL: string) => void;
@@ -308,6 +315,11 @@ export function ImageDropZone({
   /** Width:height aspect ratio for the dropzone. Used for 'large' size. */
   aspectRatio?: number;
   size?: 'small' | 'large';
+  /** When true, only SVG uploads are accepted. The file is stored as a
+   *  `data:image/svg+xml` URL (after minimal sanitisation) — no raster
+   *  resize. Used by the Brand Kit logo field so templates can recolour
+   *  the logo via CSS mask-image. */
+  svgOnly?: boolean;
 }) {
   const inputRef = useRef<HTMLInputElement | null>(null);
   const [dragActive, setDragActive] = useState(false);
@@ -319,8 +331,17 @@ export function ImageDropZone({
     setError(null);
     setBusy(true);
     try {
-      const dataURL = await resizeImageToDataURL(file, 1080, 0.85);
-      onImage(dataURL);
+      if (svgOnly) {
+        if (!isSvgFile(file)) {
+          throw new Error('SVG only — please upload a .svg file.');
+        }
+        const raw = await readFileAsText(file);
+        const clean = sanitizeSvg(raw);
+        onImage(svgToDataURL(clean));
+      } else {
+        const dataURL = await resizeImageToDataURL(file, 1080, 0.85);
+        onImage(dataURL);
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Upload failed');
     } finally {
@@ -392,7 +413,13 @@ export function ImageDropZone({
               padding: '0 10px',
             }}
           >
-            {busy ? 'Uploading' : small ? 'Drop or click' : 'Drop image or click to upload'}
+            {busy
+              ? 'Uploading'
+              : svgOnly
+                ? 'Drop SVG or click to upload'
+                : small
+                  ? 'Drop or click'
+                  : 'Drop image or click to upload'}
           </span>
         )}
         {busy && (
@@ -444,7 +471,7 @@ export function ImageDropZone({
       <input
         ref={inputRef}
         type="file"
-        accept="image/*"
+        accept={svgOnly ? '.svg,image/svg+xml' : 'image/*'}
         onChange={(e) => {
           handleFile(e.target.files?.[0]);
           e.currentTarget.value = '';

@@ -1,5 +1,6 @@
 import { Easing, clamp, interpolate, useTimeline } from '../../engine';
 import type { HeroProps } from './schema';
+import { BoutiqueLogo } from '../BoutiqueLogo';
 
 const BASE_W = 1080;
 const BASE_H = 1920;
@@ -311,33 +312,15 @@ function CTA({ props, T, s }: ActProps) {
           transform: `translateY(${lockY}px)`,
         }}
       >
-        {logo ? (
-          <img
-            src={logo}
-            alt={boutiqueName}
-            style={{
-              display: 'inline-block',
-              maxWidth: w(680),
-              maxHeight: h(280),
-              objectFit: 'contain',
-              filter: 'drop-shadow(0 4px 24px rgba(0,0,0,0.5))',
-            }}
-          />
-        ) : (
-          <div
-            style={{
-              fontFamily: 'Fraunces, serif',
-              fontWeight: 300,
-              fontSize: wh(160),
-              lineHeight: 0.9,
-              color: colors.paper,
-              letterSpacing: '-0.03em',
-              textShadow: '0 4px 24px rgba(0,0,0,0.5)',
-            }}
-          >
-            {boutiqueName}
-          </div>
-        )}
+        <BoutiqueLogo
+          logo={logo}
+          boutiqueName={boutiqueName}
+          color={colors.paper}
+          width={w(680)}
+          height={h(280)}
+          fontSize={wh(160)}
+          shadow="0 4px 24px rgba(0,0,0,0.5)"
+        />
       </div>
 
       {/* CTA */}

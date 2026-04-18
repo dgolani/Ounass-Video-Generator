@@ -7,6 +7,7 @@ import {
   useTimeline,
 } from '../../engine';
 import type { LookbookProps } from './schema';
+import { BoutiqueLogo } from '../BoutiqueLogo';
 
 // Base canvas — the choreography was designed on 1080×1920. All pixel
 // literals below refer to this base. Scaling to any other canvas comes
@@ -671,32 +672,15 @@ function Act4Outro({ props, T, s }: ActProps) {
           {outroKicker}
         </div>
 
-        {logo ? (
-          <img
-            src={logo}
-            alt={boutiqueName}
-            style={{
-              display: 'inline-block',
-              maxWidth: w(720),
-              maxHeight: h(360),
-              objectFit: 'contain',
-              filter: 'drop-shadow(0 4px 24px rgba(0,0,0,0.4))',
-            }}
-          />
-        ) : (
-          <div
-            style={{
-              fontFamily: 'Fraunces, serif',
-              fontWeight: 300,
-              fontSize: wh(180),
-              lineHeight: 0.9,
-              color: colors.paper,
-              letterSpacing: '-0.03em',
-            }}
-          >
-            {boutiqueName}
-          </div>
-        )}
+        <BoutiqueLogo
+          logo={logo}
+          boutiqueName={boutiqueName}
+          color={colors.paper}
+          width={w(720)}
+          height={h(360)}
+          fontSize={wh(180)}
+          shadow="0 4px 24px rgba(0,0,0,0.4)"
+        />
 
         <div
           style={{
