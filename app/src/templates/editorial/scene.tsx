@@ -1,0 +1,646 @@
+import { Easing, clamp, interpolate, useTimeline } from '../../engine';
+import type { EditorialProps } from './schema';
+
+const BASE_W = 1080;
+const BASE_H = 1920;
+
+type Scale = {
+  W: number;
+  H: number;
+  w: (px: number) => number;
+  h: (px: number) => number;
+  wh: (px: number) => number;
+};
+
+function makeScale(W: number, H: number): Scale {
+  const sw = W / BASE_W;
+  const sh = H / BASE_H;
+  return {
+    W,
+    H,
+    w: (px) => px * sw,
+    h: (px) => px * sh,
+    wh: (px) => px * Math.min(sw, sh),
+  };
+}
+
+type SceneProps = {
+  props: EditorialProps;
+  timeScale?: number;
+  width?: number;
+  height?: number;
+};
+
+type ActProps = {
+  props: EditorialProps;
+  T: (x: number) => number;
+  s: Scale;
+};
+
+// ── Act 1 — Masthead & headline ────────────────────────────────────────
+function Masthead({ props, T, s }: ActProps) {
+  const { time: t } = useTimeline();
+  const { masthead, issueDate, headlineLine1, headlineLine2, byline, colors } = props;
+  const { w, h, wh } = s;
+
+  // Top rule draws in
+  const ruleT = interpolate([T(0.1), T(0.7)], [0, 1], Easing.easeOutExpo)(t);
+  const bottomRuleT = interpolate([T(0.3), T(0.9)], [0, 1], Easing.easeOutExpo)(t);
+
+  const mastheadOp = interpolate([T(0.4), T(0.9), T(1.7), T(2.0)], [0, 1, 1, 0], Easing.easeInOutCubic)(t);
+  const headlineOp = interpolate([T(0.6), T(1.1), T(1.7), T(2.0)], [0, 1, 1, 0], Easing.easeInOutCubic)(t);
+  const headlineY = interpolate([T(0.6), T(1.1)], [wh(20), 0], Easing.easeOutCubic)(t);
+
+  return (
+    <>
+      {/* Top rule */}
+      <div
+        style={{
+          position: 'absolute',
+          left: w(80),
+          right: w(80),
+          top: h(160),
+          height: 1,
+          background: colors.rule,
+          transform: `scaleX(${ruleT})`,
+          transformOrigin: 'left',
+        }}
+      />
+      {/* Masthead row: VOL · DATE */}
+      <div
+        style={{
+          position: 'absolute',
+          left: w(80),
+          right: w(80),
+          top: h(190),
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'baseline',
+          opacity: mastheadOp,
+          fontFamily: 'Nunito Sans, sans-serif',
+          fontSize: wh(14),
+          fontWeight: 700,
+          letterSpacing: `${wh(4)}px`,
+          textTransform: 'uppercase',
+          color: colors.ink,
+        }}
+      >
+        <span>{masthead}</span>
+        <span style={{ color: colors.accent }}>{issueDate}</span>
+      </div>
+      {/* Bottom rule under masthead */}
+      <div
+        style={{
+          position: 'absolute',
+          left: w(80),
+          right: w(80),
+          top: h(230),
+          height: 1,
+          background: colors.rule,
+          transform: `scaleX(${bottomRuleT})`,
+          transformOrigin: 'right',
+        }}
+      />
+
+      {/* Headline stack */}
+      <div
+        style={{
+          position: 'absolute',
+          left: w(80),
+          right: w(80),
+          top: h(720),
+          opacity: headlineOp,
+          transform: `translateY(${headlineY}px)`,
+          textAlign: 'center',
+        }}
+      >
+        <div
+          style={{
+            fontFamily: 'Fraunces, serif',
+            fontWeight: 300,
+            fontSize: wh(132),
+            lineHeight: 0.95,
+            color: colors.ink,
+            letterSpacing: '-0.03em',
+            marginBottom: wh(6),
+          }}
+        >
+          {headlineLine1}
+        </div>
+        <div
+          style={{
+            fontFamily: 'Fraunces, serif',
+            fontStyle: 'italic',
+            fontWeight: 300,
+            fontSize: wh(132),
+            lineHeight: 0.95,
+            color: colors.accent,
+            letterSpacing: '-0.02em',
+            marginBottom: wh(50),
+          }}
+        >
+          {headlineLine2}
+        </div>
+        <div
+          style={{
+            fontFamily: 'Nunito Sans, sans-serif',
+            fontSize: wh(16),
+            fontWeight: 700,
+            letterSpacing: `${wh(6)}px`,
+            textTransform: 'uppercase',
+            color: colors.ink,
+            opacity: 0.6,
+          }}
+        >
+          — {byline} —
+        </div>
+      </div>
+    </>
+  );
+}
+
+// ── Act 2 — 2×2 product grid ───────────────────────────────────────────
+function Grid({ props, T, s }: ActProps) {
+  const { time: t } = useTimeline();
+  const { products, colors } = props;
+  const { w, h, wh, W, H } = s;
+
+  const gridIn = interpolate([T(1.8), T(2.4)], [0, 1], Easing.easeOutExpo)(t);
+  const gridOut = interpolate([T(5.2), T(5.6)], [1, 0], Easing.easeInCubic)(t);
+  const op = gridIn * gridOut;
+  if (op <= 0) return null;
+
+  // 2×2 layout — centered block within safe margins
+  const outerMargin = w(100);
+  const gutter = wh(20);
+  const cellW = (W - outerMargin * 2 - gutter) / 2;
+  const cellH = cellW * 1.35;
+  const blockH = cellH * 2 + gutter;
+  const blockY = (H - blockH) / 2 + h(60);
+
+  return (
+    <>
+      {/* Running header "THE EDIT N°01" */}
+      <div
+        style={{
+          position: 'absolute',
+          left: w(80),
+          right: w(80),
+          top: h(160),
+          display: 'flex',
+          justifyContent: 'space-between',
+          opacity: op * 0.7,
+          fontFamily: 'Nunito Sans, sans-serif',
+          fontSize: wh(12),
+          fontWeight: 700,
+          letterSpacing: `${wh(3)}px`,
+          textTransform: 'uppercase',
+          color: colors.ink,
+        }}
+      >
+        <span>The Edit</span>
+        <span>04 · Pieces</span>
+      </div>
+
+      {products.slice(0, 4).map((p, i) => {
+        const row = Math.floor(i / 2);
+        const col = i % 2;
+        const cellX = outerMargin + col * (cellW + gutter);
+        const cellY = blockY + row * (cellH + gutter);
+
+        // Stagger reveal: each cell fades + slides up in turn
+        const start = T(1.8) + i * T(0.18);
+        const cellT = interpolate([start, start + T(0.5)], [0, 1], Easing.easeOutExpo)(t);
+        const cellY2 = (1 - cellT) * wh(30);
+        const cellOp = cellT;
+
+        return (
+          <div
+            key={p.id}
+            style={{
+              position: 'absolute',
+              left: cellX,
+              top: cellY,
+              width: cellW,
+              height: cellH,
+              opacity: op * cellOp,
+              transform: `translateY(${cellY2}px)`,
+            }}
+          >
+            {/* Image */}
+            <div
+              style={{
+                width: '100%',
+                height: cellH - wh(60),
+                overflow: 'hidden',
+                background: colors.rule,
+              }}
+            >
+              {p.src ? (
+                <img
+                  src={p.src}
+                  alt=""
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    objectFit: 'cover',
+                  }}
+                />
+              ) : (
+                <div
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    background: `linear-gradient(180deg, ${colors.accent}, ${colors.ink})`,
+                  }}
+                />
+              )}
+            </div>
+            {/* Caption: category · numeral · name */}
+            <div
+              style={{
+                marginTop: wh(10),
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'baseline',
+              }}
+            >
+              <span
+                style={{
+                  fontFamily: 'Nunito Sans, sans-serif',
+                  fontWeight: 700,
+                  fontSize: wh(9),
+                  letterSpacing: `${wh(2)}px`,
+                  textTransform: 'uppercase',
+                  color: colors.accent,
+                }}
+              >
+                0{i + 1}
+              </span>
+              <span
+                style={{
+                  fontFamily: 'Fraunces, serif',
+                  fontStyle: 'italic',
+                  fontWeight: 300,
+                  fontSize: wh(18),
+                  color: colors.ink,
+                }}
+              >
+                {p.name}
+              </span>
+            </div>
+          </div>
+        );
+      })}
+
+      {/* Footer rule + category strip */}
+      <div
+        style={{
+          position: 'absolute',
+          left: w(80),
+          right: w(80),
+          bottom: h(140),
+          opacity: op,
+        }}
+      >
+        <div style={{ height: 1, background: colors.rule, marginBottom: wh(16) }} />
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            fontFamily: 'Nunito Sans, sans-serif',
+            fontSize: wh(11),
+            fontWeight: 700,
+            letterSpacing: `${wh(2.5)}px`,
+            textTransform: 'uppercase',
+            color: colors.ink,
+          }}
+        >
+          {products.slice(0, 4).map((p) => (
+            <span key={p.id}>{p.category}</span>
+          ))}
+        </div>
+      </div>
+    </>
+  );
+}
+
+// ── Act 3 — Feature zoom (on product 01) ───────────────────────────────
+function Feature({ props, T, s }: ActProps) {
+  const { time: t } = useTimeline();
+  const { products, featureCaption, colors } = props;
+  const { w, h, wh, W } = s;
+  const hero = products[0];
+  if (!hero) return null;
+
+  const fadeIn = interpolate([T(5.4), T(6.0)], [0, 1], Easing.easeOutExpo)(t);
+  const fadeOut = interpolate([T(7.3), T(7.6)], [1, 0], Easing.easeInCubic)(t);
+  const op = fadeIn * fadeOut;
+  if (op <= 0) return null;
+
+  // Slow Ken-Burns zoom
+  const zoomT = clamp((t - T(5.4)) / T(2.0), 0, 1);
+  const scale = 1 + 0.08 * zoomT;
+
+  const imgW = w(680);
+  const imgH = h(1020);
+  const imgX = (W - imgW) / 2;
+  const imgY = h(280);
+
+  return (
+    <div style={{ opacity: op }}>
+      {/* Softly coloured paper backdrop covering earlier act */}
+      <div
+        style={{
+          position: 'absolute',
+          inset: 0,
+          background: colors.paper,
+        }}
+      />
+
+      {/* Image */}
+      <div
+        style={{
+          position: 'absolute',
+          left: imgX,
+          top: imgY,
+          width: imgW,
+          height: imgH,
+          overflow: 'hidden',
+        }}
+      >
+        {hero.src ? (
+          <img
+            src={hero.src}
+            alt=""
+            style={{
+              width: '100%',
+              height: '100%',
+              objectFit: 'cover',
+              transform: `scale(${scale})`,
+              transformOrigin: 'center',
+              transition: 'transform 0.1s linear',
+            }}
+          />
+        ) : (
+          <div
+            style={{
+              width: '100%',
+              height: '100%',
+              background: `linear-gradient(180deg, ${colors.accent}, ${colors.ink})`,
+            }}
+          />
+        )}
+      </div>
+
+      {/* Caption below */}
+      <div
+        style={{
+          position: 'absolute',
+          left: w(120),
+          right: w(120),
+          top: imgY + imgH + h(40),
+          textAlign: 'center',
+        }}
+      >
+        <div
+          style={{
+            fontFamily: 'Nunito Sans, sans-serif',
+            fontWeight: 700,
+            fontSize: wh(10),
+            letterSpacing: `${wh(3)}px`,
+            textTransform: 'uppercase',
+            color: colors.accent,
+            marginBottom: wh(14),
+          }}
+        >
+          N° 01 — {hero.category}
+        </div>
+        <div
+          style={{
+            fontFamily: 'Fraunces, serif',
+            fontStyle: 'italic',
+            fontWeight: 300,
+            fontSize: wh(28),
+            lineHeight: 1.35,
+            color: colors.ink,
+            opacity: 0.85,
+          }}
+        >
+          "{featureCaption}"
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Act 4 — Signature sign-off ─────────────────────────────────────────
+function Signature({ props, T, s }: ActProps) {
+  const { time: t } = useTimeline();
+  const {
+    closingKicker,
+    signatureText,
+    boutiqueName,
+    ctaText,
+    ctaFooter,
+    logo,
+    colors,
+  } = props;
+  const { w, h, wh } = s;
+
+  if (t < T(7.4)) return null;
+
+  const fadeIn = interpolate([T(7.4), T(8.0)], [0, 1], Easing.easeOutExpo)(t);
+  const ctaIn = interpolate([T(8.1), T(8.6)], [0, 1], Easing.easeOutCubic)(t);
+  const underT = interpolate([T(8.5), T(9.1)], [0, 1], Easing.easeInOutCubic)(t);
+
+  return (
+    <>
+      {/* Paper backdrop */}
+      <div
+        style={{
+          position: 'absolute',
+          inset: 0,
+          background: colors.paper,
+          opacity: fadeIn,
+        }}
+      />
+
+      {/* Top rule */}
+      <div
+        style={{
+          position: 'absolute',
+          left: w(80),
+          right: w(80),
+          top: h(300),
+          height: 1,
+          background: colors.rule,
+          opacity: fadeIn,
+        }}
+      />
+
+      {/* Kicker */}
+      <div
+        style={{
+          position: 'absolute',
+          left: 0,
+          right: 0,
+          top: h(360),
+          textAlign: 'center',
+          opacity: fadeIn,
+          fontFamily: 'Nunito Sans, sans-serif',
+          fontWeight: 700,
+          fontSize: wh(14),
+          letterSpacing: `${wh(5)}px`,
+          textTransform: 'uppercase',
+          color: colors.accent,
+        }}
+      >
+        {closingKicker}
+      </div>
+
+      {/* Boutique name / logo */}
+      <div
+        style={{
+          position: 'absolute',
+          left: 0,
+          right: 0,
+          top: h(460),
+          textAlign: 'center',
+          opacity: fadeIn,
+        }}
+      >
+        {logo ? (
+          <img
+            src={logo}
+            alt={boutiqueName}
+            style={{
+              display: 'inline-block',
+              maxWidth: w(700),
+              maxHeight: h(280),
+              objectFit: 'contain',
+            }}
+          />
+        ) : (
+          <div
+            style={{
+              fontFamily: 'Fraunces, serif',
+              fontWeight: 300,
+              fontSize: wh(180),
+              lineHeight: 0.9,
+              color: colors.ink,
+              letterSpacing: '-0.03em',
+            }}
+          >
+            {boutiqueName}
+          </div>
+        )}
+      </div>
+
+      {/* Signature scroll */}
+      <div
+        style={{
+          position: 'absolute',
+          left: 0,
+          right: 0,
+          top: h(820),
+          textAlign: 'center',
+          opacity: fadeIn,
+          fontFamily: 'Fraunces, serif',
+          fontStyle: 'italic',
+          fontWeight: 300,
+          fontSize: wh(32),
+          color: colors.accent,
+        }}
+      >
+        — {signatureText} —
+      </div>
+
+      {/* CTA */}
+      <div
+        style={{
+          position: 'absolute',
+          left: 0,
+          right: 0,
+          bottom: h(260),
+          textAlign: 'center',
+          opacity: ctaIn,
+        }}
+      >
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            alert('Tapping through…');
+          }}
+          style={{
+            background: colors.ink,
+            color: colors.paper,
+            border: 0,
+            padding: `${wh(26)}px ${wh(64)}px`,
+            fontFamily: 'Nunito Sans, sans-serif',
+            fontWeight: 700,
+            fontSize: wh(16),
+            letterSpacing: `${wh(4)}px`,
+            textTransform: 'uppercase',
+            cursor: 'pointer',
+            position: 'relative',
+            overflow: 'hidden',
+          }}
+        >
+          {ctaText}
+          <span
+            style={{
+              position: 'absolute',
+              left: 0,
+              bottom: 0,
+              height: wh(2),
+              width: `${underT * 100}%`,
+              background: colors.accent,
+            }}
+          />
+        </button>
+        <div
+          style={{
+            marginTop: wh(22),
+            fontFamily: 'Nunito Sans, sans-serif',
+            fontWeight: 700,
+            fontSize: wh(11),
+            letterSpacing: `${wh(2.5)}px`,
+            textTransform: 'uppercase',
+            color: colors.ink,
+            opacity: 0.5,
+          }}
+        >
+          {ctaFooter}
+        </div>
+      </div>
+    </>
+  );
+}
+
+// ── Root scene ─────────────────────────────────────────────────────────
+export function EditorialScene({
+  props,
+  timeScale = 1,
+  width = BASE_W,
+  height = BASE_H,
+}: SceneProps) {
+  const T = (x: number) => x * timeScale;
+  const s = makeScale(width, height);
+
+  return (
+    <div
+      style={{
+        position: 'absolute',
+        inset: 0,
+        background: props.colors.paper,
+        overflow: 'hidden',
+      }}
+    >
+      <Masthead props={props} T={T} s={s} />
+      <Grid props={props} T={T} s={s} />
+      <Feature props={props} T={T} s={s} />
+      <Signature props={props} T={T} s={s} />
+    </div>
+  );
+}

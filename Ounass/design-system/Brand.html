@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Brand — Lumen Design System</title>
+<link rel="stylesheet" href="styles.css">
+<style>
+  .logo-hero { display: grid; grid-template-columns: 1.3fr 1fr; gap: 0; border: 1px solid var(--mercury); margin-bottom: 64px; min-height: 360px; }
+  .logo-hero .stage { display: flex; align-items: center; justify-content: center; background: var(--bone); padding: 64px; }
+  .logo-hero .stage .mark { font-family: var(--serif); font-weight: 300; font-size: 120px; letter-spacing: -0.04em; color: var(--ink); }
+  .logo-hero .stage .mark sup { font-family: var(--serif); font-size: 18px; letter-spacing: 0; margin-left: 6px; vertical-align: top; position: relative; top: 22px; color: var(--bronze); }
+  .logo-hero .meta { padding: 48px; background: var(--white); display: flex; flex-direction: column; justify-content: center; gap: 12px; }
+  .logo-hero .meta .label { font-family: var(--sans); font-weight:700; font-size: 10px; letter-spacing: .16em; text-transform: uppercase; color: var(--stone); }
+  .logo-hero .meta h2 { font-family: var(--serif); font-weight: 300; font-size: 32px; }
+  .logo-hero .meta p { font-family: var(--sans); font-size: 13px; line-height: 1.7; color: var(--graphite); }
+
+  .lockups { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; background: var(--mercury); border: 1px solid var(--mercury); margin-bottom: 64px; }
+  .lockup { background: var(--white); padding: 40px 32px; min-height: 180px; display: flex; flex-direction: column; justify-content: space-between; }
+  .lockup.dark { background: var(--ink); }
+  .lockup.bronze { background: var(--bronze); }
+  .lockup .tag { font-family: var(--sans); font-weight: 700; font-size: 10px; letter-spacing: .16em; text-transform: uppercase; color: var(--stone); }
+  .lockup.dark .tag, .lockup.bronze .tag { color: rgba(255,255,255,.6); }
+  .lockup .mk { font-family: var(--serif); font-weight: 300; font-size: 44px; letter-spacing: -0.03em; color: var(--ink); }
+  .lockup.dark .mk, .lockup.bronze .mk { color: var(--white); }
+  .lockup .small { font-family: var(--sans); font-weight: 700; font-size: 13px; letter-spacing: 0.24em; text-transform: uppercase; color: var(--ink); }
+
+  .monogram { width: 64px; height: 64px; border: 1px solid var(--ink); display: flex; align-items: center; justify-content: center; font-family: var(--serif); font-weight: 400; font-size: 36px; letter-spacing: -0.04em; color: var(--ink); }
+  .monogram.dark { background: var(--ink); color: var(--white); border-color: var(--ink); }
+
+  .clearspace { position: relative; padding: 64px; background: var(--paper); border: 1px solid var(--mercury); display: flex; align-items: center; justify-content: center; min-height: 240px; }
+  .clearspace .frame { position: relative; padding: 40px 80px; border: 1px dashed var(--bronze); }
+  .clearspace .frame .inner { font-family: var(--serif); font-weight: 300; font-size: 72px; letter-spacing: -0.04em; color: var(--ink); line-height: 1; }
+  .clearspace .tag { position: absolute; font-family: 'SF Mono', Menlo, monospace; font-size: 10px; color: var(--bronze); background: var(--paper); padding: 2px 6px; }
+
+  .voice { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; margin-bottom: 64px; }
+  .voice .card { border: 1px solid var(--mercury); padding: 32px; background: var(--white); }
+  .voice .card .hd { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 18px; }
+  .voice .card .hd h3 { font-family: var(--serif); font-weight: 300; font-size: 22px; }
+  .voice .card .hd .mark { font-family: var(--sans); font-weight: 700; font-size: 10px; letter-spacing: .16em; text-transform: uppercase; }
+  .voice .card.do .mark { color: var(--success); }
+  .voice .card.dont .mark { color: var(--error); }
+  .voice .card ul { list-style: none; }
+  .voice .card li { font-family: var(--sans); font-size: 13px; line-height: 1.7; color: var(--graphite); padding: 12px 0; border-top: 1px solid var(--mercury); }
+  .voice .card li b { color: var(--ink); font-weight: 700; }
+
+  .principles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
+  .principle { border: 1px solid var(--mercury); padding: 32px; background: var(--white); }
+  .principle .n { font-family: var(--serif); font-weight: 300; font-size: 44px; color: var(--bronze); line-height: 1; margin-bottom: 24px; }
+  .principle h4 { font-family: var(--serif); font-weight: 300; font-size: 22px; margin-bottom: 10px; }
+  .principle p { font-family: var(--sans); font-size: 13px; line-height: 1.7; color: var(--graphite); }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <header class="ds-header">
+    <div class="brand">Lumen</div>
+    <div class="crumbs">Design System · Brand</div>
+  </header>
+
+  <div class="section-kicker">06 — Expression</div>
+  <h1 class="section-title">Brand</h1>
+  <p class="section-intro">Lumen is a curated luxury e-commerce brand. Quiet, confident, and editorial — the visual system leans on a light-weight serif wordmark, warm neutrals, and restraint. The brand should feel like flipping through a well-made magazine, not shopping online.</p>
+
+  <!-- Logo -->
+  <div class="logo-hero">
+    <div class="stage">
+      <div class="mark">Lumen<sup>®</sup></div>
+    </div>
+    <div class="meta">
+      <div class="label">Primary Wordmark</div>
+      <h2>Fraunces Light · -0.04em</h2>
+      <p>Set in Fraunces at Light weight with tightened tracking. The registration mark is set in the same face at 15% of the cap-height and coloured Bronze. The wordmark always sits on its own line, never set alongside other text.</p>
+    </div>
+  </div>
+
+  <!-- Lockups -->
+  <div class="lockups">
+    <div class="lockup">
+      <span class="tag">Primary · Light</span>
+      <div class="mk">Lumen</div>
+    </div>
+    <div class="lockup dark">
+      <span class="tag">Primary · Dark</span>
+      <div class="mk">Lumen</div>
+    </div>
+    <div class="lockup bronze">
+      <span class="tag">Campaign</span>
+      <div class="mk">Lumen</div>
+    </div>
+    <div class="lockup">
+      <span class="tag">Caps Lockup</span>
+      <div class="small">LUMEN<br>THE EDIT</div>
+    </div>
+
+    <div class="lockup" style="align-items:center; justify-content:center;">
+      <span class="tag" style="position:absolute; top:20px; left:32px;">Monogram · Light</span>
+      <div class="monogram">L</div>
+    </div>
+    <div class="lockup" style="align-items:center; justify-content:center;">
+      <span class="tag" style="position:absolute; top:20px; left:32px;">Monogram · Dark</span>
+      <div class="monogram dark">L</div>
+    </div>
+    <div class="lockup">
+      <span class="tag">App Icon</span>
+      <div style="width:72px; height:72px; background: var(--ink); border-radius: 16px; display:flex; align-items:center; justify-content:center; color: var(--white); font-family: var(--serif); font-weight: 300; font-size: 44px; letter-spacing: -0.04em; margin-top: 16px;">L</div>
+    </div>
+    <div class="lockup">
+      <span class="tag">Favicon · 32px</span>
+      <div style="width:32px; height:32px; background: var(--ink); display:flex; align-items:center; justify-content:center; color: var(--white); font-family: var(--serif); font-weight: 400; font-size: 20px; letter-spacing: -0.04em; margin-top: 16px;">L</div>
+    </div>
+  </div>
+
+  <!-- Clearspace -->
+  <h2 style="font-family: var(--serif); font-weight: 300; font-size: 28px; margin-bottom: 8px;">Clearspace · x = cap-height</h2>
+  <p style="font-family: var(--sans); font-size: 13px; color: var(--graphite); margin-bottom: 24px; max-width: 520px;">Minimum protected area around the mark equals the cap-height of the "L". Never encroach with type, imagery, or UI chrome.</p>
+  <div class="clearspace" style="margin-bottom:64px;">
+    <div class="frame">
+      <div class="inner">Lumen</div>
+      <span class="tag" style="top: -10px; left: 50%; transform: translateX(-50%);">x</span>
+      <span class="tag" style="bottom: -10px; left: 50%; transform: translateX(-50%);">x</span>
+      <span class="tag" style="left: -10px; top: 50%; transform: translateY(-50%);">x</span>
+      <span class="tag" style="right: -10px; top: 50%; transform: translateY(-50%);">x</span>
+    </div>
+  </div>
+
+  <!-- Voice -->
+  <h2 style="font-family: var(--serif); font-weight: 300; font-size: 28px; margin-bottom: 8px;">Voice &amp; tone</h2>
+  <p style="font-family: var(--sans); font-size: 13px; color: var(--graphite); margin-bottom: 24px; max-width: 520px;">We write like a trusted friend with taste. Short sentences. No hype. No emoji. Always title case for product names; sentence case for UI.</p>
+
+  <div class="voice">
+    <div class="card do">
+      <div class="hd"><h3>Do</h3><span class="mark">✓ On brand</span></div>
+      <ul>
+        <li><b>"The edit begins here."</b><br>Quiet confidence. Editorial cadence.</li>
+        <li><b>"Ivory Base T-Shirt — 3,850 AED"</b><br>Title case for product. Currency suffix.</li>
+        <li><b>"Order confirmed. Priority delivery Thursday."</b><br>Matter of fact. Delivers the one thing that matters.</li>
+      </ul>
+    </div>
+    <div class="card dont">
+      <div class="hd"><h3>Don't</h3><span class="mark">✗ Off brand</span></div>
+      <ul>
+        <li><b>"SHOP THE DROP 🔥🔥"</b><br>Shouting. Emoji. Streetwear cadence.</li>
+        <li><b>"Unbelievable deals you don't want to miss!"</b><br>Hype. Over-promising. Exclamation marks.</li>
+        <li><b>"ivory base t-shirt - $1050"</b><br>Lowercase. Hyphen. Dollar sign. Sloppy.</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- Principles -->
+  <h2 style="font-family: var(--serif); font-weight: 300; font-size: 28px; margin-bottom: 24px;">Principles</h2>
+  <div class="principles">
+    <div class="principle">
+      <div class="n">01</div>
+      <h4>Restraint</h4>
+      <p>One voice, one accent, one idea per screen. If something can be removed without loss of meaning, remove it.</p>
+    </div>
+    <div class="principle">
+      <div class="n">02</div>
+      <h4>Editorial rhythm</h4>
+      <p>Treat product pages like spreads. Generous whitespace. Strong hierarchy. Image leads, type follows.</p>
+    </div>
+    <div class="principle">
+      <div class="n">03</div>
+      <h4>Warmth</h4>
+      <p>Never clinical. Bone backgrounds, sand pills, bronze accents keep the interface feeling hand-finished.</p>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>

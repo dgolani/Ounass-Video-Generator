@@ -1,0 +1,21 @@
+html,
+body {
+  margin: 0;
+  padding: 0;
+  background: #050505;
+  overflow: hidden;
+  height: 100%;
+  width: 100%;
+  font-family: 'Nunito Sans', -apple-system, system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#root {
+  position: fixed;
+  inset: 0;
+}
+
+* {
+  box-sizing: border-box;
+}

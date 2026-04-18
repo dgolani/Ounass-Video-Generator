@@ -1,0 +1,56 @@
+:root {
+  /* Neutrals */
+  --ink: #1A1A1A;
+  --ink-2: #2D2D2D;
+  --graphite: #4D4D4D;
+  --stone: #7B7B7B;
+  --silver: #BBBBBB;
+  --mercury: #E4E4E4;
+  --bone: #F6F3EF;
+  --sand: #E7DED6;
+  --paper: #FAFAFA;
+  --white: #FFFFFF;
+
+  /* Accents */
+  --bronze: #9C6B48;
+  --bronze-tint: #EFE4DA;
+
+  /* Editor surfaces */
+  --editor-bg: #0F0F10;
+  --editor-panel: #17171A;
+  --editor-panel-2: #1E1E22;
+  --editor-border: #26262B;
+  --editor-text: #F2EFEA;
+  --editor-text-dim: #9B968E;
+  --editor-accent: #C49373;
+
+  /* Semantic */
+  --error: #C8242B;
+  --success: #6BA368;
+
+  /* Elevation */
+  --shadow-1: 0 1px 2px rgba(0,0,0,0.04), 0 2px 8px rgba(0,0,0,0.04);
+  --shadow-2: 0 4px 16px rgba(0,0,0,0.06), 0 1px 3px rgba(0,0,0,0.04);
+  --shadow-editor: 0 20px 60px rgba(0,0,0,0.55);
+
+  /* Radius */
+  --r-sm: 2px;
+  --r-md: 4px;
+  --r-lg: 8px;
+  --r-xl: 12px;
+
+  /* Spacing scale */
+  --s-1: 4px;
+  --s-2: 8px;
+  --s-3: 12px;
+  --s-4: 16px;
+  --s-5: 20px;
+  --s-6: 24px;
+  --s-7: 32px;
+  --s-8: 48px;
+
+  /* Type */
+  --serif: 'Fraunces', 'Portrait', Georgia, serif;
+  --sans: 'Nunito Sans', -apple-system, system-ui, sans-serif;
+  --mono: 'JetBrains Mono', 'SF Mono', 'Menlo', monospace;
+}

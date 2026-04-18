@@ -1,0 +1,134 @@
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,300&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Nunito+Sans:ital,opsz,wght@0,6..12,300;0,6..12,400;0,6..12,600;0,6..12,700;0,6..12,900&display=swap');
+
+:root {
+  /* Brand */
+  --ink: #1A1A1A;
+  --ink-2: #2D2D2D;
+  --graphite: #4D4D4D;
+  --stone: #7B7B7B;
+  --silver: #BBBBBB;
+  --mercury: #E4E4E4;
+  --bone: #F6F3EF;
+  --sand: #E7DED6;
+  --paper: #FAFAFA;
+  --white: #FFFFFF;
+
+  /* Accents */
+  --bronze: #9C6B48;
+  --bronze-tint: #EFE4DA;
+
+  /* Semantic */
+  --error: #C8242B;
+  --success: #6BA368;
+
+  /* Elevation */
+  --shadow-1: 0 1px 2px rgba(0,0,0,0.04), 0 2px 8px rgba(0,0,0,0.04);
+  --shadow-2: 0 4px 16px rgba(0,0,0,0.06), 0 1px 3px rgba(0,0,0,0.04);
+
+  /* Radius */
+  --r-sm: 2px;
+  --r-md: 4px;
+  --r-lg: 8px;
+
+  /* Spacing */
+  --s-1: 4px;
+  --s-2: 8px;
+  --s-3: 12px;
+  --s-4: 15px;
+  --s-5: 20px;
+  --s-6: 25px;
+  --s-7: 32px;
+  --s-8: 48px;
+
+  --serif: 'Fraunces', 'Portrait', Georgia, serif;
+  --sans: 'Nunito Sans', -apple-system, system-ui, sans-serif;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: var(--sans);
+  background: linear-gradient(180deg, rgba(255,255,255,0.5) 0%, var(--bone) 100%);
+  color: var(--ink);
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+}
+
+.page {
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: 56px 64px 120px;
+}
+
+.ds-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding-bottom: 18px;
+  border-bottom: 1px solid var(--mercury);
+  margin-bottom: 56px;
+}
+
+.ds-header .brand {
+  font-family: var(--serif);
+  font-weight: 300;
+  font-size: 28px;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+}
+
+.ds-header .crumbs {
+  font-family: var(--sans);
+  font-weight: 700;
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--stone);
+}
+
+.section-title {
+  font-family: var(--serif);
+  font-weight: 300;
+  font-size: 40px;
+  line-height: 1.1;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+  margin-bottom: 8px;
+}
+
+.section-kicker {
+  font-family: var(--sans);
+  font-weight: 700;
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--bronze);
+  margin-bottom: 12px;
+}
+
+.section-intro {
+  font-family: var(--sans);
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--graphite);
+  max-width: 620px;
+  margin-bottom: 48px;
+}
+
+.divider {
+  height: 1px;
+  background: var(--mercury);
+  margin: 72px 0;
+}
+
+.rule {
+  font-family: var(--sans);
+  font-weight: 700;
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--stone);
+}
+
+.mono { font-family: 'SF Mono', 'Menlo', monospace; }
