@@ -1,6 +1,7 @@
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { Stage, useStageController } from '../../engine';
 import type { TemplateEntry } from '../../templates/registry';
+import { applyBrand, useBrand } from '../../store/brand';
 
 type Props = {
   template: TemplateEntry;
@@ -32,7 +33,20 @@ export function TemplatePreview({
   const aspect = template.meta.aspects[aspectIndex] ?? template.meta.aspects[0];
   const dur = duration ?? template.meta.defaultDuration;
   const Scene = template.Scene;
-  const sceneProps = props ?? template.meta.defaultProps;
+  // When an explicit `props` isn't passed (Templates gallery cards), fall
+  // back to the template's defaultProps *overlaid with the brand kit* so
+  // preview cards reflect the user's current logo + palette. useBrand()
+  // keeps this reactive — updating the brand kit re-renders all cards.
+  const [brand] = useBrand();
+  const sceneProps = useMemo(
+    () =>
+      props ??
+      applyBrand(
+        template.meta.defaultProps as Record<string, unknown>,
+        brand,
+      ),
+    [props, template, brand],
+  );
 
   const controller = useStageController({
     duration: dur,
