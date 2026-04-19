@@ -312,7 +312,7 @@ export function Editor() {
           background: 'var(--editor-panel)',
         }}
       >
-        <Button variant="ghost" size="sm" onClick={() => nav('/')}>
+        <Button variant="ghost" size="sm" onClick={() => nav('/dashboard')}>
           ← Projects
         </Button>
 

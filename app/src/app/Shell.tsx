@@ -2,7 +2,7 @@ import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import type { CSSProperties } from 'react';
 
 const navItems = [
-  { to: '/', label: 'Dashboard' },
+  { to: '/dashboard', label: 'Dashboard' },
   { to: '/templates', label: 'Templates' },
   { to: '/brand', label: 'Brand kit' },
 ];
@@ -88,7 +88,7 @@ export function Shell() {
             <NavLink
               key={item.to}
               to={item.to}
-              end={item.to === '/'}
+              end={item.to === '/dashboard'}
               style={({ isActive }) => navLinkStyle(isActive)}
             >
               {item.label}
@@ -117,7 +117,9 @@ export function Shell() {
           padding: '48px 56px',
         }}
       >
-        <Outlet />
+        <div className="shell-outlet" key={loc.pathname}>
+          <Outlet />
+        </div>
       </main>
     </div>
   );

@@ -122,3 +122,21 @@ body {
     transition-duration: 0.16s !important;
   }
 }
+
+/* Shell main — subtle page enter (skipped when user prefers reduced motion) */
+@media (prefers-reduced-motion: no-preference) {
+  .shell-outlet {
+    animation: shell-outlet-enter 0.52s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+}
+
+@keyframes shell-outlet-enter {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
