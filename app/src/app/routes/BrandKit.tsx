@@ -8,8 +8,84 @@ import {
   Stack,
   TextField,
 } from '../../ui/primitives';
+import { isSvgDataURL } from '../../lib/logo';
 import { useBrand, resetBrand, DEFAULT_BRAND } from '../../store/brand';
+import { BoutiqueLogo } from '../../templates/BoutiqueLogo';
 import { ImageDropZone } from '../components/PropertiesPanel';
+
+function LogoBgPreview({
+  label,
+  background,
+  logoUrl,
+  tone,
+  boutiqueName,
+}: {
+  label: string;
+  background: string;
+  logoUrl: string;
+  tone: 'dark' | 'light';
+  boutiqueName: string;
+}) {
+  const border =
+    tone === 'light' ? '1px solid rgba(0, 0, 0, 0.08)' : '1px solid rgba(255, 255, 255, 0.1)';
+  /** Same recolour path as templates (`BoutiqueLogo` mask + fill). */
+  const maskFill = tone === 'dark' ? '#f5f5f7' : '#121214';
+
+  return (
+    <div>
+      <div
+        style={{
+          fontFamily: 'var(--sans)',
+          fontSize: 10,
+          fontWeight: 700,
+          letterSpacing: '0.12em',
+          textTransform: 'uppercase',
+          color: 'var(--editor-text-dim)',
+          marginBottom: 8,
+        }}
+      >
+        {label}
+      </div>
+      <div
+        style={{
+          borderRadius: 'var(--r-md)',
+          background,
+          border,
+          minHeight: 88,
+          padding: 20,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          boxSizing: 'border-box',
+        }}
+      >
+        {isSvgDataURL(logoUrl) ? (
+          <BoutiqueLogo
+            logo={logoUrl}
+            boutiqueName={boutiqueName}
+            color={maskFill}
+            width={200}
+            height={48}
+          />
+        ) : (
+          <img
+            src={logoUrl}
+            alt=""
+            aria-hidden
+            style={{
+              maxWidth: '100%',
+              maxHeight: 48,
+              width: 'auto',
+              height: 'auto',
+              objectFit: 'contain',
+              filter: tone === 'dark' ? 'brightness(0) invert(1)' : undefined,
+            }}
+          />
+        )}
+      </div>
+    </div>
+  );
+}
 
 export function BrandKitRoute() {
   const [brand, setBrand] = useBrand();
@@ -105,6 +181,31 @@ export function BrandKitRoute() {
                 onImage={(dataURL) => update('logo', dataURL)}
                 onClear={() => update('logo', undefined)}
               />
+              {brand.logo ? (
+                <div
+                  style={{
+                    marginTop: 14,
+                    display: 'grid',
+                    gridTemplateColumns: '1fr 1fr',
+                    gap: 12,
+                  }}
+                >
+                  <LogoBgPreview
+                    label="Dark background"
+                    background="#0c0c0f"
+                    tone="dark"
+                    logoUrl={brand.logo}
+                    boutiqueName={brand.boutiqueName}
+                  />
+                  <LogoBgPreview
+                    label="Light background"
+                    background="#f5f5f7"
+                    tone="light"
+                    logoUrl={brand.logo}
+                    boutiqueName={brand.boutiqueName}
+                  />
+                </div>
+              ) : null}
             </Field>
           </Stack>
         </div>
