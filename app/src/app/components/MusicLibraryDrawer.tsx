@@ -512,7 +512,7 @@ export function MusicLibraryDrawer({ open, onClose, onPickTrackId }: Props) {
                   maxWidth: 340,
                 }}
               >
-                Preview clips like Reels, then tap a title to use it on your timeline.
+                Use play to preview a track, then tap its name to add it to your timeline.
               </p>
             </div>
             <button
