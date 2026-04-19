@@ -7,8 +7,11 @@ import {
   useState,
   type CSSProperties,
 } from 'react';
+import { createPortal } from 'react-dom';
 import { Slider } from '../../ui/Slider';
-import { getMusicTrack } from '../../lib/musicLibrary';
+import { getMusicTrack, resolveAudioUrl } from '../../lib/musicLibrary';
+import { probeAudioDurationSec } from '../../lib/audioProbe';
+import { MAX_TIMELINE_EXTENT_SEC, timelineContentUpperSec } from '../../lib/timelineBounds';
 import { MusicLibraryDrawer } from './MusicLibraryDrawer';
 import type { Project } from '../../store/types';
 import type { SceneOutline } from '../../templates/types';
@@ -29,7 +32,8 @@ const VIDEO_LANE_H = 42;
 const MIN_CLIP_SEC = 0.25;
 const MIN_VIDEO_DURATION = 5;
 const MAX_VIDEO_DURATION = 20;
-const MAX_TIMELINE_EXTENT_SEC = 20;
+const SOUND_PANEL_W = 292;
+const SOUND_PANEL_Z = 9400;
 /** Reels-style trim accent */
 const TRIM_GOLD = '#E8C547';
 const TRIM_GOLD_DIM = 'rgba(232, 197, 71, 0.35)';
@@ -247,21 +251,66 @@ export function EditorTimelineDock({
   const soundTriggerRef = useRef<HTMLButtonElement | null>(null);
 
   type Drag =
-    | { kind: 'move'; startX: number; a0: number; e0: number }
+    | {
+        /** Long-press on clip body: scrub in-point along the source file (ghost moves; timeline clip stays). */
+        kind: 'fileTrim';
+        startX: number;
+        trim0: number;
+        clipLen: number;
+        fileDur: number | null;
+      }
     | { kind: 'trimL'; startX: number; a0: number; e0: number }
     | { kind: 'trimR'; startX: number; a0: number; e0: number };
 
   const dragRef = useRef<Drag | null>(null);
   const captureElRef = useRef<HTMLElement | null>(null);
   const [dragging, setDragging] = useState(false);
+  /** While true, show file-time ruler during long-press source trim drag. */
+  const [showMusicFileRuler, setShowMusicFileRuler] = useState(false);
+  const [sourceFileDurationSec, setSourceFileDurationSec] = useState<number | null>(null);
+  const longPressMoveRef = useRef<{
+    timer: ReturnType<typeof setTimeout>;
+    startX: number;
+    startY: number;
+  } | null>(null);
+  const lastMusicPointerRef = useRef({ x: 0, y: 0 });
+  const musicTimesRef = useRef({ a: 0, e: 0 });
+
+  useEffect(() => {
+    if (!backgroundTrackId) {
+      setSourceFileDurationSec(null);
+      return;
+    }
+    const track = getMusicTrack(backgroundTrackId);
+    if (!track) {
+      setSourceFileDurationSec(null);
+      return;
+    }
+    let cancelled = false;
+    void probeAudioDurationSec(resolveAudioUrl(track.src)).then((dur) => {
+      if (!cancelled) setSourceFileDurationSec(dur);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [backgroundTrackId]);
+
+  useEffect(() => {
+    musicTimesRef.current = { a: musicAnchorVideoTime, e: musicEndVideoTime };
+  }, [musicAnchorVideoTime, musicEndVideoTime]);
+
+  const musicTrimRef = useRef(musicTrimStartSec);
+  musicTrimRef.current = musicTrimStartSec;
+  const sourceFileDurRef = useRef<number | null>(null);
+  sourceFileDurRef.current = sourceFileDurationSec;
 
   const timelineExtentSec = useMemo(
     () =>
-      Math.max(
-        MAX_TIMELINE_EXTENT_SEC,
+      timelineContentUpperSec({
+        duration,
+        videoClipStartSec,
         musicEndVideoTime,
-        videoClipStartSec + Math.max(duration, 0.001),
-      ),
+      }),
     [duration, musicEndVideoTime, videoClipStartSec],
   );
   /** Minimum track width at nominal density (px per second). */
@@ -299,6 +348,58 @@ export function EditorTimelineDock({
     ro.observe(el);
     return () => ro.disconnect();
   }, [cinemaMode]);
+
+  const [soundPanelBox, setSoundPanelBox] = useState<{ top: number; left: number } | null>(null);
+
+  const placeSoundPanel = useCallback(() => {
+    const trig = soundTriggerRef.current;
+    if (!trig || !soundPanelOpen) return;
+    const rect = trig.getBoundingClientRect();
+    const panel = soundPanelRef.current;
+    const h = panel ? panel.getBoundingClientRect().height : 300;
+    const gap = 10;
+    const margin = 10;
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    const spaceBelow = vh - rect.bottom - gap - margin;
+    const spaceAbove = rect.top - gap - margin;
+    const placeBelow = spaceBelow >= Math.min(h, 260) || spaceBelow >= spaceAbove;
+    let top: number;
+    if (placeBelow) {
+      top = Math.min(rect.bottom + gap, vh - margin - h);
+      top = Math.max(margin, top);
+    } else {
+      top = Math.max(margin, rect.top - gap - h);
+    }
+    let left = rect.right - SOUND_PANEL_W;
+    left = Math.min(Math.max(margin, left), vw - SOUND_PANEL_W - margin);
+    setSoundPanelBox({ top, left });
+  }, [soundPanelOpen]);
+
+  useLayoutEffect(() => {
+    if (!soundPanelOpen) {
+      setSoundPanelBox(null);
+      return;
+    }
+    placeSoundPanel();
+    let ro: ResizeObserver | null = null;
+    const raf = requestAnimationFrame(() => {
+      placeSoundPanel();
+      const p = soundPanelRef.current;
+      if (p) {
+        ro = new ResizeObserver(() => placeSoundPanel());
+        ro.observe(p);
+      }
+    });
+    window.addEventListener('resize', placeSoundPanel);
+    window.addEventListener('scroll', placeSoundPanel, true);
+    return () => {
+      cancelAnimationFrame(raf);
+      ro?.disconnect();
+      window.removeEventListener('resize', placeSoundPanel);
+      window.removeEventListener('scroll', placeSoundPanel, true);
+    };
+  }, [soundPanelOpen, placeSoundPanel, musicVolume, musicTrimStartSec, backgroundTrackId]);
 
   useEffect(() => {
     if (!soundPanelOpen) return;
@@ -409,23 +510,23 @@ export function EditorTimelineDock({
 
   const applyClipBounds = useCallback(
     (a: number, e: number) => {
-      const e1 = Math.min(duration, Math.max(a + MIN_CLIP_SEC, e));
+      const e1 = Math.min(timelineExtentSec, Math.max(a + MIN_CLIP_SEC, e));
       const a1 = Math.min(e1 - MIN_CLIP_SEC, Math.max(0, a));
       return { a: a1, e: Math.max(e1, a1 + MIN_CLIP_SEC) };
     },
-    [duration],
+    [timelineExtentSec],
   );
 
   /** Snap targets for music anchor/end (in local video seconds).
    *  Includes video bounds + every scene boundary. */
   const musicSnapTargets = useMemo(() => {
-    const ts = new Set<number>([0, duration]);
+    const ts = new Set<number>([0, duration, timelineExtentSec]);
     for (const s of videoScenes) {
       ts.add(Math.min(Math.max(0, s.start), duration));
       ts.add(Math.min(Math.max(0, s.end), duration));
     }
     return [...ts].sort((a, b) => a - b);
-  }, [videoScenes, duration]);
+  }, [videoScenes, duration, timelineExtentSec]);
 
   /** Snap targets for video duration — whole seconds within legal range. */
   const videoDurationSnapTargets = useMemo(() => {
@@ -440,24 +541,15 @@ export function EditorTimelineDock({
       if (!d) return;
       const dx = e.clientX - d.startX;
       const dSec = dx / pxPerSec;
-      if (d.kind === 'move') {
-        let na = d.a0 + dSec;
-        let ne = d.e0 + dSec;
-        if (na < 0) {
-          ne -= na;
-          na = 0;
-        }
-        if (ne > duration) {
-          na -= ne - duration;
-          ne = duration;
-        }
-        // Snap the anchor; end follows to preserve clip length.
-        const snapped = snap(na, musicSnapTargets, SNAP_THRESHOLD_SEC);
-        const delta = snapped - na;
-        na += delta;
-        ne += delta;
-        const { a, e } = applyClipBounds(na, ne);
-        onPatch({ musicAnchorVideoTime: a, musicEndVideoTime: e });
+      if (d.kind === 'fileTrim') {
+        const trimRaw = d.trim0 + dSec;
+        const fd = d.fileDur;
+        const Tmax =
+          fd != null && Number.isFinite(fd) && fd > d.clipLen + 0.001
+            ? Math.min(120, fd - d.clipLen)
+            : 120;
+        const trim = Math.min(Tmax, Math.max(0, trimRaw));
+        onPatch({ musicTrimStartSec: trim });
       } else if (d.kind === 'trimL') {
         let na = d.a0 + dSec;
         na = Math.min(na, d.e0 - MIN_CLIP_SEC);
@@ -469,20 +561,30 @@ export function EditorTimelineDock({
       } else {
         let ne = d.e0 + dSec;
         ne = Math.max(ne, d.a0 + MIN_CLIP_SEC);
-        ne = Math.min(duration, ne);
+        ne = Math.min(timelineExtentSec, ne);
         ne = snap(ne, musicSnapTargets, SNAP_THRESHOLD_SEC);
         ne = Math.max(ne, d.a0 + MIN_CLIP_SEC);
-        ne = Math.min(duration, ne);
+        ne = Math.min(timelineExtentSec, ne);
         onPatch({ musicEndVideoTime: ne });
       }
     },
-    [applyClipBounds, duration, musicSnapTargets, onPatch, pxPerSec],
+    [
+      applyClipBounds,
+      duration,
+      musicAnchorVideoTime,
+      musicEndVideoTime,
+      musicSnapTargets,
+      onPatch,
+      pxPerSec,
+      timelineExtentSec,
+    ],
   );
 
   const endClipInteraction = useCallback((e: React.PointerEvent) => {
     dragRef.current = null;
     timelineInteract.current = false;
     setDragging(false);
+    setShowMusicFileRuler(false);
     const node = captureElRef.current;
     captureElRef.current = null;
     if (node) {
@@ -494,7 +596,123 @@ export function EditorTimelineDock({
     }
   }, []);
 
-  const onClipPointerDown = (e: React.PointerEvent, kind: Drag['kind']) => {
+  const onClipPointerMoveRef = useRef(onClipPointerMove);
+  onClipPointerMoveRef.current = onClipPointerMove;
+  const endClipInteractionRef = useRef(endClipInteraction);
+  endClipInteractionRef.current = endClipInteraction;
+
+  /** Long-press before the gold clip arms as draggable (ms). */
+  const LONG_PRESS_MOVE_MS = 260;
+  /** Cancel long-press only if the pointer strays this far before the hold completes. */
+  const LONG_PRESS_MOVE_SLOP_PX = 22;
+
+  const musicWindowSessionRef = useRef<{
+    pointerId: number;
+    onMove: (ev: PointerEvent) => void;
+    onUp: (ev: PointerEvent) => void;
+  } | null>(null);
+
+  const detachMusicWindowSession = useCallback(() => {
+    const s = musicWindowSessionRef.current;
+    if (!s) return;
+    window.removeEventListener('pointermove', s.onMove, true);
+    window.removeEventListener('pointerup', s.onUp, true);
+    window.removeEventListener('pointercancel', s.onUp, true);
+    musicWindowSessionRef.current = null;
+  }, []);
+
+  useEffect(
+    () => () => {
+      detachMusicWindowSession();
+      const lp = longPressMoveRef.current;
+      if (lp) {
+        clearTimeout(lp.timer);
+        longPressMoveRef.current = null;
+      }
+      setShowMusicFileRuler(false);
+    },
+    [detachMusicWindowSession],
+  );
+
+  const clearMusicLongPress = useCallback(() => {
+    const lp = longPressMoveRef.current;
+    if (lp) {
+      clearTimeout(lp.timer);
+      longPressMoveRef.current = null;
+    }
+  }, []);
+
+  const onMusicClipBodyPointerDown = useCallback(
+    (e: React.PointerEvent) => {
+      if (e.button !== 0) return;
+      const t = e.target as HTMLElement;
+      if (t.closest('button') || t.closest('[data-music-trim]')) return;
+      e.preventDefault();
+      e.stopPropagation();
+      detachMusicWindowSession();
+      clearMusicLongPress();
+      const pointerId = e.pointerId;
+      lastMusicPointerRef.current = { x: e.clientX, y: e.clientY };
+      const { a, e: endT } = musicTimesRef.current;
+      longPressMoveRef.current = {
+        timer: setTimeout(() => {
+          longPressMoveRef.current = null;
+          timelineInteract.current = true;
+          setDragging(true);
+          const fd = sourceFileDurRef.current;
+          setShowMusicFileRuler(fd != null && fd > 0.2);
+          dragRef.current = {
+            kind: 'fileTrim',
+            startX: lastMusicPointerRef.current.x,
+            trim0: musicTrimRef.current,
+            clipLen: Math.max(MIN_CLIP_SEC, endT - a),
+            fileDur: fd,
+          };
+        }, LONG_PRESS_MOVE_MS),
+        startX: e.clientX,
+        startY: e.clientY,
+      };
+      const onWinMove = (ev: PointerEvent) => {
+        if (ev.pointerId !== pointerId) return;
+        lastMusicPointerRef.current = { x: ev.clientX, y: ev.clientY };
+        const lp = longPressMoveRef.current;
+        if (lp) {
+          const dx = ev.clientX - lp.startX;
+          const dy = ev.clientY - lp.startY;
+          if (Math.hypot(dx, dy) > LONG_PRESS_MOVE_SLOP_PX) {
+            clearTimeout(lp.timer);
+            longPressMoveRef.current = null;
+          }
+          return;
+        }
+        if (dragRef.current?.kind === 'fileTrim') {
+          ev.preventDefault();
+          onClipPointerMoveRef.current(ev as unknown as React.PointerEvent<HTMLElement>);
+        }
+      };
+      const onWinUp = (ev: PointerEvent) => {
+        if (ev.pointerId !== pointerId) return;
+        const lpUp = longPressMoveRef.current;
+        if (lpUp) {
+          clearTimeout(lpUp.timer);
+          longPressMoveRef.current = null;
+        } else if (dragRef.current?.kind === 'fileTrim') {
+          endClipInteractionRef.current(ev as unknown as React.PointerEvent<HTMLElement>);
+        } else {
+          timelineInteract.current = false;
+          setDragging(false);
+        }
+        detachMusicWindowSession();
+      };
+      window.addEventListener('pointermove', onWinMove, true);
+      window.addEventListener('pointerup', onWinUp, true);
+      window.addEventListener('pointercancel', onWinUp, true);
+      musicWindowSessionRef.current = { pointerId, onMove: onWinMove, onUp: onWinUp };
+    },
+    [clearMusicLongPress, detachMusicWindowSession],
+  );
+
+  const onClipPointerDown = (e: React.PointerEvent, kind: 'trimL' | 'trimR') => {
     e.preventDefault();
     e.stopPropagation();
     timelineInteract.current = true;
@@ -522,6 +740,7 @@ export function EditorTimelineDock({
     videoClipDragRef.current = null;
     timelineInteract.current = false;
     setDragging(false);
+    setShowMusicFileRuler(false);
     const node = videoCaptureElRef.current;
     videoCaptureElRef.current = null;
     if (node) {
@@ -628,6 +847,68 @@ export function EditorTimelineDock({
   );
   const videoClipLeftPx = videoClipStartSec * pxPerSec;
   const videoClipWpx = Math.max(MIN_VIDEO_DURATION * pxPerSec, duration * pxPerSec);
+  const videoStripRightPx = videoClipLeftPx + videoClipWpx;
+
+  const showSourceGhost =
+    Boolean(backgroundTrackId) &&
+    sourceFileDurationSec != null &&
+    sourceFileDurationSec > 0.2;
+  const ghostLeftPx = showSourceGhost
+    ? (musicAnchorVideoTime - musicTrimStartSec) * pxPerSec
+    : 0;
+  /** Full file width in px (logical ghost). */
+  const ghostFullWidthPx =
+    showSourceGhost && sourceFileDurationSec != null ? sourceFileDurationSec * pxPerSec : 0;
+  /** While scrubbing source trim, show the full ghost; otherwise clip to the video strip. */
+  const expandMusicGhostForDrag =
+    dragging && dragRef.current !== null && dragRef.current.kind === 'fileTrim';
+  const ghostDisplayWidthPx = showSourceGhost
+    ? expandMusicGhostForDrag
+      ? ghostFullWidthPx
+      : Math.min(ghostFullWidthPx, Math.max(0, videoStripRightPx - ghostLeftPx))
+    : 0;
+  const musicClipLenSec = Math.max(MIN_CLIP_SEC, musicEndVideoTime - musicAnchorVideoTime);
+  const maxTrimStartSec = useMemo(() => {
+    if (sourceFileDurationSec != null && sourceFileDurationSec > musicClipLenSec + 0.05) {
+      return Math.min(120, sourceFileDurationSec - musicClipLenSec);
+    }
+    return 120;
+  }, [sourceFileDurationSec, musicClipLenSec]);
+
+  /** Seconds grid on the source-file ghost: major (labels), mid, minor tick heights. */
+  const musicGhostDurationMarks = useMemo(() => {
+    if (!showSourceGhost || sourceFileDurationSec == null || sourceFileDurationSec < 0.25) return [];
+    const D = sourceFileDurationSec;
+    const majorStep = D > 90 ? 15 : D > 45 ? 10 : D > 22 ? 5 : D > 9 ? 2 : 1;
+    let minorStep = majorStep >= 10 ? majorStep / 5 : majorStep >= 5 ? 1 : majorStep === 2 ? 0.5 : 0.25;
+    let nEst = Math.ceil(D / minorStep) + 2;
+    while (nEst > 96 && minorStep < majorStep) {
+      minorStep *= 2;
+      nEst = Math.ceil(D / minorStep) + 2;
+    }
+    const midStep = majorStep / 2;
+    const out: { sec: number; kind: 'major' | 'mid' | 'minor' }[] = [];
+    const roundSec = (x: number) => Math.round(x * 1000) / 1000;
+    const steps = Math.min(400, Math.ceil(D / minorStep + 1e-9));
+    let prev = -1;
+    for (let i = 0; i <= steps; i++) {
+      const sec = roundSec(Math.min(D, i * minorStep));
+      if (sec <= prev + 1e-6) continue;
+      prev = sec;
+      const isMajor = Math.abs(sec / majorStep - Math.round(sec / majorStep)) < 0.02;
+      const isMid =
+        !isMajor &&
+        midStep >= minorStep * 1.2 &&
+        Math.abs(sec / midStep - Math.round(sec / midStep)) < 0.02;
+      out.push({ sec, kind: isMajor ? 'major' : isMid ? 'mid' : 'minor' });
+    }
+    const last = out[out.length - 1];
+    if (last && D - last.sec > minorStep * 0.75) {
+      out.push({ sec: roundSec(D), kind: 'major' });
+    }
+    return out;
+  }, [showSourceGhost, sourceFileDurationSec]);
+
   const playheadGlobalSec = videoClipStartSec + time;
   const playheadLineLeftPx = Math.min(
     displayTrackW,
@@ -1158,42 +1439,31 @@ export function EditorTimelineDock({
               >
                 <SoundMixIcon />
               </button>
-              {soundPanelOpen ? (
-                <div
-                  ref={soundPanelRef}
-                  data-timeline-no-seek
-                  role="dialog"
-                  aria-label="Audio mix"
-                  style={{
-                    position: 'absolute',
-                    top: 'calc(100% + 10px)',
-                    right: 0,
-                    width: 292,
-                    zIndex: 24,
-                    padding: '18px 18px 16px',
-                    borderRadius: 14,
-                    border: `1px solid rgba(232,197,71,0.22)`,
-                    background: 'linear-gradient(165deg, #1E1E24 0%, #121216 55%, #0E0E12 100%)',
-                    boxShadow:
-                      '0 28px 56px rgba(0,0,0,0.65), 0 0 0 1px rgba(255,255,255,0.04) inset, 0 1px 0 rgba(232,197,71,0.08) inset',
-                    color: 'var(--editor-text)',
-                    fontFamily: 'var(--sans)',
-                  }}
-                >
-                  <div
-                    style={{
-                      position: 'absolute',
-                      top: -6,
-                      right: 12,
-                      width: 10,
-                      height: 10,
-                      background: 'linear-gradient(135deg, #1E1E24 0%, #1A1A1F 100%)',
-                      borderLeft: `1px solid rgba(232,197,71,0.2)`,
-                      borderTop: `1px solid rgba(232,197,71,0.2)`,
-                      transform: 'rotate(45deg)',
-                      pointerEvents: 'none',
-                    }}
-                  />
+              {soundPanelOpen && soundPanelBox
+                ? createPortal(
+                    <div
+                      ref={soundPanelRef}
+                      data-timeline-no-seek
+                      role="dialog"
+                      aria-label="Audio mix"
+                      style={{
+                        position: 'fixed',
+                        top: soundPanelBox.top,
+                        left: soundPanelBox.left,
+                        width: SOUND_PANEL_W,
+                        maxHeight: 'min(72vh, calc(100vh - 16px))',
+                        overflowY: 'auto',
+                        zIndex: SOUND_PANEL_Z,
+                        padding: '18px 18px 16px',
+                        borderRadius: 14,
+                        border: `1px solid rgba(232,197,71,0.22)`,
+                        background: 'linear-gradient(165deg, #1E1E24 0%, #121216 55%, #0E0E12 100%)',
+                        boxShadow:
+                          '0 28px 56px rgba(0,0,0,0.65), 0 0 0 1px rgba(255,255,255,0.04) inset, 0 1px 0 rgba(232,197,71,0.08) inset',
+                        color: 'var(--editor-text)',
+                        fontFamily: 'var(--sans)',
+                      }}
+                    >
                   <div
                     style={{
                       fontSize: 10,
@@ -1268,12 +1538,14 @@ export function EditorTimelineDock({
                   <p
                     style={{
                       margin: '0 0 10px',
-                      fontSize: 11,
+                      fontSize: 10,
                       lineHeight: 1.45,
-                      color: 'var(--editor-text-dim)',
+                      color: 'rgba(255,255,255,0.42)',
                     }}
                   >
-                    Skip silence or pick a later bar in the bed — does not change timeline clip handles.
+                    <strong style={{ color: 'rgba(232,197,71,0.9)' }}>Press and hold</strong>, then drag to
+                    scrub the in-point in the file (timeline clip stays put). Dashed bar = full file while
+                    dragging; otherwise it matches the video strip. Scale = file seconds. Steppers ±0.25s.
                   </p>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     <button
@@ -1303,7 +1575,7 @@ export function EditorTimelineDock({
                       title="Later in file (+0.25s)"
                       onClick={() =>
                         onPatch({
-                          musicTrimStartSec: Math.min(60, musicTrimStartSec + 0.25),
+                          musicTrimStartSec: Math.min(maxTrimStartSec, musicTrimStartSec + 0.25),
                         })
                       }
                       style={stepperBtnCompact}
@@ -1325,8 +1597,10 @@ export function EditorTimelineDock({
                       {musicMeta.attribution}
                     </p>
                   ) : null}
-                </div>
-              ) : null}
+                    </div>,
+                    document.body,
+                  )
+                : null}
             </div>
           ) : null}
         </div>
@@ -1773,12 +2047,156 @@ export function EditorTimelineDock({
                   background: 'rgba(255,255,255,0.04)',
                   position: 'relative',
                   border: '1px solid rgba(255,255,255,0.06)',
+                  overflow: 'visible',
+                  zIndex: 1,
                 }}
               >
                 {backgroundTrackId ? (
+                  <>
+                  {showSourceGhost && sourceFileDurationSec != null && ghostDisplayWidthPx > 0.5 ? (
+                    <div
+                      aria-hidden
+                      title={
+                        expandMusicGhostForDrag
+                          ? 'Source file (full length while dragging) — shaded region is heard through the gold clip'
+                          : 'Source file (clipped to video strip) — shaded region is heard through the gold clip'
+                      }
+                      style={{
+                        position: 'absolute',
+                        left: ghostLeftPx,
+                        width: ghostDisplayWidthPx,
+                        top: 5,
+                        height: MUSIC_LANE_H - 10,
+                        borderRadius: 'var(--r-md)',
+                        boxSizing: 'border-box',
+                        border: showMusicFileRuler
+                          ? '1px solid rgba(232,197,71,0.72)'
+                          : '1px solid rgba(232,197,71,0.45)',
+                        borderStyle: showMusicFileRuler ? 'solid' : 'dashed',
+                        background: showMusicFileRuler
+                          ? 'linear-gradient(180deg, rgba(32,28,18,0.96) 0%, rgba(18,16,12,0.98) 100%)'
+                          : 'linear-gradient(180deg, rgba(28,24,16,0.88) 0%, rgba(14,12,10,0.92) 100%)',
+                        boxShadow: showMusicFileRuler
+                          ? '0 0 0 1px rgba(0,0,0,0.5), 0 0 22px rgba(232,197,71,0.18), inset 0 1px 0 rgba(232,197,71,0.12)'
+                          : '0 2px 10px rgba(0,0,0,0.35), inset 0 1px 0 rgba(232,197,71,0.08)',
+                        pointerEvents: 'none',
+                        zIndex: expandMusicGhostForDrag ? 4 : 1,
+                        transition: 'border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease',
+                        overflow: 'hidden',
+                      }}
+                    >
+                      <div
+                        style={{
+                          position: 'relative',
+                          width: ghostFullWidthPx,
+                          height: '100%',
+                        }}
+                      >
+                      <div
+                        aria-hidden
+                        style={{
+                          position: 'absolute',
+                          left: `${(musicTrimStartSec / sourceFileDurationSec) * 100}%`,
+                          width: `${(Math.min(musicClipLenSec, Math.max(0, sourceFileDurationSec - musicTrimStartSec)) / sourceFileDurationSec) * 100}%`,
+                          top: 0,
+                          bottom: 13,
+                          boxSizing: 'border-box',
+                          borderLeft: '1px solid rgba(232,197,71,0.55)',
+                          borderRight: '1px solid rgba(232,197,71,0.55)',
+                          background: showMusicFileRuler
+                            ? 'linear-gradient(180deg, rgba(232,197,71,0.34) 0%, rgba(232,197,71,0.14) 100%)'
+                            : 'linear-gradient(180deg, rgba(232,197,71,0.22) 0%, rgba(232,197,71,0.08) 100%)',
+                          pointerEvents: 'none',
+                          transition: 'background 0.12s ease',
+                        }}
+                      />
+                      <div
+                        aria-hidden
+                        style={{
+                          position: 'absolute',
+                          left: 0,
+                          right: 0,
+                          bottom: 0,
+                          height: 13,
+                          background: 'linear-gradient(180deg, rgba(6,6,8,0.15) 0%, rgba(4,4,6,0.72) 100%)',
+                          borderTop: '1px solid rgba(232,197,71,0.38)',
+                          boxSizing: 'border-box',
+                        }}
+                      >
+                        {musicGhostDurationMarks.map(({ sec, kind }) => {
+                          const fileDur = sourceFileDurationSec;
+                          const pct = (sec / fileDur) * 100;
+                          const tickH = kind === 'major' ? 9 : kind === 'mid' ? 6 : 3;
+                          const tickW = kind === 'major' ? 1.5 : 1;
+                          const label =
+                            kind === 'major'
+                              ? sec >= 100
+                                ? `${Math.round(sec)}s`
+                                : sec >= 10
+                                  ? `${Math.round(sec)}s`
+                                  : `${sec.toFixed(1)}s`
+                              : '';
+                          return (
+                            <div
+                              key={`gmk-${sec.toFixed(3)}-${kind}`}
+                              style={{
+                                position: 'absolute',
+                                left: `${pct}%`,
+                                bottom: 0,
+                                width: 0,
+                                height: 13,
+                                transform: 'translateX(-0.5px)',
+                              }}
+                            >
+                              {kind === 'major' ? (
+                                <span
+                                  style={{
+                                    position: 'absolute',
+                                    left: 0,
+                                    bottom: 11,
+                                    transform: 'translateX(-50%)',
+                                    fontFamily: 'var(--mono)',
+                                    fontSize: 8,
+                                    fontWeight: 700,
+                                    letterSpacing: '0.02em',
+                                    color: 'rgba(252,236,180,0.98)',
+                                    whiteSpace: 'nowrap',
+                                    textShadow: '0 1px 3px rgba(0,0,0,0.95)',
+                                  }}
+                                >
+                                  {label}
+                                </span>
+                              ) : null}
+                              <div
+                                style={{
+                                  position: 'absolute',
+                                  left: 0,
+                                  bottom: 0,
+                                  width: tickW,
+                                  height: tickH,
+                                  transform: 'translateX(-50%)',
+                                  borderRadius: 0.5,
+                                  background:
+                                    kind === 'major'
+                                      ? 'rgba(252,236,180,0.95)'
+                                      : kind === 'mid'
+                                        ? 'rgba(232,197,71,0.78)'
+                                        : 'rgba(232,197,71,0.45)',
+                                  boxShadow:
+                                    kind === 'major' ? '0 0 6px rgba(232,197,71,0.35)' : 'none',
+                                }}
+                              />
+                            </div>
+                          );
+                        })}
+                      </div>
+                      </div>
+                    </div>
+                  ) : null}
                   <div
                     data-timeline-no-seek
                     data-music-clip
+                    onPointerDown={onMusicClipBodyPointerDown}
                     style={{
                       position: 'absolute',
                       left: clipLeftPx,
@@ -1794,15 +2212,17 @@ export function EditorTimelineDock({
                         : `linear-gradient(180deg, rgba(232,197,71,0.22) 0%, rgba(196,147,115,0.12) 100%)`,
                       touchAction: 'none',
                       zIndex: 2,
+                      cursor: dragging ? 'grabbing' : 'grab',
                     }}
                   >
                     <div
                       data-timeline-no-seek
+                      data-music-trim
                       onPointerDown={(e) => onClipPointerDown(e, 'trimL')}
                       onPointerMove={onClipPointerMove}
                       onPointerUp={endClipInteraction}
                       onPointerCancel={endClipInteraction}
-                      title="Trim start on timeline"
+                      title="Trim clip start on the video timeline"
                       style={{
                         position: 'absolute',
                         left: -14,
@@ -1829,23 +2249,15 @@ export function EditorTimelineDock({
                       />
                     </div>
                     <div
-                      data-timeline-no-seek
-                      onPointerDown={(e) => onClipPointerDown(e, 'move')}
-                      onPointerMove={onClipPointerMove}
-                      onPointerUp={endClipInteraction}
-                      onPointerCancel={endClipInteraction}
-                      title="Drag clip — slip on timeline"
+                      aria-hidden
                       style={{
                         position: 'absolute',
-                        left: 10,
-                        right: 32,
-                        top: 0,
-                        bottom: 0,
-                        cursor: dragging ? 'grabbing' : 'grab',
+                        inset: 0,
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        padding: '0 6px',
+                        padding: '0 40px 0 32px',
+                        pointerEvents: 'none',
                       }}
                     >
                       <span
@@ -1902,11 +2314,12 @@ export function EditorTimelineDock({
                     </button>
                     <div
                       data-timeline-no-seek
+                      data-music-trim
                       onPointerDown={(e) => onClipPointerDown(e, 'trimR')}
                       onPointerMove={onClipPointerMove}
                       onPointerUp={endClipInteraction}
                       onPointerCancel={endClipInteraction}
-                      title="Trim end on timeline"
+                      title="Trim clip end on the video timeline"
                       style={{
                         position: 'absolute',
                         right: -14,
@@ -1933,6 +2346,7 @@ export function EditorTimelineDock({
                       />
                     </div>
                   </div>
+                  </>
                 ) : (
                   <div style={{ position: 'relative', height: '100%' }}>
                     <button

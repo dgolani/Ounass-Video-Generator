@@ -1,12 +1,12 @@
 import { useEffect, useState, useCallback } from 'react';
 import type { Project } from './types';
+import { MAX_TIMELINE_EXTENT_SEC, timelineContentUpperSec } from '../lib/timelineBounds';
 
 const KEY = 'vag:projects:v1';
 const CHANNEL = 'vag:projects:changed';
 
 const MIN_VIDEO_DURATION = 5;
 const MAX_VIDEO_DURATION = 20;
-const MAX_TIMELINE_EXTENT_SEC = 20;
 
 function normalizeProject(raw: Project): Project {
   const vol = raw.musicVolume;
@@ -33,19 +33,24 @@ function normalizeProject(raw: Project): Project {
     typeof raw.musicAnchorVideoTime === 'number' && Number.isFinite(raw.musicAnchorVideoTime)
       ? raw.musicAnchorVideoTime
       : 0;
-  const maxAnchor = Math.max(0, L - 0.05);
+  let end =
+    typeof raw.musicEndVideoTime === 'number' && Number.isFinite(raw.musicEndVideoTime)
+      ? raw.musicEndVideoTime
+      : L;
+  const upper = timelineContentUpperSec({
+    duration: L,
+    videoClipStartSec: vStart,
+    musicEndVideoTime: end,
+  });
+  const maxAnchor = Math.max(0, upper - 0.05);
   anchor = Math.min(Math.max(0, anchor), maxAnchor);
   let trimS =
     typeof raw.musicTrimStartSec === 'number' && Number.isFinite(raw.musicTrimStartSec)
       ? raw.musicTrimStartSec
       : 0;
   trimS = Math.min(Math.max(0, trimS), 120);
-  let end =
-    typeof raw.musicEndVideoTime === 'number' && Number.isFinite(raw.musicEndVideoTime)
-      ? raw.musicEndVideoTime
-      : L;
   const minEnd = anchor + 0.15;
-  end = Math.min(Math.max(minEnd, end), L);
+  end = Math.min(Math.max(minEnd, end), upper);
   return {
     ...raw,
     backgroundTrackId:

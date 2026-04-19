@@ -18,6 +18,7 @@ import {
   resolveAudioUrl,
 } from '../../lib/musicLibrary';
 import type { MusicTrack } from '../../lib/musicTracks';
+import { probeAudioDurationSec } from '../../lib/audioProbe';
 
 const Z_BACKDROP = 9200;
 const Z_DRAWER = 9201;
@@ -37,31 +38,6 @@ function formatDuration(sec: number | null | undefined): string {
     : `0:${s.toString().padStart(2, '0')}`;
 }
 
-async function probeDurationSeconds(resolvedUrl: string): Promise<number | null> {
-  return new Promise((resolve) => {
-    const a = document.createElement('audio');
-    a.preload = 'metadata';
-    const done = (v: number | null) => {
-      try {
-        a.pause();
-        a.removeAttribute('src');
-        a.load();
-      } catch {
-        /* ignore */
-      }
-      resolve(v);
-    };
-    const onMeta = () => {
-      const d = a.duration;
-      done(Number.isFinite(d) && d > 0 ? d : null);
-    };
-    const onErr = () => done(null);
-    a.addEventListener('loadedmetadata', onMeta, { once: true });
-    a.addEventListener('error', onErr, { once: true });
-    a.src = resolvedUrl;
-  });
-}
-
 function useTrackDurations(resolvedById: Record<string, string>) {
   const ids = useMemo(() => Object.keys(resolvedById).sort().join('\0'), [resolvedById]);
   const [durations, setDurations] = useState<Record<string, number | null>>({});
@@ -77,7 +53,7 @@ function useTrackDurations(resolvedById: Record<string, string>) {
         const slice = entries.slice(i, i + batch);
         const results = await Promise.all(
           slice.map(async ([id, url]) => {
-            const d = await probeDurationSeconds(url);
+            const d = await probeAudioDurationSec(url);
             return [id, d] as const;
           }),
         );

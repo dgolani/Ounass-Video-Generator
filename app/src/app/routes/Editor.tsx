@@ -20,6 +20,7 @@ import { useFilmstripCapture } from '../hooks/useFilmstripCapture';
 import { getMusicTrack, resolveAudioUrl } from '../../lib/musicLibrary';
 import { useHistory } from '../../lib/useHistory';
 import { activeSceneIdAtLocalTime } from '../../lib/activeSceneAtTime';
+import { timelineContentUpperSec } from '../../lib/timelineBounds';
 
 /** Clamp music anchor/end against the current duration. Called on every
  *  timeline patch so a shorter video automatically pulls the music bed
@@ -27,10 +28,15 @@ import { activeSceneIdAtLocalTime } from '../../lib/activeSceneAtTime';
  *  double-save and keeps the history stack clean). */
 function normalizeEditable(e: EditableState): EditableState {
   const d = e.duration;
-  const maxAnchor = Math.max(0, d - 0.05);
+  const upper = timelineContentUpperSec({
+    duration: d,
+    videoClipStartSec: e.videoClipStartSec,
+    musicEndVideoTime: e.musicEndVideoTime,
+  });
+  const maxAnchor = Math.max(0, upper - 0.05);
   const anchor = Math.min(Math.max(0, e.musicAnchorVideoTime), maxAnchor);
-  const minEnd = Math.min(d, anchor + 0.15);
-  const end = Math.min(d, Math.max(minEnd, e.musicEndVideoTime));
+  const minEnd = Math.min(upper, anchor + 0.15);
+  const end = Math.min(upper, Math.max(minEnd, e.musicEndVideoTime));
   if (
     anchor === e.musicAnchorVideoTime &&
     end === e.musicEndVideoTime
