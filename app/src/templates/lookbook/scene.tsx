@@ -4,6 +4,7 @@ import {
   animate,
   clamp,
   interpolate,
+  useSafeZone,
   useTimeline,
 } from '../../engine';
 import type { LookbookProps } from './schema';
@@ -48,10 +49,14 @@ type ActProps = {
   props: LookbookProps;
   T: (x: number) => number;
   s: Scale;
+  /** Resolved safe zone for the current aspect (top/bottom/left/right
+   *  in output pixels). Threaded from the root so safe-layer elements
+   *  like the outro CTA and watermark stay clear of platform chrome. */
+  safe: { top: number; bottom: number; left: number; right: number };
 };
 
 // ── Act 1 — title whisper over darkness ────────────────────────────────
-function Act1Title({ props, T, s }: ActProps) {
+function Act1Title({ props, T, s, safe: _safe }: ActProps) {
   const { time: t } = useTimeline();
   const { colors, kicker, brand, tagline } = props;
   const { h, wh } = s;
@@ -150,7 +155,7 @@ function Act1Title({ props, T, s }: ActProps) {
 }
 
 // ── Act 2 — columns slide up ───────────────────────────────────────────
-function Act2Columns({ props, T, s }: ActProps) {
+function Act2Columns({ props, T, s, safe: _safe }: ActProps) {
   const { time: t } = useTimeline();
   const { products, colors, act2Kicker, act2TitleLine1, act2TitleLine2 } = props;
   const { h, wh, W, H } = s;
@@ -319,7 +324,7 @@ type Act3Props = ActProps & {
   onFocusClick: (i: number) => void;
 };
 
-function Act3Filmstrip({ props, T, s, focusOverride, onFocusClick }: Act3Props) {
+function Act3Filmstrip({ props, T, s, safe, focusOverride, onFocusClick }: Act3Props) {
   const { time: t } = useTimeline();
   const { products, colors, brand } = props;
   const { w, h, wh, W, H } = s;
@@ -456,7 +461,9 @@ function Act3Filmstrip({ props, T, s, focusOverride, onFocusClick }: Act3Props) 
           position: 'absolute',
           left: 0,
           right: 0,
-          bottom: h(140),
+          // Filmstrip thumbnails are tappable — keep them above the
+          // bottom safe zone so the IG caption doesn't block interaction.
+          bottom: Math.max(h(140), safe.bottom + h(20)),
           display: 'flex',
           justifyContent: 'center',
           gap: wh(10),
@@ -556,7 +563,7 @@ function Act3Filmstrip({ props, T, s, focusOverride, onFocusClick }: Act3Props) 
 }
 
 // ── Act 4 — outro ──────────────────────────────────────────────────────
-function Act4Outro({ props, T, s }: ActProps) {
+function Act4Outro({ props, T, s, safe }: ActProps) {
   const { time: t } = useTimeline();
   const {
     colors,
@@ -703,7 +710,9 @@ function Act4Outro({ props, T, s }: ActProps) {
           position: 'absolute',
           left: 0,
           right: 0,
-          bottom: h(260),
+          // CTA anchored to the bottom safe zone so it clears the IG
+          // caption area while staying below the outro wordmark block.
+          bottom: Math.max(h(260), safe.bottom + h(60)),
           textAlign: 'center',
           opacity: ctaOp,
           transform: `translateY(${ctaY}px)`,
@@ -771,6 +780,7 @@ export function LookbookScene({
   const T = (x: number) => x * timeScale;
   const s = makeScale(width, height);
   const { w, h, wh } = s;
+  const { base: safe } = useSafeZone({ width, height });
 
   const { colors, watermark } = props;
   const [focusIdx, setFocusIdx] = useState<number | null>(null);
@@ -811,16 +821,17 @@ export function LookbookScene({
         }
       `}</style>
 
-      <Act1Title props={props} T={T} s={s} />
-      <Act2Columns props={props} T={T} s={s} />
+      <Act1Title props={props} T={T} s={s} safe={safe} />
+      <Act2Columns props={props} T={T} s={s} safe={safe} />
       <Act3Filmstrip
         props={props}
         T={T}
         s={s}
+        safe={safe}
         focusOverride={focusIdx}
         onFocusClick={(i) => setFocusIdx(i)}
       />
-      <Act4Outro props={props} T={T} s={s} />
+      <Act4Outro props={props} T={T} s={s} safe={safe} />
 
       <div
         style={{

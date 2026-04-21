@@ -3,7 +3,7 @@
 // `02-seasonal-campaign`. Three-word serif crossfade, ticker scrolls,
 // products stagger-in then drift, final frame blooms over dark ink.
 
-import { Easing, clamp, interpolate, useTimeline } from '../../engine';
+import { Easing, clamp, interpolate, useTimeline, useSafeZone } from '../../engine';
 import type { SeasonalProps } from './schema';
 import { BoutiqueLogo } from '../BoutiqueLogo';
 
@@ -50,6 +50,7 @@ export function SeasonalScene({
   const T = (x: number) => x * timeScale;
   const s = makeScale(width, height);
   const { w, h, wh } = s;
+  const { base: safe } = useSafeZone({ width, height });
   const {
     colors,
     boutiqueName,
@@ -147,11 +148,12 @@ export function SeasonalScene({
         }}
       />
 
-      {/* Top brand line */}
+      {/* Top brand line — pinned below the top safe zone so the IG progress
+       *  bar / username chip at the top of the screen doesn't cover it. */}
       <div
         style={{
           position: 'absolute',
-          top: 0,
+          top: safe.top,
           left: 0,
           right: 0,
           height: h(90),
@@ -174,11 +176,12 @@ export function SeasonalScene({
         />
       </div>
 
-      {/* Ticker */}
+      {/* Ticker — sits immediately below the brand bar, so it also shifts
+       *  down by the safe top value to stay clear of platform chrome. */}
       <div
         style={{
           position: 'absolute',
-          top: h(90),
+          top: safe.top + h(90),
           left: 0,
           right: 0,
           height: h(44),
@@ -326,11 +329,12 @@ export function SeasonalScene({
         })}
       </div>
 
-      {/* Side editorial line (rotated 90°) */}
+      {/* Side editorial line (rotated 90°) — anchored inside the right
+       *  safe zone so the IG like/share column doesn't cover it. */}
       <div
         style={{
           position: 'absolute',
-          right: w(48),
+          right: Math.max(w(48), safe.right),
           top: '50%',
           transform: 'translateY(-50%) rotate(90deg)',
           transformOrigin: 'right center',

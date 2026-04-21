@@ -6,7 +6,7 @@
 //   hold  0.25..0.85  subtle sine float
 //   exit  0.85..1.0  slide-out + counter-rotate + fade-out
 
-import { Easing, clamp, interpolate, useTimeline } from '../../engine';
+import { Easing, clamp, interpolate, useTimeline, useSafeZone } from '../../engine';
 import type { BestsellersProps } from './schema';
 import { BoutiqueLogo } from '../BoutiqueLogo';
 
@@ -56,6 +56,7 @@ export function BestsellersScene({
   const T = (x: number) => x * timeScale;
   const s = makeScale(width, height);
   const { w, h, wh } = s;
+  const { base: safe } = useSafeZone({ width, height });
   const { colors, products, boutiqueName, headerMeta, kicker, logo } = props;
 
   // Only 5 product slots are supported. If more are provided, extra are ignored;
@@ -162,11 +163,12 @@ export function BestsellersScene({
         </div>
       </div>
 
-      {/* Kicker */}
+      {/* Kicker — anchored to the top safe zone so it stays clear of
+       *  Instagram/TikTok top UI (story progress bar, username chip). */}
       <div
         style={{
           position: 'absolute',
-          top: h(220),
+          top: Math.max(h(220), safe.top),
           left: 0,
           right: 0,
           textAlign: 'center',
@@ -324,12 +326,13 @@ export function BestsellersScene({
         })}
       </div>
 
-      {/* N° 0X marker, top-right */}
+      {/* N° 0X marker, top-right — anchored inside the top + right safe
+       *  zones so the IG like-stack doesn't cover it in 9:16. */}
       <div
         style={{
           position: 'absolute',
-          top: h(48),
-          right: w(48),
+          top: Math.max(h(48), safe.top),
+          right: Math.max(w(48), safe.right),
           fontFamily: 'var(--font-display)',
           fontStyle: 'italic',
           fontSize: wh(36),
@@ -342,11 +345,12 @@ export function BestsellersScene({
         N° 0{activeRank}
       </div>
 
-      {/* Rank dots */}
+      {/* Rank dots — sit just above the CTA slab, but no lower than the
+       *  safe-zone bottom edge so they stay visible above the IG caption. */}
       <div
         style={{
           position: 'absolute',
-          bottom: h(220),
+          bottom: Math.max(h(220), safe.bottom),
           left: 0,
           right: 0,
           display: 'flex',
@@ -372,11 +376,12 @@ export function BestsellersScene({
         })}
       </div>
 
-      {/* CTA slab (bottom) */}
+      {/* CTA slab (bottom) — lifted above the bottom safe zone so its
+       *  headline + button sit clear of the IG caption / TikTok tray. */}
       <div
         style={{
           position: 'absolute',
-          bottom: 0,
+          bottom: safe.bottom,
           left: 0,
           right: 0,
           height: h(360),

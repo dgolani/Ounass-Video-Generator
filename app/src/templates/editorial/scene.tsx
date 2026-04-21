@@ -1,4 +1,4 @@
-import { Easing, clamp, interpolate, useTimeline } from '../../engine';
+import { Easing, clamp, interpolate, useTimeline, useSafeZone } from '../../engine';
 import type { EditorialProps } from './schema';
 import { BoutiqueLogo } from '../BoutiqueLogo';
 
@@ -36,10 +36,12 @@ type ActProps = {
   props: EditorialProps;
   T: (x: number) => number;
   s: Scale;
+  /** Resolved safe zone for the current aspect (output pixels). */
+  safe: { top: number; bottom: number; left: number; right: number };
 };
 
 // ── Act 1 — Masthead & headline ────────────────────────────────────────
-function Masthead({ props, T, s }: ActProps) {
+function Masthead({ props, T, s, safe: _safe }: ActProps) {
   const { time: t } = useTimeline();
   const { masthead, issueDate, headlineLine1, headlineLine2, byline, colors } = props;
   const { w, h, wh } = s;
@@ -161,7 +163,7 @@ function Masthead({ props, T, s }: ActProps) {
 }
 
 // ── Act 2 — 2×2 product grid ───────────────────────────────────────────
-function Grid({ props, T, s }: ActProps) {
+function Grid({ props, T, s, safe }: ActProps) {
   const { time: t } = useTimeline();
   const { products, colors } = props;
   const { w, h, wh, W, H } = s;
@@ -298,13 +300,14 @@ function Grid({ props, T, s }: ActProps) {
         );
       })}
 
-      {/* Footer rule + category strip */}
+      {/* Footer rule + category strip — above the bottom safe zone so
+       *  the IG caption doesn't hide the category labels. */}
       <div
         style={{
           position: 'absolute',
           left: w(80),
           right: w(80),
-          bottom: h(140),
+          bottom: Math.max(h(140), safe.bottom + h(20)),
           opacity: op,
         }}
       >
@@ -331,7 +334,7 @@ function Grid({ props, T, s }: ActProps) {
 }
 
 // ── Act 3 — Feature zoom (on product 01) ───────────────────────────────
-function Feature({ props, T, s }: ActProps) {
+function Feature({ props, T, s, safe: _safe }: ActProps) {
   const { time: t } = useTimeline();
   const { products, featureCaption, colors } = props;
   const { w, h, wh, W } = s;
@@ -440,7 +443,7 @@ function Feature({ props, T, s }: ActProps) {
 }
 
 // ── Act 4 — Signature sign-off ─────────────────────────────────────────
-function Signature({ props, T, s }: ActProps) {
+function Signature({ props, T, s, safe }: ActProps) {
   const { time: t } = useTimeline();
   const {
     closingKicker,
@@ -544,13 +547,14 @@ function Signature({ props, T, s }: ActProps) {
         — {signatureText} —
       </div>
 
-      {/* CTA */}
+      {/* CTA — anchored above the bottom safe zone so the "read more"
+       *  button stays clear of the IG caption area. */}
       <div
         style={{
           position: 'absolute',
           left: 0,
           right: 0,
-          bottom: h(260),
+          bottom: Math.max(h(260), safe.bottom + h(60)),
           textAlign: 'center',
           opacity: ctaIn,
         }}
@@ -615,6 +619,7 @@ export function EditorialScene({
 }: SceneProps) {
   const T = (x: number) => x * timeScale;
   const s = makeScale(width, height);
+  const { base: safe } = useSafeZone({ width, height });
 
   return (
     <div
@@ -625,10 +630,10 @@ export function EditorialScene({
         overflow: 'hidden',
       }}
     >
-      <Masthead props={props} T={T} s={s} />
-      <Grid props={props} T={T} s={s} />
-      <Feature props={props} T={T} s={s} />
-      <Signature props={props} T={T} s={s} />
+      <Masthead props={props} T={T} s={s} safe={safe} />
+      <Grid props={props} T={T} s={s} safe={safe} />
+      <Feature props={props} T={T} s={s} safe={safe} />
+      <Signature props={props} T={T} s={s} safe={safe} />
     </div>
   );
 }

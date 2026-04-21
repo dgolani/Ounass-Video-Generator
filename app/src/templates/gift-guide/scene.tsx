@@ -3,7 +3,7 @@
 // the frame shut before the foot CTA fades in.
 // Ported from the Claude-Design HTML prototype `04-gift-guide`.
 
-import { Easing, clamp, interpolate, useTimeline } from '../../engine';
+import { Easing, clamp, interpolate, useTimeline, useSafeZone } from '../../engine';
 import type { GiftGuideProps } from './schema';
 import { BoutiqueLogo } from '../BoutiqueLogo';
 
@@ -66,6 +66,7 @@ export function GiftGuideScene({
   const T = (x: number) => x * timeScale;
   const s = makeScale(width, height);
   const { w, h, wh } = s;
+  const { base: safe } = useSafeZone({ width, height });
   const {
     colors,
     boutiqueName,
@@ -155,11 +156,12 @@ export function GiftGuideScene({
         }}
       />
 
-      {/* Top — brand + kicker + head */}
+      {/* Top — brand + kicker + head. Pinned below the top safe zone so
+       *  "For her, with love." doesn't sit under the IG progress bar. */}
       <div
         style={{
           position: 'absolute',
-          top: h(80),
+          top: Math.max(h(80), safe.top),
           left: 0,
           right: 0,
           textAlign: 'center',
@@ -507,11 +509,12 @@ export function GiftGuideScene({
         {ribbonLabel}
       </div>
 
-      {/* Foot CTA */}
+      {/* Foot CTA — lifted above the bottom safe zone so the "Shop the
+       *  gift edit" button and its headline clear the IG caption area. */}
       <div
         style={{
           position: 'absolute',
-          bottom: h(60),
+          bottom: Math.max(h(60), safe.bottom),
           left: 0,
           right: 0,
           textAlign: 'center',

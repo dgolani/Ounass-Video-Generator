@@ -5,7 +5,7 @@
 //   Act 4 (11.5+)   : monogram hold frame with CTA
 // Ported from the Claude-Design HTML prototype `05-brand-spotlight`.
 
-import { Easing, clamp, interpolate, useTimeline } from '../../engine';
+import { Easing, clamp, interpolate, useTimeline, useSafeZone } from '../../engine';
 import type { SpotlightProps } from './schema';
 import { BoutiqueLogo } from '../BoutiqueLogo';
 
@@ -49,6 +49,7 @@ export function BrandSpotlightScene({
   const T = (x: number) => x * timeScale;
   const s = makeScale(width, height);
   const { w, h, wh } = s;
+  const { base: safe } = useSafeZone({ width, height });
   const {
     colors,
     boutiqueName,
@@ -146,11 +147,12 @@ export function BrandSpotlightScene({
         }}
       />
 
-      {/* Top — "OUNASS PRESENTS" */}
+      {/* Top — "OUNASS PRESENTS" pinned below the top safe zone so the
+       *  IG progress bar / username chip doesn't cover it. */}
       <div
         style={{
           position: 'absolute',
-          top: h(60),
+          top: Math.max(h(60), safe.top),
           left: 0,
           right: 0,
           textAlign: 'center',
@@ -374,13 +376,14 @@ export function BrandSpotlightScene({
         </div>
       </div>
 
-      {/* Companion strip */}
+      {/* Companion strip — lifted above the bottom safe zone so the
+       *  tile row stays visible over the IG caption area. */}
       <div
         style={{
           position: 'absolute',
           left: 0,
           right: 0,
-          bottom: h(280),
+          bottom: Math.max(h(280), safe.bottom + h(40)),
           height: h(180),
           display: 'flex',
           justifyContent: 'center',

@@ -1,4 +1,4 @@
-import { Easing, interpolate, useTimeline } from '../../engine';
+import { Easing, interpolate, useTimeline, useSafeZone } from '../../engine';
 import type { CountdownProps } from './schema';
 import { BoutiqueLogo } from '../BoutiqueLogo';
 
@@ -36,12 +36,14 @@ type ActProps = {
   props: CountdownProps;
   T: (x: number) => number;
   s: Scale;
+  /** Resolved safe zone for the current aspect (output pixels). */
+  safe: { top: number; bottom: number; left: number; right: number };
 };
 
 // ── Accent swash ───────────────────────────────────────────────────────
 // A diagonal bronze slab that sweeps in behind the type. Sits as a
 // persistent background element animated per-act.
-function AccentSwash({ props, T, s }: ActProps) {
+function AccentSwash({ props, T, s, safe: _safe }: ActProps) {
   const { time: t } = useTimeline();
   const { colors } = props;
   const { w, h, W, H } = s;
@@ -74,7 +76,7 @@ function AccentSwash({ props, T, s }: ActProps) {
 }
 
 // ── Act 1 — Hook (kicker → headline slam) ──────────────────────────────
-function Hook({ props, T, s }: ActProps) {
+function Hook({ props, T, s, safe: _safe }: ActProps) {
   const { time: t } = useTimeline();
   const { kicker, headline, subhead, colors } = props;
   const { h, wh } = s;
@@ -153,7 +155,7 @@ function Hook({ props, T, s }: ActProps) {
 }
 
 // ── Act 2 — Body (subhead, body text, terms) ───────────────────────────
-function Body({ props, T, s }: ActProps) {
+function Body({ props, T, s, safe: _safe }: ActProps) {
   const { time: t } = useTimeline();
   const { subhead, body, endsText, terms, accentImage, colors } = props;
   const { w, h, wh, H } = s;
@@ -280,7 +282,7 @@ function Body({ props, T, s }: ActProps) {
 }
 
 // ── Act 3 — CTA slam ───────────────────────────────────────────────────
-function CTA({ props, T, s }: ActProps) {
+function CTA({ props, T, s, safe }: ActProps) {
   const { time: t } = useTimeline();
   const { boutiqueName, ctaText, ctaFooter, logo, colors } = props;
   const { w, h, wh } = s;
@@ -337,13 +339,14 @@ function CTA({ props, T, s }: ActProps) {
         />
       </div>
 
-      {/* CTA */}
+      {/* CTA — above the bottom safe zone so the tap-through button
+       *  stays clear of the IG caption area. */}
       <div
         style={{
           position: 'absolute',
           left: 0,
           right: 0,
-          bottom: h(320),
+          bottom: Math.max(h(320), safe.bottom + h(60)),
           textAlign: 'center',
           opacity: ctaIn,
           transform: `translateY(${ctaY}px)`,
@@ -410,6 +413,7 @@ export function CountdownScene({
 }: SceneProps) {
   const T = (x: number) => x * timeScale;
   const s = makeScale(width, height);
+  const { base: safe } = useSafeZone({ width, height });
 
   return (
     <div
@@ -420,10 +424,10 @@ export function CountdownScene({
         overflow: 'hidden',
       }}
     >
-      <AccentSwash props={props} T={T} s={s} />
-      <Hook props={props} T={T} s={s} />
-      <Body props={props} T={T} s={s} />
-      <CTA props={props} T={T} s={s} />
+      <AccentSwash props={props} T={T} s={s} safe={safe} />
+      <Hook props={props} T={T} s={s} safe={safe} />
+      <Body props={props} T={T} s={s} safe={safe} />
+      <CTA props={props} T={T} s={s} safe={safe} />
     </div>
   );
 }

@@ -4,7 +4,7 @@
 // settling into center focus before handing off to the next; final frame
 // blooms a rotating dashed stamp + CTA.
 
-import { Easing, clamp, interpolate, useTimeline } from '../../engine';
+import { Easing, clamp, interpolate, useTimeline, useSafeZone } from '../../engine';
 import type { CarouselProps } from './schema';
 import { BoutiqueLogo } from '../BoutiqueLogo';
 
@@ -50,6 +50,7 @@ export function CarouselScene({
   const T = (x: number) => x * timeScale;
   const s = makeScale(width, height);
   const { w, h, wh } = s;
+  const { base: safe } = useSafeZone({ width, height });
   const {
     colors,
     items,
@@ -126,18 +127,21 @@ export function CarouselScene({
         }}
       />
 
-      {/* Top bar */}
+      {/* Top bar — logo + category label. Pinned below the top safe zone
+       *  and its padding pulled in from the right safe zone so the
+       *  category label clears the IG like-stack column. */}
       <div
         style={{
           position: 'absolute',
-          top: 0,
+          top: safe.top,
           left: 0,
           right: 0,
           height: h(120),
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          padding: `0 ${w(64)}px`,
+          paddingLeft: Math.max(w(64), safe.left),
+          paddingRight: Math.max(w(64), safe.right),
           zIndex: 10,
           opacity: 1 - finalOp,
         }}
@@ -166,11 +170,12 @@ export function CarouselScene({
         </div>
       </div>
 
-      {/* Title block */}
+      {/* Title block — below top bar, always above top safe zone + some
+       *  design breathing room. */}
       <div
         style={{
           position: 'absolute',
-          top: h(200),
+          top: Math.max(h(200), safe.top + h(80)),
           left: 0,
           right: 0,
           textAlign: 'center',
@@ -312,13 +317,14 @@ export function CarouselScene({
         </div>
       </div>
 
-      {/* Counter chip */}
+      {/* Counter chip — lifted to sit above the bottom safe zone so the
+       *  IG caption / TikTok tray doesn't hide the 01/06 progress tick. */}
       <div
         style={{
           position: 'absolute',
           left: 0,
           right: 0,
-          bottom: h(180),
+          bottom: Math.max(h(180), safe.bottom + h(40)),
           textAlign: 'center',
           zIndex: 9,
           fontFamily: 'var(--font-body)',

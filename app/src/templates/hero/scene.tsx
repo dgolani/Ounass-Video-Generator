@@ -1,4 +1,4 @@
-import { Easing, clamp, interpolate, useTimeline } from '../../engine';
+import { Easing, clamp, interpolate, useTimeline, useSafeZone } from '../../engine';
 import type { HeroProps } from './schema';
 import { BoutiqueLogo } from '../BoutiqueLogo';
 
@@ -36,10 +36,12 @@ type ActProps = {
   props: HeroProps;
   T: (x: number) => number;
   s: Scale;
+  /** Resolved safe zone for the current aspect (output pixels). */
+  safe: { top: number; bottom: number; left: number; right: number };
 };
 
 // ── Background hero (persistent, Ken-Burns across the full duration) ──
-function HeroImage({ props, T, s }: ActProps) {
+function HeroImage({ props, T, s, safe: _safe }: ActProps) {
   const { time: t } = useTimeline();
   const { product, colors } = props;
   const { W, H } = s;
@@ -102,7 +104,7 @@ function HeroImage({ props, T, s }: ActProps) {
 }
 
 // ── Act 1 — Reveal (pre-title + thin rule) ─────────────────────────────
-function Reveal({ props, T, s }: ActProps) {
+function Reveal({ props, T, s, safe: _safe }: ActProps) {
   const { time: t } = useTimeline();
   const { preTitle, colors } = props;
   const { w, h, wh } = s;
@@ -150,7 +152,7 @@ function Reveal({ props, T, s }: ActProps) {
 }
 
 // ── Act 2 — Copy lockup ────────────────────────────────────────────────
-function Copy({ props, T, s }: ActProps) {
+function Copy({ props, T, s, safe }: ActProps) {
   const { time: t } = useTimeline();
   const { headlineLine1, headlineLine2, subhead, product, colors } = props;
   const { w, h, wh, H } = s;
@@ -231,12 +233,13 @@ function Copy({ props, T, s }: ActProps) {
         {subhead}
       </div>
 
-      {/* Product tag overlay — bottom left */}
+      {/* Product tag overlay — bottom left, above the bottom safe zone
+       *  so the accent-bordered tag stays readable over the IG caption. */}
       <div
         style={{
           position: 'absolute',
-          left: w(80),
-          bottom: h(320),
+          left: Math.max(w(80), safe.left),
+          bottom: Math.max(h(320), safe.bottom + h(60)),
           opacity: productIn,
           padding: `${wh(18)}px ${wh(24)}px`,
           background: 'rgba(10,8,6,0.6)',
@@ -285,7 +288,7 @@ function Copy({ props, T, s }: ActProps) {
 }
 
 // ── Act 3 — CTA ────────────────────────────────────────────────────────
-function CTA({ props, T, s }: ActProps) {
+function CTA({ props, T, s, safe }: ActProps) {
   const { time: t } = useTimeline();
   const { boutiqueName, ctaText, ctaFooter, logo, colors } = props;
   const { w, h, wh } = s;
@@ -323,13 +326,14 @@ function CTA({ props, T, s }: ActProps) {
         />
       </div>
 
-      {/* CTA */}
+      {/* CTA — above the bottom safe zone so the primary tap-through
+       *  button and its footer line stay clear of the IG caption. */}
       <div
         style={{
           position: 'absolute',
           left: 0,
           right: 0,
-          bottom: h(300),
+          bottom: Math.max(h(300), safe.bottom + h(60)),
           textAlign: 'center',
           opacity: ctaOp,
           transform: `translateY(${ctaY}px)`,
@@ -395,6 +399,7 @@ export function HeroScene({
 }: SceneProps) {
   const T = (x: number) => x * timeScale;
   const s = makeScale(width, height);
+  const { base: safe } = useSafeZone({ width, height });
 
   return (
     <div
@@ -405,10 +410,10 @@ export function HeroScene({
         overflow: 'hidden',
       }}
     >
-      <HeroImage props={props} T={T} s={s} />
-      <Reveal props={props} T={T} s={s} />
-      <Copy props={props} T={T} s={s} />
-      <CTA props={props} T={T} s={s} />
+      <HeroImage props={props} T={T} s={s} safe={safe} />
+      <Reveal props={props} T={T} s={s} safe={safe} />
+      <Copy props={props} T={T} s={s} safe={safe} />
+      <CTA props={props} T={T} s={s} safe={safe} />
     </div>
   );
 }
