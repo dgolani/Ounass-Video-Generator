@@ -1,4 +1,5 @@
 import type { FieldFormatOverrides } from './fieldFormat';
+import type { Locale } from '../engine/locale';
 
 export type Project = {
   id: string;
@@ -23,6 +24,11 @@ export type Project = {
    *  Added in Phase 5. Optional — pre-Phase-5 projects load with an empty
    *  map injected by the project reader. */
   fieldFormatOverrides?: FieldFormatOverrides;
+  /** Per-project locale override. When set, the editor renders this ad
+   *  in the given locale regardless of the brand kit's default. Useful
+   *  for producing the Arabic variant of a specific ad without flipping
+   *  the entire brand. `undefined` = follow the brand default. */
+  localeOverride?: Locale;
   createdAt: number;
   updatedAt: number;
 };

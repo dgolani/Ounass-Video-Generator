@@ -8,7 +8,7 @@ import { Editor } from './app/routes/Editor';
 import { BrandKitRoute } from './app/routes/BrandKit';
 import { useBrand } from './store/brand';
 import { useApplyTypographyCSSVars } from './engine/typography';
-import { SafeZoneOverridesContext } from './engine';
+import { SafeZoneOverridesContext, LocaleContext } from './engine';
 
 /** Top-level side-effect: keep :root CSS `--font-*` variables in sync with
  *  the active brand kit so every scene downstream picks up the current
@@ -32,20 +32,35 @@ function BrandSafeZoneBridge({ children }: { children: ReactNode }) {
   );
 }
 
+/** Expose the brand kit's default locale to every scene via context. The
+ *  editor may override this on a per-project basis (Phase 6e) by nesting
+ *  its own LocaleContext.Provider inside the tree. Preview cards and the
+ *  brand-kit page observe the boutique-wide default. */
+function BrandLocaleBridge({ children }: { children: ReactNode }) {
+  const [brand] = useBrand();
+  return (
+    <LocaleContext.Provider value={brand.locale}>
+      {children}
+    </LocaleContext.Provider>
+  );
+}
+
 export default function App() {
   return (
     <BrowserRouter>
       <BrandTypographyBridge />
       <BrandSafeZoneBridge>
-        <Routes>
-          <Route path="/" element={<Home />} />
-          <Route element={<Shell />}>
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/templates" element={<Gallery />} />
-            <Route path="/brand" element={<BrandKitRoute />} />
-            <Route path="/editor/:id" element={<Editor />} />
-          </Route>
-        </Routes>
+        <BrandLocaleBridge>
+          <Routes>
+            <Route path="/" element={<Home />} />
+            <Route element={<Shell />}>
+              <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/templates" element={<Gallery />} />
+              <Route path="/brand" element={<BrandKitRoute />} />
+              <Route path="/editor/:id" element={<Editor />} />
+            </Route>
+          </Routes>
+        </BrandLocaleBridge>
       </BrandSafeZoneBridge>
     </BrowserRouter>
   );

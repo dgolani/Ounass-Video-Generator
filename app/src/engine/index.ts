@@ -31,3 +31,10 @@ export {
   type FieldBaseStyle,
   type ResolvedFieldStyle,
 } from './fieldFormatContext';
+export {
+  LocaleContext,
+  isRTL,
+  useLocale,
+  useLocaleDirection,
+  type Locale,
+} from './locale';

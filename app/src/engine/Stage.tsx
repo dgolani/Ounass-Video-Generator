@@ -12,6 +12,7 @@ import {
 import { clamp } from './math';
 import { TimelineContext, type TimelineContextValue } from './timeline';
 import type { StageController } from './useStageController';
+import { useLocale, isRTL } from './locale';
 
 type StageProps = {
   width: number;
@@ -58,6 +59,13 @@ export function Stage({
   const [scale, setScale] = useState(1);
 
   const stageRef = useRef<HTMLDivElement | null>(null);
+
+  /** Locale drives (a) scene-root text direction and (b) an Arabic-
+   *  fallback at the top of the --font-display / --font-body stacks
+   *  so Arabic glyphs route to Noto Kufi (via its unicode-range) while
+   *  Latin passes through to the chosen boutique family. */
+  const locale = useLocale();
+  const rtl = isRTL(locale);
 
   // Auto-scale to fit the wrapping container
   useEffect(() => {
@@ -132,6 +140,7 @@ export function Stage({
             if (isLikelyInteractiveTarget(e.target)) return;
             onChromelessCanvasActivate(e);
           }}
+          dir={rtl ? 'rtl' : 'ltr'}
           style={{
             width,
             height,
@@ -142,6 +151,18 @@ export function Stage({
             flexShrink: 0,
             boxShadow: '0 20px 60px rgba(0,0,0,0.4)',
             overflow: 'hidden',
+            // Arabic locale: prepend Noto Kufi Arabic to the display / body
+            // stacks so Arabic glyphs resolve there (its @font-face is
+            // restricted to Arabic unicode-range in fonts.css). Latin
+            // glyphs fall through to the boutique's chosen Latin family.
+            // Cast via `as CSSProperties` — React doesn't type custom
+            // CSS properties but they're valid inline.
+            ...(rtl && {
+              ['--font-display']:
+                "'Noto Kufi Arabic', 'Portrait', 'Cormorant Garamond', Georgia, serif",
+              ['--font-body']:
+                "'Noto Kufi Arabic', 'Portrait', 'Inter', 'Nunito Sans', system-ui, sans-serif",
+            } as CSSProperties),
           }}
         >
           <TimelineContext.Provider value={ctxValue}>

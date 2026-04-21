@@ -7,6 +7,8 @@ import {
   SafeZoneOverlay,
   SafeZoneEnforcementContext,
   FieldFormatContext,
+  LocaleContext,
+  type Locale,
 } from '../../engine';
 import { FormatDrawer } from '../components/FormatDrawer';
 import type { FieldRole } from '../../templates/fields';
@@ -14,6 +16,12 @@ import {
   isFieldFormatEmpty,
   type FieldFormat,
 } from '../../store/fieldFormat';
+import { useBrand } from '../../store/brand';
+import {
+  collectStringLeaves,
+  copyMismatchWarning,
+  summariseScriptsAcross,
+} from '../../lib/scriptDetect';
 import { useProject } from '../../store/projects';
 import {
   editablesEqual,
@@ -69,6 +77,7 @@ const EMPTY_EDITABLE: EditableState = {
   musicTrimStartSec: 0,
   musicEndVideoTime: 9,
   fieldFormatOverrides: {},
+  localeOverride: undefined,
 };
 
 export function Editor() {
@@ -199,6 +208,14 @@ export function Editor() {
     [setEditable],
   );
 
+  /** Per-project locale override. `undefined` reverts to the brand default. */
+  const onLocaleOverrideChange = useCallback(
+    (next: Locale | undefined) => {
+      setEditable((prev) => ({ ...prev, localeOverride: next }));
+    },
+    [setEditable],
+  );
+
   const template = project ? getTemplate(project.templateId) : null;
   const aspectIndex = editable.aspectIndex;
   const aspect = template?.meta.aspects[aspectIndex];
@@ -216,6 +233,22 @@ export function Editor() {
     }
     return s;
   }, [fieldFormatOverrides]);
+
+  /** Composed locale for this ad: project override wins, brand default
+   *  underneath, `'en'` as last resort. Feeds both the Scene (via
+   *  LocaleContext) and the per-project segmented toggle in the top bar. */
+  const [brand] = useBrand();
+  const effectiveLocale: Locale =
+    editable.localeOverride ?? brand.locale ?? 'en';
+
+  /** Soft warning when the active locale disagrees with the majority
+   *  script of the editable copy (e.g. Arabic-locale ad with mostly
+   *  Latin text = un-translated draft). Null when everything aligns. */
+  const copyWarning = useMemo(() => {
+    const leaves = collectStringLeaves(localProps);
+    const summary = summariseScriptsAcross(leaves);
+    return copyMismatchWarning(effectiveLocale, summary);
+  }, [localProps, effectiveLocale]);
 
   const controller = useStageController({
     duration,
@@ -469,6 +502,50 @@ export function Editor() {
           {showSafeZones ? 'Safe ✓' : 'Safe'}
         </Button>
 
+        {/* Per-project locale toggle: override the brand-kit default for
+         *  this ad only. Two-state segmented; the active side shows a
+         *  dot to signal it's an explicit override vs. inherited. */}
+        <LocaleSegmented
+          locale={effectiveLocale}
+          isOverride={editable.localeOverride !== undefined}
+          brandDefault={brand.locale}
+          onChange={onLocaleOverrideChange}
+        />
+
+        {/* Copy / locale mismatch warning — yellow chip that appears
+         *  when script detection disagrees with the active locale. */}
+        {copyWarning && (
+          <div
+            role="status"
+            title={copyWarning}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              padding: '4px 10px',
+              fontFamily: 'var(--sans)',
+              fontSize: 11,
+              fontWeight: 600,
+              letterSpacing: '0.04em',
+              color: '#1a1407',
+              background: '#E6B852',
+              border: '1px solid #C49E3E',
+              borderRadius: 'var(--r-md)',
+              maxWidth: 260,
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            <span aria-hidden style={{ fontSize: 12 }}>
+              ⚠
+            </span>
+            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              Locale mismatch
+            </span>
+          </div>
+        )}
+
         <Button variant="primary" size="sm" onClick={() => setExportOpen(true)}>
           Export
         </Button>
@@ -547,15 +624,17 @@ export function Editor() {
              *  defaults — exactly like the gallery. */}
             <SafeZoneEnforcementContext.Provider value={showSafeZones}>
               <FieldFormatContext.Provider value={fieldFormatOverrides}>
-                <Scene
-                  props={localProps}
-                  timeScale={timeScale}
-                  width={aspect.width}
-                  height={aspect.height}
-                />
-                {/* Editor-only guide; sibling of the Scene so it shares the
-                 *  stage transform and stays pixel-aligned at any zoom. */}
-                {showSafeZones && <SafeZoneOverlay aspect={aspect} />}
+                <LocaleContext.Provider value={effectiveLocale}>
+                  <Scene
+                    props={localProps}
+                    timeScale={timeScale}
+                    width={aspect.width}
+                    height={aspect.height}
+                  />
+                  {/* Editor-only guide; sibling of the Scene so it shares the
+                   *  stage transform and stays pixel-aligned at any zoom. */}
+                  {showSafeZones && <SafeZoneOverlay aspect={aspect} />}
+                </LocaleContext.Provider>
               </FieldFormatContext.Provider>
             </SafeZoneEnforcementContext.Provider>
           </Stage>
@@ -657,6 +736,94 @@ export function Editor() {
         musicTrimStartSec={editable.musicTrimStartSec}
         musicEndVideoTime={editable.musicEndVideoTime}
       />
+    </div>
+  );
+}
+
+/** Per-project locale toggle in the editor top bar. Segmented
+ *  EN / العربية. Click the active side again to clear the override
+ *  (revert to the brand default). */
+function LocaleSegmented({
+  locale,
+  isOverride,
+  brandDefault,
+  onChange,
+}: {
+  locale: Locale;
+  isOverride: boolean;
+  brandDefault: Locale;
+  onChange: (next: Locale | undefined) => void;
+}) {
+  const options: Array<{ value: Locale; label: string }> = [
+    { value: 'en', label: 'EN' },
+    { value: 'ar', label: 'AR' },
+  ];
+  return (
+    <div
+      role="tablist"
+      aria-label="Locale"
+      style={{
+        display: 'inline-flex',
+        background: 'var(--editor-panel-2)',
+        border: '1px solid var(--editor-border)',
+        borderRadius: 'var(--r-md)',
+        padding: 2,
+      }}
+      title={
+        isOverride
+          ? `Locale overridden for this ad (brand default: ${brandDefault.toUpperCase()})`
+          : `Inherits brand default (${brandDefault.toUpperCase()})`
+      }
+    >
+      {options.map((opt) => {
+        const active = locale === opt.value;
+        return (
+          <button
+            key={opt.value}
+            type="button"
+            role="tab"
+            aria-selected={active}
+            onClick={() => {
+              // Clicking the active side while an override exists clears
+              // the override (reverts to brand default). Otherwise set an
+              // override to the clicked value unless it matches brand —
+              // then clear so the ad inherits naturally.
+              if (opt.value === brandDefault) onChange(undefined);
+              else onChange(opt.value);
+            }}
+            style={{
+              background: active ? 'var(--editor-accent)' : 'transparent',
+              color: active ? '#0A0A0A' : 'var(--editor-text-dim)',
+              border: 0,
+              padding: '4px 10px',
+              fontFamily: opt.value === 'ar' ? 'var(--serif)' : 'var(--sans)',
+              fontSize: 11,
+              fontWeight: active ? 700 : 500,
+              letterSpacing: opt.value === 'en' ? '0.08em' : 0,
+              borderRadius: 3,
+              cursor: 'pointer',
+              transition: 'background 120ms, color 120ms',
+              position: 'relative',
+            }}
+          >
+            {opt.label}
+            {active && isOverride && (
+              <span
+                aria-hidden
+                style={{
+                  position: 'absolute',
+                  top: 3,
+                  right: 3,
+                  width: 5,
+                  height: 5,
+                  borderRadius: '50%',
+                  background: '#0A0A0A',
+                }}
+              />
+            )}
+          </button>
+        );
+      })}
     </div>
   );
 }

@@ -5,6 +5,7 @@
 
 import type { Project } from './types';
 import type { FieldFormatOverrides } from './fieldFormat';
+import type { Locale } from '../engine/locale';
 
 export type EditableState = {
   props: unknown;
@@ -20,6 +21,8 @@ export type EditableState = {
    *  plain object (possibly empty) — never undefined — so the editor's
    *  history can diff it without null checks. */
   fieldFormatOverrides: FieldFormatOverrides;
+  /** Per-project locale override. `undefined` = follow brand default. */
+  localeOverride: Locale | undefined;
 };
 
 export function projectToEditable(p: Project): EditableState {
@@ -34,6 +37,7 @@ export function projectToEditable(p: Project): EditableState {
     musicTrimStartSec: p.musicTrimStartSec,
     musicEndVideoTime: p.musicEndVideoTime,
     fieldFormatOverrides: p.fieldFormatOverrides ?? {},
+    localeOverride: p.localeOverride,
   };
 }
 
@@ -50,7 +54,8 @@ export function editablesEqual(a: EditableState, b: EditableState): boolean {
     a.musicAnchorVideoTime === b.musicAnchorVideoTime &&
     a.musicTrimStartSec === b.musicTrimStartSec &&
     a.musicEndVideoTime === b.musicEndVideoTime &&
-    a.fieldFormatOverrides === b.fieldFormatOverrides
+    a.fieldFormatOverrides === b.fieldFormatOverrides &&
+    a.localeOverride === b.localeOverride
   );
 }
 
@@ -67,5 +72,6 @@ export function editableToPatch(e: EditableState): Partial<Project> {
     musicTrimStartSec: e.musicTrimStartSec,
     musicEndVideoTime: e.musicEndVideoTime,
     fieldFormatOverrides: e.fieldFormatOverrides,
+    localeOverride: e.localeOverride,
   };
 }

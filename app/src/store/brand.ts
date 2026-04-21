@@ -7,11 +7,10 @@ import {
   type AspectKey,
   type SafeZone,
 } from '../engine/safeZones';
+import type { Locale } from '../engine/locale';
 
-/** Two-character locale key. `en` is the English/LTR default; `ar` flips
- *  scenes to RTL and swaps display/body typography to the Arabic role.
- *  More locales can be added later (fr, es) without a schema break. */
-export type Locale = 'en' | 'ar';
+// Re-export so existing imports (`from '../store/brand'`) keep working.
+export type { Locale };
 
 export type BrandKit = {
   boutiqueName: string;
