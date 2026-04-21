@@ -42,7 +42,6 @@ import {
 } from '../../store/fieldFormat';
 import { useBrand } from '../../store/brand';
 
-const Z_BACKDROP = 9200;
 const Z_DRAWER = 9201;
 
 type Props = {
@@ -251,9 +250,12 @@ export function FormatDrawer({
     typeof window !== 'undefined' &&
     window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
   const dur = reduceMotion ? '0.01ms' : undefined;
-  const backdropOpacity = entered ? 1 : 0;
   const panelTransform = entered ? 'translate3d(0,0,0)' : 'translate3d(100%,0,0)';
 
+  // Non-modal side panel — no backdrop, no blur, no pointer blocker.
+  // The stage behind stays interactive + visible so marketers watch
+  // format changes propagate to the scene in real time. Close via the
+  // X button, Esc, or by clicking Aa on another field.
   const asideStyle: CSSProperties = {
     position: 'fixed',
     top: 0,
@@ -266,22 +268,11 @@ export function FormatDrawer({
     flexDirection: 'column',
     background: 'linear-gradient(195deg, #1a1a22 0%, #121218 42%, #0c0c10 100%)',
     borderLeft: '1px solid rgba(255,255,255,0.08)',
-    boxShadow: '-32px 0 80px rgba(0,0,0,0.55)',
+    boxShadow: '-24px 0 48px rgba(0,0,0,0.4)',
     transform: panelTransform,
     transition: dur ? `transform ${dur}` : 'transform 0.42s cubic-bezier(0.22, 1, 0.36, 1)',
     willChange: 'transform',
     overflowY: 'auto',
-  };
-
-  const backdropStyle: CSSProperties = {
-    position: 'fixed',
-    inset: 0,
-    zIndex: Z_BACKDROP,
-    background: 'rgba(4,4,10,0.52)',
-    backdropFilter: 'blur(6px)',
-    opacity: backdropOpacity,
-    transition: dur ? `opacity ${dur}` : 'opacity 0.36s cubic-bezier(0.22, 1, 0.36, 1)',
-    pointerEvents: entered ? 'auto' : 'none',
   };
 
   const families = CURATED_FAMILIES[role];
@@ -294,23 +285,12 @@ export function FormatDrawer({
   const nothingOverridden = isFieldFormatEmpty(value);
 
   return createPortal(
-    <>
-      <div
-        style={backdropStyle}
-        aria-hidden
-        onMouseDown={(e) => {
-          e.preventDefault();
-          onClose();
-        }}
-      />
-      <aside
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="format-drawer-title"
-        style={asideStyle}
-        onMouseDown={(e) => e.stopPropagation()}
-        onTransitionEnd={onAsideTransitionEnd}
-      >
+    <aside
+      role="region"
+      aria-labelledby="format-drawer-title"
+      style={asideStyle}
+      onTransitionEnd={onAsideTransitionEnd}
+    >
         {/* Header */}
         <header
           style={{
@@ -734,8 +714,7 @@ export function FormatDrawer({
             {nothingOverridden ? 'No overrides to reset' : 'Reset all formatting'}
           </button>
         </div>
-      </aside>
-    </>,
+    </aside>,
     document.body,
   );
 }
