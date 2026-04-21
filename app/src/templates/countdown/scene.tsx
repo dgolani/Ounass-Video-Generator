@@ -176,6 +176,38 @@ function Body({ props, T, s, safe: _safe }: ActProps) {
   const { subhead, body, endsText, terms, accentImage, colors } = props;
   const { w, h, wh, H } = s;
 
+  const endsTextStyle = useFieldFormat('endsText', {
+    fontFamily: 'var(--font-body)',
+    fontWeight: 700,
+    fontSize: wh(22),
+    letterSpacing: `${wh(3)}px`,
+    textTransform: 'uppercase',
+    color: colors.background,
+  });
+  const bodySubheadStyle = useFieldFormat('subhead', {
+    fontFamily: 'var(--font-display)',
+    fontWeight: 300,
+    fontSize: wh(84),
+    lineHeight: 1,
+    letterSpacing: '-0.02em',
+    color: colors.paper,
+  });
+  const bodyStyle = useFieldFormat('body', {
+    fontFamily: 'var(--font-display)',
+    fontWeight: 300,
+    fontSize: wh(32),
+    lineHeight: 1.45,
+    color: colors.paper,
+  });
+  const termsStyle = useFieldFormat('terms', {
+    fontFamily: 'var(--font-body)',
+    fontWeight: 700,
+    fontSize: wh(20),
+    letterSpacing: `${wh(3)}px`,
+    textTransform: 'uppercase',
+    color: colors.accent,
+  });
+
   if (t < T(2.0) || t > T(5.0)) return null;
 
   const fadeIn = interpolate([T(2.0), T(2.5)], [0, 1], Easing.easeOutExpo)(t);
@@ -217,12 +249,7 @@ function Body({ props, T, s, safe: _safe }: ActProps) {
           display: 'inline-block',
           padding: `${wh(12)}px ${wh(22)}px`,
           background: colors.accent,
-          color: colors.background,
-          fontFamily: 'var(--font-body)',
-          fontWeight: 700,
-          fontSize: wh(22),
-          letterSpacing: `${wh(3)}px`,
-          textTransform: 'uppercase',
+          ...endsTextStyle,
         }}
       >
         {endsText}
@@ -235,12 +262,7 @@ function Body({ props, T, s, safe: _safe }: ActProps) {
           left: w(100),
           right: w(100),
           top: h(460),
-          fontFamily: 'var(--font-display)',
-          fontWeight: 300,
-          fontSize: wh(84),
-          lineHeight: 1,
-          letterSpacing: '-0.02em',
-          color: colors.paper,
+          ...bodySubheadStyle,
         }}
       >
         {subhead}
@@ -265,11 +287,7 @@ function Body({ props, T, s, safe: _safe }: ActProps) {
           left: w(100),
           right: w(140),
           top: h(700),
-          fontFamily: 'var(--font-display)',
-          fontWeight: 300,
-          fontSize: wh(32),
-          lineHeight: 1.45,
-          color: colors.paper,
+          ...bodyStyle,
           opacity: 0.88,
         }}
       >
@@ -282,12 +300,7 @@ function Body({ props, T, s, safe: _safe }: ActProps) {
           position: 'absolute',
           left: w(100),
           bottom: H * 0.12,
-          fontFamily: 'var(--font-body)',
-          fontWeight: 700,
-          fontSize: wh(20),
-          letterSpacing: `${wh(3)}px`,
-          textTransform: 'uppercase',
-          color: colors.accent,
+          ...termsStyle,
           opacity: 0.8,
         }}
       >
@@ -308,6 +321,14 @@ function CTA({ props, T, s, safe }: ActProps) {
     fontSize: wh(24),
     fontWeight: 700,
     letterSpacing: `${wh(4)}px`,
+    textTransform: 'uppercase',
+    color: colors.paper,
+  });
+  const ctaFooterStyle = useFieldFormat('ctaFooter', {
+    fontFamily: 'var(--font-body)',
+    fontWeight: 700,
+    fontSize: wh(22),
+    letterSpacing: `${wh(3)}px`,
     textTransform: 'uppercase',
     color: colors.paper,
   });
@@ -406,18 +427,7 @@ function CTA({ props, T, s, safe }: ActProps) {
           />
         </button>
 
-        <div
-          style={{
-            marginTop: wh(26),
-            fontFamily: 'var(--font-body)',
-            fontWeight: 700,
-            fontSize: wh(22),
-            letterSpacing: `${wh(3)}px`,
-            textTransform: 'uppercase',
-            color: colors.paper,
-            opacity: 0.6,
-          }}
-        >
+        <div style={{ marginTop: wh(26), ...ctaFooterStyle, opacity: 0.6 }}>
           {ctaFooter}
         </div>
       </div>

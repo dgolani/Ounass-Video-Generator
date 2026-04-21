@@ -324,6 +324,14 @@ function CTA({ props, T, s, safe }: ActProps) {
     textTransform: 'uppercase',
     color: colors.paper,
   });
+  const ctaFooterStyle = useFieldFormat('ctaFooter', {
+    fontFamily: 'var(--font-body)',
+    fontWeight: 700,
+    fontSize: wh(22),
+    letterSpacing: `${wh(3)}px`,
+    textTransform: 'uppercase',
+    color: colors.paper,
+  });
 
   if (t < T(5.0)) return null;
 
@@ -399,18 +407,7 @@ function CTA({ props, T, s, safe }: ActProps) {
             }}
           />
         </button>
-        <div
-          style={{
-            marginTop: wh(26),
-            fontFamily: 'var(--font-body)',
-            fontWeight: 700,
-            fontSize: wh(22),
-            letterSpacing: `${wh(3)}px`,
-            textTransform: 'uppercase',
-            color: colors.paper,
-            opacity: 0.6,
-          }}
-        >
+        <div style={{ marginTop: wh(26), ...ctaFooterStyle, opacity: 0.6 }}>
           {ctaFooter}
         </div>
       </div>

@@ -173,6 +173,23 @@ function Act2Columns({ props, T, s, safe: _safe }: ActProps) {
   const { h, wh, W, H } = s;
   const colW = W / products.length;
 
+  const act2KickerStyle = useFieldFormat('act2Kicker', {
+    fontFamily: 'var(--font-body)',
+    fontSize: wh(22),
+    fontWeight: 700,
+    letterSpacing: `${wh(4)}px`,
+    textTransform: 'uppercase',
+    color: colors.accent,
+  });
+  const act2TitleStyle = useFieldFormat('act2TitleLine1', {
+    fontFamily: 'var(--font-display)',
+    fontSize: wh(64),
+    fontWeight: 300,
+    lineHeight: 1.05,
+    letterSpacing: '-0.01em',
+    color: colors.paper,
+  });
+
   return (
     <>
       {products.map((p, i) => {
@@ -295,32 +312,13 @@ function Act2Columns({ props, T, s, safe: _safe }: ActProps) {
                 border: `1px solid rgba(196,147,115,0.4)`,
               }}
             >
-              <div
-                style={{
-                  color: colors.accent,
-                  fontFamily: 'var(--font-body)',
-                  fontWeight: 700,
-                  fontSize: wh(22),
-                  letterSpacing: `${wh(4)}px`,
-                  textTransform: 'uppercase',
-                  marginBottom: wh(14),
-                }}
-              >
+              <div style={{ marginBottom: wh(14), ...act2KickerStyle }}>
                 {act2Kicker}
               </div>
-              <div
-                style={{
-                  color: colors.paper,
-                  fontFamily: 'var(--font-display)',
-                  fontWeight: 300,
-                  fontSize: wh(64),
-                  letterSpacing: '-0.01em',
-                  lineHeight: 1.05,
-                }}
-              >
+              <div style={{ ...act2TitleStyle }}>
                 {act2TitleLine1}
                 <br />
-                <em style={{ fontWeight: 300 }}>{act2TitleLine2}</em>
+                <em style={{ fontWeight: act2TitleStyle.fontWeight ?? 300 }}>{act2TitleLine2}</em>
               </div>
             </div>
           </div>
@@ -597,6 +595,14 @@ function Act4Outro({ props, T, s, safe }: ActProps) {
     color: colors.accent,
     textTransform: 'uppercase',
   });
+  const ctaFooterStyle = useFieldFormat('ctaFooter', {
+    fontFamily: 'var(--font-body)',
+    fontSize: wh(22),
+    fontWeight: 700,
+    letterSpacing: `${wh(3)}px`,
+    color: 'rgba(245,243,239,0.5)',
+    textTransform: 'uppercase',
+  });
 
   const ctaTextStyle = useFieldFormat('ctaText', {
     fontFamily: 'var(--font-body)',
@@ -775,17 +781,7 @@ function Act4Outro({ props, T, s, safe }: ActProps) {
           />
         </button>
 
-        <div
-          style={{
-            marginTop: wh(30),
-            fontFamily: 'var(--font-body)',
-            fontWeight: 700,
-            fontSize: wh(22),
-            letterSpacing: `${wh(3)}px`,
-            color: 'rgba(245,243,239,0.5)',
-            textTransform: 'uppercase',
-          }}
-        >
+        <div style={{ marginTop: wh(30), ...ctaFooterStyle }}>
           {ctaFooter}
         </div>
       </div>
@@ -807,6 +803,14 @@ export function LookbookScene({
   const { base: safe } = useSafeZone({ width, height });
 
   const { colors, watermark } = props;
+  const watermarkStyle = useFieldFormat('watermark', {
+    fontFamily: 'var(--font-display)',
+    fontStyle: 'italic',
+    fontSize: wh(34),
+    fontWeight: 300,
+    letterSpacing: '-0.01em',
+    color: 'rgba(245,243,239,0.85)',
+  });
   const [focusIdx, setFocusIdx] = useState<number | null>(null);
   const [tapMark, setTapMark] = useState<{ x: number; y: number } | null>(null);
 
@@ -895,14 +899,9 @@ export function LookbookScene({
             position: 'absolute',
             left: w(60),
             bottom: h(60),
-            fontFamily: 'var(--font-display)',
-            fontWeight: 300,
-            fontSize: wh(34),
-            fontStyle: 'italic',
-            color: 'rgba(245,243,239,0.85)',
-            letterSpacing: '-0.01em',
             pointerEvents: 'none',
             textShadow: '0 2px 12px rgba(0,0,0,0.6)',
+            ...watermarkStyle,
           }}
         >
           {watermark}

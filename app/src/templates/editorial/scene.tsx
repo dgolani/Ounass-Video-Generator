@@ -70,6 +70,30 @@ function Masthead({ props, T, s, safe: _safe }: ActProps) {
     letterSpacing: '-0.02em',
     color: colors.accent,
   });
+  const mastheadStyle = useFieldFormat('masthead', {
+    fontFamily: 'var(--font-body)',
+    fontSize: wh(22),
+    fontWeight: 700,
+    letterSpacing: `${wh(4)}px`,
+    textTransform: 'uppercase',
+    color: colors.ink,
+  });
+  const issueDateStyle = useFieldFormat('issueDate', {
+    fontFamily: 'var(--font-body)',
+    fontSize: wh(22),
+    fontWeight: 700,
+    letterSpacing: `${wh(4)}px`,
+    textTransform: 'uppercase',
+    color: colors.accent,
+  });
+  const bylineStyle = useFieldFormat('byline', {
+    fontFamily: 'var(--font-body)',
+    fontSize: wh(24),
+    fontWeight: 700,
+    letterSpacing: `${wh(6)}px`,
+    textTransform: 'uppercase',
+    color: colors.ink,
+  });
 
   // Top rule draws in
   const ruleT = interpolate([T(0.1), T(0.7)], [0, 1], Easing.easeOutExpo)(t);
@@ -105,16 +129,10 @@ function Masthead({ props, T, s, safe: _safe }: ActProps) {
           justifyContent: 'space-between',
           alignItems: 'baseline',
           opacity: mastheadOp,
-          fontFamily: 'var(--font-body)',
-          fontSize: wh(22),
-          fontWeight: 700,
-          letterSpacing: `${wh(4)}px`,
-          textTransform: 'uppercase',
-          color: colors.ink,
         }}
       >
-        <span>{masthead}</span>
-        <span style={{ color: colors.accent }}>{issueDate}</span>
+        <span style={mastheadStyle}>{masthead}</span>
+        <span style={issueDateStyle}>{issueDate}</span>
       </div>
       {/* Bottom rule under masthead */}
       <div
@@ -148,17 +166,7 @@ function Masthead({ props, T, s, safe: _safe }: ActProps) {
         <div style={{ marginBottom: wh(50), ...headlineLine2Style }}>
           {headlineLine2}
         </div>
-        <div
-          style={{
-            fontFamily: 'var(--font-body)',
-            fontSize: wh(24),
-            fontWeight: 700,
-            letterSpacing: `${wh(6)}px`,
-            textTransform: 'uppercase',
-            color: colors.ink,
-            opacity: 0.68,
-          }}
-        >
+        <div style={{ ...bylineStyle, opacity: 0.68 }}>
           — {byline} —
         </div>
       </div>
@@ -468,6 +476,29 @@ function Signature({ props, T, s, safe }: ActProps) {
     textTransform: 'uppercase',
     color: colors.paper,
   });
+  const closingKickerStyle = useFieldFormat('closingKicker', {
+    fontFamily: 'var(--font-body)',
+    fontWeight: 700,
+    fontSize: wh(22),
+    letterSpacing: `${wh(5)}px`,
+    textTransform: 'uppercase',
+    color: colors.accent,
+  });
+  const signatureTextStyle = useFieldFormat('signatureText', {
+    fontFamily: 'var(--font-display)',
+    fontStyle: 'italic',
+    fontWeight: 300,
+    fontSize: wh(38),
+    color: colors.accent,
+  });
+  const ctaFooterStyle = useFieldFormat('ctaFooter', {
+    fontFamily: 'var(--font-body)',
+    fontWeight: 700,
+    fontSize: wh(22),
+    letterSpacing: `${wh(2.5)}px`,
+    textTransform: 'uppercase',
+    color: colors.ink,
+  });
 
   if (t < T(7.4)) return null;
 
@@ -508,13 +539,8 @@ function Signature({ props, T, s, safe }: ActProps) {
           right: 0,
           top: h(360),
           textAlign: 'center',
+          ...closingKickerStyle,
           opacity: fadeIn,
-          fontFamily: 'var(--font-body)',
-          fontWeight: 700,
-          fontSize: wh(22),
-          letterSpacing: `${wh(5)}px`,
-          textTransform: 'uppercase',
-          color: colors.accent,
         }}
       >
         {closingKicker}
@@ -549,12 +575,8 @@ function Signature({ props, T, s, safe }: ActProps) {
           right: 0,
           top: h(820),
           textAlign: 'center',
+          ...signatureTextStyle,
           opacity: fadeIn,
-          fontFamily: 'var(--font-display)',
-          fontStyle: 'italic',
-          fontWeight: 300,
-          fontSize: wh(38),
-          color: colors.accent,
         }}
       >
         — {signatureText} —
@@ -599,18 +621,7 @@ function Signature({ props, T, s, safe }: ActProps) {
             }}
           />
         </button>
-        <div
-          style={{
-            marginTop: wh(24),
-            fontFamily: 'var(--font-body)',
-            fontWeight: 700,
-            fontSize: wh(22),
-            letterSpacing: `${wh(2.5)}px`,
-            textTransform: 'uppercase',
-            color: colors.ink,
-            opacity: 0.55,
-          }}
-        >
+        <div style={{ marginTop: wh(24), ...ctaFooterStyle, opacity: 0.55 }}>
           {ctaFooter}
         </div>
       </div>
