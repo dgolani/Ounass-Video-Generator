@@ -63,8 +63,8 @@
    * value is read. Cormorant Garamond + Inter are the luxury-fashion
    * defaults; Noto Serif catches digits; Noto Kufi catches Arabic glyphs.
    */
-  --font-display:  'Cormorant Garamond', 'Fraunces', Georgia, serif;
-  --font-body:     'Inter', 'Nunito Sans', -apple-system, system-ui, sans-serif;
-  --font-numeric:  'Noto Serif', 'Fraunces', Georgia, serif;
+  --font-display:  'Portrait', 'Cormorant Garamond', 'Fraunces', Georgia, serif;
+  --font-body:     'Portrait', 'Inter', 'Nunito Sans', -apple-system, system-ui, sans-serif;
+  --font-numeric:  'Noto Serif Display', 'Noto Serif', 'Fraunces', Georgia, serif;
   --font-arabic:   'Noto Kufi Arabic', 'Noto Naskh Arabic', 'Tahoma', sans-serif;
 }

@@ -1,0 +1,28 @@
+Portrait — webfont license paper trail
+======================================
+
+Portrait is a proprietary typeface from Commercial Type
+(https://commercialtype.com). Ounass holds a webfont license
+permitting self-hosted deployment at the boutique's owned domains.
+
+User (2026-04-21): "we have the license - lets use it now - i'll ask for
+the file later"
+
+ACTION REQUIRED: replace this file with the actual webfont EULA or
+purchase receipt PDF, named LICENSE.txt (or LICENSE.pdf), when the
+document is available. This placeholder exists only to confirm the
+license claim was made before wiring the font into production.
+
+Self-hosted weights in this folder (all .woff2, licensed under the
+Commercial Type webfont EULA):
+
+  - Portrait-Light.woff2         (300)
+  - Portrait-LightItalic.woff2   (300 italic)
+  - Portrait-Regular2.woff2      (400, "Portrait 2" per Commercial Type naming)
+  - Portrait-Regular2Italic.woff2 (400 italic)
+  - Portrait-Medium.woff2        (500)
+  - Portrait-MediumItalic.woff2  (500 italic)
+  - Portrait-Bold.woff2          (700)
+  - Portrait-BoldItalic.woff2    (700 italic)
+
+Converted from .otf on 2026-04-21 via fontTools 4.55.3.

@@ -15,11 +15,17 @@ import { useEffect } from 'react';
 // Font families is available; uploaded custom fonts (registered via the
 // FontFace API in Phase 5) extend the selectable list without code changes.
 //
-// Hardcoded defaults reflect Ounass's luxury-fashion direction:
-//   - display  → Cormorant Garamond (editorial, couture italic)
-//   - body     → Inter (clean digital-luxury sans)
-//   - numeric  → Noto Serif (elegant, tabular-feel digits)
-//   - arabic   → Noto Kufi Arabic (contemporary Arabic for luxury brands)
+// Hardcoded defaults reflect Ounass's licensed brand typography:
+//   - display  → Portrait (Commercial Type; "Portrait 2" = Regular2 cut)
+//   - body     → Portrait (same family, kicker/body weights)
+//   - numeric  → Noto Serif Display (SIL OFL; for prices and digits)
+//   - arabic   → Noto Kufi Arabic (SIL OFL; for Arabic script)
+//
+// All four default families are self-hosted under app/src/assets/fonts/
+// with @font-face declarations in app/src/styles/fonts.css, so templates
+// render deterministically offline and independent of Google Fonts.
+// Alternate families in CURATED_FAMILIES come from Google Fonts (loaded
+// in index.html) for marketer choice in Brand Kit → Typography.
 
 export type TypographyRole = 'display' | 'body' | 'numeric' | 'arabic';
 
@@ -33,37 +39,42 @@ export type FontChoice = {
 
 export type Typography = Record<TypographyRole, FontChoice>;
 
-/** The eight curated Google Fonts (+ the Ounass previous defaults kept as
- *  fallbacks). Every option is free + webfont-licensed. Custom uploads
- *  (Portrait 2, etc.) extend this list at runtime via registerCustomFont(). */
+/** Per-role family options shown in Brand Kit → Typography dropdowns.
+ *  First entry is the licensed/self-hosted default; remaining entries are
+ *  Google Fonts alternates for marketer choice. Custom uploads (if ever
+ *  needed later) could be appended at runtime — for now this list is the
+ *  full selectable universe. */
 export const CURATED_FAMILIES: Record<TypographyRole, string[]> = {
-  display: ['Cormorant Garamond', 'Playfair Display', 'Fraunces'],
-  body: ['Inter', 'DM Sans', 'Nunito Sans'],
-  numeric: ['Noto Serif', 'Fraunces'],
+  display: ['Portrait', 'Cormorant Garamond', 'Playfair Display', 'Fraunces'],
+  body: ['Portrait', 'Inter', 'DM Sans', 'Nunito Sans'],
+  numeric: ['Noto Serif Display', 'Fraunces'],
   arabic: ['Noto Kufi Arabic', 'Noto Naskh Arabic', 'Cairo'],
 };
 
 /** Default typography shipped with the app. Brand Kit seeds from this on
  *  first load; editing in Brand Kit overrides these values per-boutique. */
 export const DEFAULT_TYPOGRAPHY: Typography = {
-  display: { family: 'Cormorant Garamond', weight: 400 },
-  body: { family: 'Inter', weight: 500 },
-  numeric: { family: 'Noto Serif', weight: 500 },
+  display: { family: 'Portrait', weight: 400 },   // Portrait 2 = Regular2 cut
+  body: { family: 'Portrait', weight: 500 },      // Medium for kicker weight
+  numeric: { family: 'Noto Serif Display', weight: 500 },
   arabic: { family: 'Noto Kufi Arabic', weight: 500 },
 };
 
 /** Build a CSS `font-family` stack string for a role. Appends web-safe
  *  fallbacks so even if the primary family fails to load the scene still
- *  renders in something sensible. */
+ *  renders in something sensible. Portrait is the preferred primary for
+ *  display + body; the fallback chain includes Cormorant Garamond / Inter
+ *  because they're the closest available substitutes if Portrait fails
+ *  to load (e.g. before the woff2 arrives, or if the license lapses). */
 export function fontStackFor(role: TypographyRole, family: string): string {
   const q = (f: string) => (/[^A-Za-z0-9-]/.test(f) ? `'${f}'` : f);
   switch (role) {
     case 'display':
-      return `${q(family)}, 'Cormorant Garamond', 'Fraunces', Georgia, serif`;
+      return `${q(family)}, 'Portrait', 'Cormorant Garamond', 'Fraunces', Georgia, serif`;
     case 'body':
-      return `${q(family)}, 'Inter', 'Nunito Sans', -apple-system, system-ui, sans-serif`;
+      return `${q(family)}, 'Portrait', 'Inter', 'Nunito Sans', -apple-system, system-ui, sans-serif`;
     case 'numeric':
-      return `${q(family)}, 'Noto Serif', 'Fraunces', Georgia, serif`;
+      return `${q(family)}, 'Noto Serif Display', 'Noto Serif', 'Fraunces', Georgia, serif`;
     case 'arabic':
       return `${q(family)}, 'Noto Kufi Arabic', 'Noto Naskh Arabic', 'Tahoma', sans-serif`;
   }
