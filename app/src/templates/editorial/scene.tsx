@@ -78,7 +78,7 @@ function Masthead({ props, T, s }: ActProps) {
           justifyContent: 'space-between',
           alignItems: 'baseline',
           opacity: mastheadOp,
-          fontFamily: 'Nunito Sans, sans-serif',
+          fontFamily: 'var(--font-body)',
           fontSize: wh(22),
           fontWeight: 700,
           letterSpacing: `${wh(4)}px`,
@@ -117,7 +117,7 @@ function Masthead({ props, T, s }: ActProps) {
       >
         <div
           style={{
-            fontFamily: 'Fraunces, serif',
+            fontFamily: 'var(--font-display)',
             fontWeight: 300,
             fontSize: wh(132),
             lineHeight: 0.95,
@@ -130,7 +130,7 @@ function Masthead({ props, T, s }: ActProps) {
         </div>
         <div
           style={{
-            fontFamily: 'Fraunces, serif',
+            fontFamily: 'var(--font-display)',
             fontStyle: 'italic',
             fontWeight: 300,
             fontSize: wh(132),
@@ -144,7 +144,7 @@ function Masthead({ props, T, s }: ActProps) {
         </div>
         <div
           style={{
-            fontFamily: 'Nunito Sans, sans-serif',
+            fontFamily: 'var(--font-body)',
             fontSize: wh(24),
             fontWeight: 700,
             letterSpacing: `${wh(6)}px`,
@@ -191,7 +191,7 @@ function Grid({ props, T, s }: ActProps) {
           display: 'flex',
           justifyContent: 'space-between',
           opacity: op * 0.8,
-          fontFamily: 'Nunito Sans, sans-serif',
+          fontFamily: 'var(--font-body)',
           fontSize: wh(22),
           fontWeight: 700,
           letterSpacing: `${wh(3)}px`,
@@ -268,7 +268,7 @@ function Grid({ props, T, s }: ActProps) {
             >
               <span
                 style={{
-                  fontFamily: 'Nunito Sans, sans-serif',
+                  fontFamily: 'var(--font-body)',
                   fontWeight: 700,
                   fontSize: wh(16),
                   letterSpacing: `${wh(2)}px`,
@@ -280,7 +280,7 @@ function Grid({ props, T, s }: ActProps) {
               </span>
               <span
                 style={{
-                  fontFamily: 'Fraunces, serif',
+                  fontFamily: 'var(--font-display)',
                   fontStyle: 'italic',
                   fontWeight: 300,
                   fontSize: wh(22),
@@ -313,7 +313,7 @@ function Grid({ props, T, s }: ActProps) {
           style={{
             display: 'flex',
             justifyContent: 'space-between',
-            fontFamily: 'Nunito Sans, sans-serif',
+            fontFamily: 'var(--font-body)',
             fontSize: wh(20),
             fontWeight: 700,
             letterSpacing: `${wh(2.5)}px`,
@@ -410,7 +410,7 @@ function Feature({ props, T, s }: ActProps) {
       >
         <div
           style={{
-            fontFamily: 'Nunito Sans, sans-serif',
+            fontFamily: 'var(--font-body)',
             fontWeight: 700,
             fontSize: wh(22),
             letterSpacing: `${wh(3)}px`,
@@ -423,7 +423,7 @@ function Feature({ props, T, s }: ActProps) {
         </div>
         <div
           style={{
-            fontFamily: 'Fraunces, serif',
+            fontFamily: 'var(--font-display)',
             fontStyle: 'italic',
             fontWeight: 300,
             fontSize: wh(34),
@@ -493,7 +493,7 @@ function Signature({ props, T, s }: ActProps) {
           top: h(360),
           textAlign: 'center',
           opacity: fadeIn,
-          fontFamily: 'Nunito Sans, sans-serif',
+          fontFamily: 'var(--font-body)',
           fontWeight: 700,
           fontSize: wh(22),
           letterSpacing: `${wh(5)}px`,
@@ -534,7 +534,7 @@ function Signature({ props, T, s }: ActProps) {
           top: h(820),
           textAlign: 'center',
           opacity: fadeIn,
-          fontFamily: 'Fraunces, serif',
+          fontFamily: 'var(--font-display)',
           fontStyle: 'italic',
           fontWeight: 300,
           fontSize: wh(38),
@@ -565,7 +565,7 @@ function Signature({ props, T, s }: ActProps) {
             color: colors.paper,
             border: 0,
             padding: `${wh(32)}px ${wh(76)}px`,
-            fontFamily: 'Nunito Sans, sans-serif',
+            fontFamily: 'var(--font-body)',
             fontWeight: 700,
             fontSize: wh(26),
             letterSpacing: `${wh(5)}px`,
@@ -590,7 +590,7 @@ function Signature({ props, T, s }: ActProps) {
         <div
           style={{
             marginTop: wh(24),
-            fontFamily: 'Nunito Sans, sans-serif',
+            fontFamily: 'var(--font-body)',
             fontWeight: 700,
             fontSize: wh(22),
             letterSpacing: `${wh(2.5)}px`,

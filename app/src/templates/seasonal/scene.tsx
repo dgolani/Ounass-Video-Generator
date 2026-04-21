@@ -197,7 +197,7 @@ export function SeasonalScene({
             alignItems: 'center',
             gap: w(48),
             whiteSpace: 'nowrap',
-            fontFamily: 'Nunito Sans, sans-serif',
+            fontFamily: 'var(--font-body)',
             fontSize: wh(18),
             fontWeight: 700,
             letterSpacing: '0.4em',
@@ -240,7 +240,7 @@ export function SeasonalScene({
       >
         <div
           style={{
-            fontFamily: 'Fraunces, serif',
+            fontFamily: 'var(--font-display)',
             fontStyle: 'italic',
             fontWeight: 300,
             fontSize: wh(520),
@@ -334,7 +334,7 @@ export function SeasonalScene({
           top: '50%',
           transform: 'translateY(-50%) rotate(90deg)',
           transformOrigin: 'right center',
-          fontFamily: 'Nunito Sans, sans-serif',
+          fontFamily: 'var(--font-body)',
           fontSize: wh(20),
           fontWeight: 700,
           letterSpacing: '0.6em',
@@ -389,7 +389,7 @@ export function SeasonalScene({
             style={{
               position: 'relative',
               zIndex: 2,
-              fontFamily: 'Fraunces, serif',
+              fontFamily: 'var(--font-display)',
               fontStyle: 'italic',
               fontSize: wh(110),
               color: colors.cream,
@@ -401,7 +401,7 @@ export function SeasonalScene({
         </div>
         <div
           style={{
-            fontFamily: 'Nunito Sans, sans-serif',
+            fontFamily: 'var(--font-body)',
             fontSize: wh(26),
             fontWeight: 700,
             letterSpacing: '0.5em',
@@ -414,7 +414,7 @@ export function SeasonalScene({
         </div>
         <div
           style={{
-            fontFamily: 'Fraunces, serif',
+            fontFamily: 'var(--font-display)',
             fontStyle: 'italic',
             fontWeight: 300,
             fontSize: wh(128),
@@ -428,7 +428,7 @@ export function SeasonalScene({
         </div>
         <div
           style={{
-            fontFamily: 'Nunito Sans, sans-serif',
+            fontFamily: 'var(--font-body)',
             fontSize: wh(26),
             fontWeight: 400,
             letterSpacing: '0.2em',
@@ -448,7 +448,7 @@ export function SeasonalScene({
             padding: `${h(22)}px ${w(64)}px`,
             background: colors.accent,
             color: '#fff',
-            fontFamily: 'Nunito Sans, sans-serif',
+            fontFamily: 'var(--font-body)',
             fontSize: wh(26),
             fontWeight: 800,
             letterSpacing: '0.35em',

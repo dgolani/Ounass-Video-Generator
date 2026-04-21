@@ -150,7 +150,7 @@ export function BestsellersScene({
         />
         <div
           style={{
-            fontFamily: 'Nunito Sans, sans-serif',
+            fontFamily: 'var(--font-body)',
             fontSize: wh(22),
             fontWeight: 700,
             letterSpacing: '0.3em',
@@ -170,7 +170,7 @@ export function BestsellersScene({
           left: 0,
           right: 0,
           textAlign: 'center',
-          fontFamily: 'Nunito Sans, sans-serif',
+          fontFamily: 'var(--font-body)',
           fontSize: wh(28),
           fontWeight: 700,
           letterSpacing: '0.5em',
@@ -190,7 +190,7 @@ export function BestsellersScene({
           top: h(170),
           left: '50%',
           transform: 'translateX(-50%)',
-          fontFamily: 'Fraunces, serif',
+          fontFamily: 'var(--font-display)',
           fontStyle: 'italic',
           fontWeight: 300,
           fontSize: wh(1100),
@@ -283,7 +283,7 @@ export function BestsellersScene({
                 <div>
                   <div
                     style={{
-                      fontFamily: 'Fraunces, serif',
+                      fontFamily: 'var(--font-display)',
                       fontStyle: 'italic',
                       fontWeight: 400,
                       fontSize: wh(30),
@@ -296,7 +296,7 @@ export function BestsellersScene({
                   </div>
                   <div
                     style={{
-                      fontFamily: 'Nunito Sans, sans-serif',
+                      fontFamily: 'var(--font-body)',
                       fontSize: wh(22),
                       fontWeight: 600,
                       color: 'rgba(0,0,0,0.60)',
@@ -309,7 +309,7 @@ export function BestsellersScene({
                 </div>
                 <div
                   style={{
-                    fontFamily: 'Nunito Sans, sans-serif',
+                    fontFamily: 'var(--font-numeric)',
                     fontSize: wh(26),
                     fontWeight: 700,
                     letterSpacing: '0.08em',
@@ -330,7 +330,7 @@ export function BestsellersScene({
           position: 'absolute',
           top: h(48),
           right: w(48),
-          fontFamily: 'Fraunces, serif',
+          fontFamily: 'var(--font-display)',
           fontStyle: 'italic',
           fontSize: wh(36),
           color: 'rgba(0,0,0,0.60)',
@@ -393,7 +393,7 @@ export function BestsellersScene({
       >
         <div
           style={{
-            fontFamily: 'Nunito Sans, sans-serif',
+            fontFamily: 'var(--font-body)',
             fontSize: wh(26),
             fontWeight: 700,
             letterSpacing: '0.4em',
@@ -405,7 +405,7 @@ export function BestsellersScene({
         </div>
         <div
           style={{
-            fontFamily: 'Fraunces, serif',
+            fontFamily: 'var(--font-display)',
             fontStyle: 'italic',
             fontWeight: 300,
             fontSize: wh(76),
@@ -427,7 +427,7 @@ export function BestsellersScene({
             padding: `${h(22)}px ${w(56)}px`,
             background: '#2D2D2D',
             color: '#fff',
-            fontFamily: 'Nunito Sans, sans-serif',
+            fontFamily: 'var(--font-body)',
             fontSize: wh(26),
             fontWeight: 800,
             letterSpacing: '0.35em',

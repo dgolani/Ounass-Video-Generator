@@ -182,7 +182,7 @@ export function GiftGuideScene({
         </div>
         <div
           style={{
-            fontFamily: 'Nunito Sans, sans-serif',
+            fontFamily: 'var(--font-body)',
             fontSize: wh(24),
             fontWeight: 700,
             letterSpacing: '0.5em',
@@ -194,7 +194,7 @@ export function GiftGuideScene({
         </div>
         <div
           style={{
-            fontFamily: 'Fraunces, serif',
+            fontFamily: 'var(--font-display)',
             fontStyle: 'italic',
             fontWeight: 300,
             fontSize: wh(150),
@@ -317,7 +317,7 @@ export function GiftGuideScene({
                         bottom: h(14),
                         right: w(14),
                         color: colors.ink,
-                        fontFamily: 'Fraunces, serif',
+                        fontFamily: 'var(--font-display)',
                         fontStyle: 'italic',
                         fontSize: wh(24),
                         letterSpacing: '0.1em',
@@ -328,7 +328,7 @@ export function GiftGuideScene({
                       <small
                         style={{
                           display: 'block',
-                          fontFamily: 'Nunito Sans, sans-serif',
+                          fontFamily: 'var(--font-body)',
                           fontStyle: 'normal',
                           fontSize: wh(20),
                           fontWeight: 700,
@@ -381,7 +381,7 @@ export function GiftGuideScene({
                 alignItems: 'center',
                 justifyContent: 'center',
                 color: colors.cream,
-                fontFamily: 'Fraunces, serif',
+                fontFamily: 'var(--font-display)',
                 fontStyle: 'italic',
                 fontSize: wh(86),
                 letterSpacing: '-0.02em',
@@ -495,7 +495,7 @@ export function GiftGuideScene({
           padding: `${h(18)}px ${w(48)}px`,
           background: colors.ink,
           color: colors.accent,
-          fontFamily: 'Nunito Sans, sans-serif',
+          fontFamily: 'var(--font-body)',
           fontSize: wh(24),
           fontWeight: 800,
           letterSpacing: '0.5em',
@@ -522,7 +522,7 @@ export function GiftGuideScene({
       >
         <div
           style={{
-            fontFamily: 'Nunito Sans, sans-serif',
+            fontFamily: 'var(--font-body)',
             fontSize: wh(24),
             fontWeight: 700,
             letterSpacing: '0.5em',
@@ -535,7 +535,7 @@ export function GiftGuideScene({
         </div>
         <div
           style={{
-            fontFamily: 'Fraunces, serif',
+            fontFamily: 'var(--font-display)',
             fontStyle: 'italic',
             fontSize: wh(76),
             lineHeight: 1,
@@ -556,7 +556,7 @@ export function GiftGuideScene({
             padding: `${h(22)}px ${w(60)}px`,
             background: colors.ink,
             color: colors.accent,
-            fontFamily: 'Nunito Sans, sans-serif',
+            fontFamily: 'var(--font-body)',
             fontSize: wh(26),
             fontWeight: 800,
             letterSpacing: '0.35em',

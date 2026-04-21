@@ -49,8 +49,22 @@
   --s-7: 32px;
   --s-8: 48px;
 
-  /* Type */
+  /* Type — editor UI (unchanged) */
   --serif: 'Fraunces', 'Portrait', Georgia, serif;
   --sans: 'Nunito Sans', -apple-system, system-ui, sans-serif;
   --mono: 'JetBrains Mono', 'SF Mono', 'Menlo', monospace;
+
+  /* Type — template scenes (brand-kit-driven).
+   * Every template's scene.tsx references these via `fontFamily: 'var(--font-display)'`
+   * etc., never a literal font name. Brand kit overwrites these on :root at
+   * runtime via applyTypographyCSSVars(); see app/src/engine/typography.ts.
+   *
+   * Defaults below are the app-level fallbacks used before any brand kit
+   * value is read. Cormorant Garamond + Inter are the luxury-fashion
+   * defaults; Noto Serif catches digits; Noto Kufi catches Arabic glyphs.
+   */
+  --font-display:  'Cormorant Garamond', 'Fraunces', Georgia, serif;
+  --font-body:     'Inter', 'Nunito Sans', -apple-system, system-ui, sans-serif;
+  --font-numeric:  'Noto Serif', 'Fraunces', Georgia, serif;
+  --font-arabic:   'Noto Kufi Arabic', 'Noto Naskh Arabic', 'Tahoma', sans-serif;
 }

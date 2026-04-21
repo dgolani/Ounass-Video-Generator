@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import ounassLogoRaw from '../assets/ounass-logo.svg?raw';
 import { sanitizeSvg, svgToDataURL } from '../lib/logo';
+import { DEFAULT_TYPOGRAPHY, type Typography } from '../engine/typography';
 
 export type BrandKit = {
   boutiqueName: string;
@@ -14,6 +15,11 @@ export type BrandKit = {
     accent: string;
     accentDark: string;
   };
+  /** Per-role typography selection (display / body / numeric / arabic).
+   *  Templates read these via CSS variables (`var(--font-display)`, etc.)
+   *  that are set on :root whenever the brand kit changes. Defaults flow
+   *  through DEFAULT_TYPOGRAPHY when no brand override is saved. */
+  typography: Typography;
   updatedAt: number;
 };
 
@@ -30,6 +36,7 @@ export const DEFAULT_BRAND: BrandKit = {
     accent: '#C49373',
     accentDark: '#9C6B48',
   },
+  typography: DEFAULT_TYPOGRAPHY,
   updatedAt: 0,
 };
 
@@ -41,7 +48,17 @@ export function readBrand(): BrandKit {
     const raw = localStorage.getItem(KEY);
     if (!raw) return DEFAULT_BRAND;
     const parsed = JSON.parse(raw);
-    return { ...DEFAULT_BRAND, ...parsed, colors: { ...DEFAULT_BRAND.colors, ...(parsed.colors ?? {}) } };
+    return {
+      ...DEFAULT_BRAND,
+      ...parsed,
+      colors: { ...DEFAULT_BRAND.colors, ...(parsed.colors ?? {}) },
+      // Deep-merge typography so a partial override (e.g. just the display
+      // role) still receives defaults for the other three.
+      typography: {
+        ...DEFAULT_BRAND.typography,
+        ...(parsed.typography ?? {}),
+      },
+    };
   } catch {
     return DEFAULT_BRAND;
   }

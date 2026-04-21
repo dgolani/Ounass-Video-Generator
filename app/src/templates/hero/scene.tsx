@@ -135,7 +135,7 @@ function Reveal({ props, T, s }: ActProps) {
           top: h(200),
           textAlign: 'center',
           opacity: kickerOp,
-          fontFamily: 'Nunito Sans, sans-serif',
+          fontFamily: 'var(--font-body)',
           fontWeight: 700,
           fontSize: wh(22),
           letterSpacing: `${wh(8)}px`,
@@ -181,7 +181,7 @@ function Copy({ props, T, s }: ActProps) {
       >
         <div
           style={{
-            fontFamily: 'Fraunces, serif',
+            fontFamily: 'var(--font-display)',
             fontWeight: 300,
             fontSize: wh(140),
             lineHeight: 0.95,
@@ -195,7 +195,7 @@ function Copy({ props, T, s }: ActProps) {
         </div>
         <div
           style={{
-            fontFamily: 'Fraunces, serif',
+            fontFamily: 'var(--font-display)',
             fontStyle: 'italic',
             fontWeight: 300,
             fontSize: wh(140),
@@ -220,7 +220,7 @@ function Copy({ props, T, s }: ActProps) {
           top: H * 0.58,
           textAlign: 'center',
           opacity: subIn,
-          fontFamily: 'Fraunces, serif',
+          fontFamily: 'var(--font-display)',
           fontStyle: 'italic',
           fontWeight: 300,
           fontSize: wh(34),
@@ -246,7 +246,7 @@ function Copy({ props, T, s }: ActProps) {
       >
         <div
           style={{
-            fontFamily: 'Nunito Sans, sans-serif',
+            fontFamily: 'var(--font-body)',
             fontWeight: 700,
             fontSize: wh(20),
             letterSpacing: `${wh(3)}px`,
@@ -259,7 +259,7 @@ function Copy({ props, T, s }: ActProps) {
         </div>
         <div
           style={{
-            fontFamily: 'Fraunces, serif',
+            fontFamily: 'var(--font-display)',
             fontWeight: 300,
             fontSize: wh(36),
             lineHeight: 1.1,
@@ -271,7 +271,7 @@ function Copy({ props, T, s }: ActProps) {
         </div>
         <div
           style={{
-            fontFamily: 'Nunito Sans, sans-serif',
+            fontFamily: 'var(--font-numeric)',
             fontWeight: 700,
             fontSize: wh(26),
             color: colors.paper,
@@ -345,7 +345,7 @@ function CTA({ props, T, s }: ActProps) {
             color: colors.background,
             border: 0,
             padding: `${wh(32)}px ${wh(80)}px`,
-            fontFamily: 'Nunito Sans, sans-serif',
+            fontFamily: 'var(--font-body)',
             fontWeight: 700,
             fontSize: wh(26),
             letterSpacing: `${wh(5)}px`,
@@ -370,7 +370,7 @@ function CTA({ props, T, s }: ActProps) {
         <div
           style={{
             marginTop: wh(26),
-            fontFamily: 'Nunito Sans, sans-serif',
+            fontFamily: 'var(--font-body)',
             fontWeight: 700,
             fontSize: wh(22),
             letterSpacing: `${wh(3)}px`,

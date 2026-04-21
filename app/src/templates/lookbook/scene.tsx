@@ -97,7 +97,7 @@ function Act1Title({ props, T, s }: ActProps) {
           top: h(780),
           textAlign: 'center',
           color: colors.accent,
-          fontFamily: 'Nunito Sans, sans-serif',
+          fontFamily: 'var(--font-body)',
           fontWeight: 700,
           fontSize: wh(22),
           letterSpacing: `${wh(6)}px`,
@@ -116,7 +116,7 @@ function Act1Title({ props, T, s }: ActProps) {
           top: h(870),
           textAlign: 'center',
           color: colors.paper,
-          fontFamily: 'Fraunces, serif',
+          fontFamily: 'var(--font-display)',
           fontWeight: 300,
           fontSize: wh(96),
           letterSpacing: '-0.02em',
@@ -135,7 +135,7 @@ function Act1Title({ props, T, s }: ActProps) {
           top: h(990),
           textAlign: 'center',
           color: 'rgba(245,243,239,0.6)',
-          fontFamily: 'Fraunces, serif',
+          fontFamily: 'var(--font-display)',
           fontStyle: 'italic',
           fontWeight: 300,
           fontSize: wh(32),
@@ -281,7 +281,7 @@ function Act2Columns({ props, T, s }: ActProps) {
               <div
                 style={{
                   color: colors.accent,
-                  fontFamily: 'Nunito Sans, sans-serif',
+                  fontFamily: 'var(--font-body)',
                   fontWeight: 700,
                   fontSize: wh(22),
                   letterSpacing: `${wh(4)}px`,
@@ -294,7 +294,7 @@ function Act2Columns({ props, T, s }: ActProps) {
               <div
                 style={{
                   color: colors.paper,
-                  fontFamily: 'Fraunces, serif',
+                  fontFamily: 'var(--font-display)',
                   fontWeight: 300,
                   fontSize: wh(64),
                   letterSpacing: '-0.01em',
@@ -414,7 +414,7 @@ function Act3Filmstrip({ props, T, s, focusOverride, onFocusClick }: Act3Props) 
         >
           <div
             style={{
-              fontFamily: 'Nunito Sans, sans-serif',
+              fontFamily: 'var(--font-body)',
               fontWeight: 700,
               fontSize: wh(20),
               letterSpacing: `${wh(3)}px`,
@@ -427,7 +427,7 @@ function Act3Filmstrip({ props, T, s, focusOverride, onFocusClick }: Act3Props) 
           </div>
           <div
             style={{
-              fontFamily: 'Fraunces, serif',
+              fontFamily: 'var(--font-display)',
               fontWeight: 300,
               fontSize: wh(34),
               lineHeight: 1.1,
@@ -440,7 +440,7 @@ function Act3Filmstrip({ props, T, s, focusOverride, onFocusClick }: Act3Props) 
           </div>
           <div
             style={{
-              fontFamily: 'Nunito Sans, sans-serif',
+              fontFamily: 'var(--font-numeric)',
               fontWeight: 700,
               fontSize: wh(28),
               color: '#1A1A1A',
@@ -528,7 +528,7 @@ function Act3Filmstrip({ props, T, s, focusOverride, onFocusClick }: Act3Props) 
       >
         <div
           style={{
-            fontFamily: 'Fraunces, serif',
+            fontFamily: 'var(--font-display)',
             fontWeight: 300,
             fontStyle: 'italic',
             fontSize: wh(34),
@@ -540,7 +540,7 @@ function Act3Filmstrip({ props, T, s, focusOverride, onFocusClick }: Act3Props) 
         </div>
         <div
           style={{
-            fontFamily: 'Nunito Sans, sans-serif',
+            fontFamily: 'var(--font-body)',
             fontWeight: 700,
             fontSize: wh(22),
             letterSpacing: `${wh(3)}px`,
@@ -660,7 +660,7 @@ function Act4Outro({ props, T, s }: ActProps) {
       >
         <div
           style={{
-            fontFamily: 'Nunito Sans, sans-serif',
+            fontFamily: 'var(--font-body)',
             fontWeight: 700,
             fontSize: wh(22),
             letterSpacing: `${wh(8)}px`,
@@ -685,7 +685,7 @@ function Act4Outro({ props, T, s }: ActProps) {
         <div
           style={{
             marginTop: wh(28),
-            fontFamily: 'Fraunces, serif',
+            fontFamily: 'var(--font-display)',
             fontStyle: 'italic',
             fontWeight: 300,
             fontSize: wh(36),
@@ -719,7 +719,7 @@ function Act4Outro({ props, T, s }: ActProps) {
             color: colors.background,
             border: 0,
             padding: `${wh(32)}px ${wh(80)}px`,
-            fontFamily: 'Nunito Sans, sans-serif',
+            fontFamily: 'var(--font-body)',
             fontWeight: 700,
             fontSize: wh(26),
             letterSpacing: `${wh(5)}px`,
@@ -745,7 +745,7 @@ function Act4Outro({ props, T, s }: ActProps) {
         <div
           style={{
             marginTop: wh(30),
-            fontFamily: 'Nunito Sans, sans-serif',
+            fontFamily: 'var(--font-body)',
             fontWeight: 700,
             fontSize: wh(22),
             letterSpacing: `${wh(3)}px`,
@@ -860,7 +860,7 @@ export function LookbookScene({
             position: 'absolute',
             left: w(60),
             bottom: h(60),
-            fontFamily: 'Fraunces, serif',
+            fontFamily: 'var(--font-display)',
             fontWeight: 300,
             fontSize: wh(34),
             fontStyle: 'italic',

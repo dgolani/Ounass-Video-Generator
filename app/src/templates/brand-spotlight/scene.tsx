@@ -155,7 +155,7 @@ export function BrandSpotlightScene({
           right: 0,
           textAlign: 'center',
           zIndex: 10,
-          fontFamily: 'Nunito Sans, sans-serif',
+          fontFamily: 'var(--font-body)',
           fontSize: wh(24),
           fontWeight: 700,
           letterSpacing: '0.5em',
@@ -197,7 +197,7 @@ export function BrandSpotlightScene({
       >
         <div
           style={{
-            fontFamily: 'Fraunces, serif',
+            fontFamily: 'var(--font-display)',
             fontStyle: 'italic',
             fontWeight: 300,
             fontSize: wh(290),
@@ -255,7 +255,7 @@ export function BrandSpotlightScene({
           right: 0,
           textAlign: 'center',
           zIndex: 6,
-          fontFamily: 'Nunito Sans, sans-serif',
+          fontFamily: 'var(--font-body)',
           fontSize: wh(26),
           fontWeight: 700,
           letterSpacing: '0.5em',
@@ -318,7 +318,7 @@ export function BrandSpotlightScene({
               color: '#fff',
               display: 'grid',
               placeItems: 'center',
-              fontFamily: 'Fraunces, serif',
+              fontFamily: 'var(--font-display)',
               fontStyle: 'italic',
               fontSize: wh(40),
             }}
@@ -336,7 +336,7 @@ export function BrandSpotlightScene({
           >
             <div
               style={{
-                fontFamily: 'Fraunces, serif',
+                fontFamily: 'var(--font-display)',
                 fontStyle: 'italic',
                 fontSize: wh(32),
                 letterSpacing: '0.15em',
@@ -348,7 +348,7 @@ export function BrandSpotlightScene({
             </div>
             <div
               style={{
-                fontFamily: 'Nunito Sans, sans-serif',
+                fontFamily: 'var(--font-body)',
                 fontSize: wh(22),
                 fontWeight: 600,
                 color: 'rgba(0,0,0,0.60)',
@@ -360,7 +360,7 @@ export function BrandSpotlightScene({
             </div>
             <div
               style={{
-                fontFamily: 'Nunito Sans, sans-serif',
+                fontFamily: 'var(--font-numeric)',
                 fontSize: wh(26),
                 fontWeight: 700,
                 color: colors.accent,
@@ -433,7 +433,7 @@ export function BrandSpotlightScene({
           top: '40%',
           textAlign: 'center',
           zIndex: 8,
-          fontFamily: 'Fraunces, serif',
+          fontFamily: 'var(--font-display)',
           fontStyle: 'italic',
           fontWeight: 300,
           fontSize: wh(68),
@@ -450,7 +450,7 @@ export function BrandSpotlightScene({
           style={{
             display: 'block',
             marginTop: h(28),
-            fontFamily: 'Nunito Sans, sans-serif',
+            fontFamily: 'var(--font-body)',
             fontStyle: 'normal',
             fontSize: wh(24),
             fontWeight: 700,
@@ -480,7 +480,7 @@ export function BrandSpotlightScene({
       >
         <div
           style={{
-            fontFamily: 'Fraunces, serif',
+            fontFamily: 'var(--font-display)',
             fontStyle: 'italic',
             fontSize: wh(170),
             lineHeight: 1,
@@ -493,7 +493,7 @@ export function BrandSpotlightScene({
         </div>
         <div
           style={{
-            fontFamily: 'Nunito Sans, sans-serif',
+            fontFamily: 'var(--font-body)',
             fontSize: wh(24),
             fontWeight: 700,
             letterSpacing: '0.5em',
@@ -505,7 +505,7 @@ export function BrandSpotlightScene({
         </div>
         <div
           style={{
-            fontFamily: 'Fraunces, serif',
+            fontFamily: 'var(--font-display)',
             fontStyle: 'italic',
             fontSize: wh(82),
             color: '#fff',
@@ -518,7 +518,7 @@ export function BrandSpotlightScene({
         </div>
         <div
           style={{
-            fontFamily: 'Nunito Sans, sans-serif',
+            fontFamily: 'var(--font-body)',
             fontSize: wh(22),
             fontWeight: 600,
             letterSpacing: '0.35em',
@@ -539,7 +539,7 @@ export function BrandSpotlightScene({
             padding: `${h(22)}px ${w(64)}px`,
             background: colors.accent,
             color: '#fff',
-            fontFamily: 'Nunito Sans, sans-serif',
+            fontFamily: 'var(--font-body)',
             fontSize: wh(26),
             fontWeight: 800,
             letterSpacing: '0.35em',

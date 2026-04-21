@@ -154,7 +154,7 @@ export function CarouselScene({
         />
         <div
           style={{
-            fontFamily: 'Nunito Sans, sans-serif',
+            fontFamily: 'var(--font-body)',
             fontSize: wh(22),
             fontWeight: 700,
             letterSpacing: '0.4em',
@@ -182,7 +182,7 @@ export function CarouselScene({
       >
         <div
           style={{
-            fontFamily: 'Nunito Sans, sans-serif',
+            fontFamily: 'var(--font-body)',
             fontSize: wh(24),
             fontWeight: 700,
             letterSpacing: '0.45em',
@@ -195,7 +195,7 @@ export function CarouselScene({
         </div>
         <div
           style={{
-            fontFamily: 'Fraunces, serif',
+            fontFamily: 'var(--font-display)',
             fontStyle: 'italic',
             fontWeight: 300,
             fontSize: wh(150),
@@ -272,7 +272,7 @@ export function CarouselScene({
                 >
                   <div
                     style={{
-                      fontFamily: 'Fraunces, serif',
+                      fontFamily: 'var(--font-display)',
                       fontStyle: 'italic',
                       fontSize: wh(28),
                       letterSpacing: '0.15em',
@@ -283,7 +283,7 @@ export function CarouselScene({
                   </div>
                   <div
                     style={{
-                      fontFamily: 'Nunito Sans, sans-serif',
+                      fontFamily: 'var(--font-body)',
                       fontSize: wh(20),
                       fontWeight: 600,
                       color: 'rgba(0,0,0,0.60)',
@@ -295,7 +295,7 @@ export function CarouselScene({
                   </div>
                   <div
                     style={{
-                      fontFamily: 'Nunito Sans, sans-serif',
+                      fontFamily: 'var(--font-numeric)',
                       fontSize: wh(22),
                       fontWeight: 700,
                       color: colors.accent,
@@ -321,7 +321,7 @@ export function CarouselScene({
           bottom: h(180),
           textAlign: 'center',
           zIndex: 9,
-          fontFamily: 'Nunito Sans, sans-serif',
+          fontFamily: 'var(--font-body)',
           fontSize: wh(22),
           fontWeight: 700,
           letterSpacing: '0.45em',
@@ -384,7 +384,7 @@ export function CarouselScene({
           />
           <div
             style={{
-              fontFamily: 'Fraunces, serif',
+              fontFamily: 'var(--font-display)',
               fontStyle: 'italic',
               fontSize: wh(58),
               color: colors.accent,
@@ -396,7 +396,7 @@ export function CarouselScene({
         </div>
         <div
           style={{
-            fontFamily: 'Nunito Sans, sans-serif',
+            fontFamily: 'var(--font-body)',
             fontSize: wh(26),
             fontWeight: 700,
             letterSpacing: '0.5em',
@@ -408,7 +408,7 @@ export function CarouselScene({
         </div>
         <div
           style={{
-            fontFamily: 'Fraunces, serif',
+            fontFamily: 'var(--font-display)',
             fontStyle: 'italic',
             fontSize: wh(120),
             lineHeight: 1,
@@ -422,7 +422,7 @@ export function CarouselScene({
         </div>
         <div
           style={{
-            fontFamily: 'Nunito Sans, sans-serif',
+            fontFamily: 'var(--font-body)',
             fontSize: wh(24),
             letterSpacing: '0.25em',
             color: 'rgba(255,255,255,0.55)',
@@ -440,7 +440,7 @@ export function CarouselScene({
             padding: `${h(22)}px ${w(64)}px`,
             background: colors.accent,
             color: '#fff',
-            fontFamily: 'Nunito Sans, sans-serif',
+            fontFamily: 'var(--font-body)',
             fontSize: wh(26),
             fontWeight: 800,
             letterSpacing: '0.35em',
