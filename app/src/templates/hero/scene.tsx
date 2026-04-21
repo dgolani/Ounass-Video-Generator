@@ -6,6 +6,7 @@ import {
   useSafeZone,
   useFieldFormat,
 } from '../../engine';
+import { composePrice, useCurrencyForLocale } from '../../lib/price';
 import type { HeroProps } from './schema';
 import { BoutiqueLogo } from '../BoutiqueLogo';
 
@@ -116,6 +117,15 @@ function Reveal({ props, T, s, safe: _safe }: ActProps) {
   const { preTitle, colors } = props;
   const { w, h, wh } = s;
 
+  const preTitleStyle = useFieldFormat('preTitle', {
+    fontFamily: 'var(--font-body)',
+    fontSize: wh(22),
+    fontWeight: 700,
+    letterSpacing: `${wh(8)}px`,
+    textTransform: 'uppercase',
+    color: colors.accent,
+  });
+
   const kickerOp = interpolate([T(0.6), T(1.2), T(2.0), T(2.3)], [0, 1, 1, 0], Easing.easeInOutCubic)(t);
   const ruleT = interpolate([T(0.2), T(1.4)], [0, 1], Easing.easeOutExpo)(t);
   const ruleOp = interpolate([T(0.2), T(1.4), T(2.0), T(2.3)], [0, 1, 1, 0], Easing.easeInOutCubic)(t);
@@ -143,13 +153,8 @@ function Reveal({ props, T, s, safe: _safe }: ActProps) {
           right: 0,
           top: h(200),
           textAlign: 'center',
-          opacity: kickerOp,
-          fontFamily: 'var(--font-body)',
-          fontWeight: 700,
-          fontSize: wh(22),
-          letterSpacing: `${wh(8)}px`,
-          textTransform: 'uppercase',
-          color: colors.accent,
+          ...preTitleStyle,
+          opacity: (preTitleStyle.opacity ?? 1) * kickerOp,
         }}
       >
         {preTitle}
@@ -163,6 +168,32 @@ function Copy({ props, T, s, safe }: ActProps) {
   const { time: t } = useTimeline();
   const { headlineLine1, headlineLine2, subhead, product, colors } = props;
   const { w, h, wh, H } = s;
+  const currency = useCurrencyForLocale();
+
+  const headlineLine1Style = useFieldFormat('headlineLine1', {
+    fontFamily: 'var(--font-display)',
+    fontSize: wh(140),
+    fontWeight: 300,
+    lineHeight: 0.95,
+    letterSpacing: '-0.03em',
+    color: colors.paper,
+  });
+  const headlineLine2Style = useFieldFormat('headlineLine2', {
+    fontFamily: 'var(--font-display)',
+    fontStyle: 'italic',
+    fontSize: wh(140),
+    fontWeight: 300,
+    lineHeight: 0.95,
+    letterSpacing: '-0.02em',
+    color: colors.accent,
+  });
+  const subheadStyle = useFieldFormat('subhead', {
+    fontFamily: 'var(--font-display)',
+    fontStyle: 'italic',
+    fontSize: wh(34),
+    fontWeight: 300,
+    color: colors.paper,
+  });
 
   if (t < T(2.0) || t > T(5.2)) return null;
 
@@ -190,30 +221,19 @@ function Copy({ props, T, s, safe }: ActProps) {
       >
         <div
           style={{
-            fontFamily: 'var(--font-display)',
-            fontWeight: 300,
-            fontSize: wh(140),
-            lineHeight: 0.95,
-            color: colors.paper,
-            letterSpacing: '-0.03em',
-            transform: `translateY(${line1Y}px)`,
             textShadow: '0 4px 24px rgba(0,0,0,0.5)',
+            ...headlineLine1Style,
+            transform: `translateY(${line1Y}px)`,
           }}
         >
           {headlineLine1}
         </div>
         <div
           style={{
-            fontFamily: 'var(--font-display)',
-            fontStyle: 'italic',
-            fontWeight: 300,
-            fontSize: wh(140),
-            lineHeight: 0.95,
-            color: colors.accent,
-            letterSpacing: '-0.02em',
-            opacity: line2In,
-            transform: `translateY(${line2Y}px)`,
             textShadow: '0 4px 24px rgba(0,0,0,0.5)',
+            ...headlineLine2Style,
+            opacity: (headlineLine2Style.opacity ?? 1) * line2In,
+            transform: `translateY(${line2Y}px)`,
           }}
         >
           {headlineLine2}
@@ -228,13 +248,9 @@ function Copy({ props, T, s, safe }: ActProps) {
           right: w(100),
           top: H * 0.58,
           textAlign: 'center',
-          opacity: subIn,
-          fontFamily: 'var(--font-display)',
-          fontStyle: 'italic',
-          fontWeight: 300,
-          fontSize: wh(34),
-          color: colors.paper,
           textShadow: '0 2px 12px rgba(0,0,0,0.6)',
+          ...subheadStyle,
+          opacity: (subheadStyle.opacity ?? 1) * subIn,
         }}
       >
         {subhead}
@@ -287,7 +303,7 @@ function Copy({ props, T, s, safe }: ActProps) {
             color: colors.paper,
           }}
         >
-          {product.price}
+          {composePrice(product.price, currency)}
         </div>
       </div>
     </div>

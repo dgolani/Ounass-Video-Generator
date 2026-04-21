@@ -59,7 +59,30 @@ export function SeasonalScene({
   const { w, h, wh } = s;
   const { base: safe } = useSafeZone({ width, height });
 
-  // Per-field format overrides.
+  // Destructure brand-driven props BEFORE the format hooks so the hook
+  // bases reference live brand colors (accent / paper / etc.) instead
+  // of literal hex values that would go stale if the boutique edits
+  // its palette. Editing `brand.colors.accent` now re-renders every
+  // scene with the new value.
+  const {
+    colors,
+    boutiqueName,
+    sideEditorialLine,
+    tickerItems,
+    word1,
+    word2,
+    word3,
+    products,
+    seasonChip,
+    finalKicker,
+    finalHeadline,
+    finalSubline,
+    ctaButton,
+    logo,
+  } = props;
+
+  // Per-field format overrides — hook bases use dynamic brand values
+  // so an un-overridden field updates when the brand kit changes.
   const refrainStyle = useFieldFormat('word1', {
     fontFamily: 'var(--font-display)',
     fontStyle: 'italic',
@@ -67,7 +90,7 @@ export function SeasonalScene({
     fontWeight: 300,
     lineHeight: 0.9,
     letterSpacing: '-0.04em',
-    color: '#B87253', // resolved from brand accent at the override level
+    color: colors.accent,
   });
   const finalKickerStyle = useFieldFormat('finalKicker', {
     fontFamily: 'var(--font-body)',
@@ -75,7 +98,7 @@ export function SeasonalScene({
     fontWeight: 700,
     letterSpacing: '0.5em',
     textTransform: 'uppercase',
-    color: '#B87253',
+    color: colors.accent,
   });
   const finalHeadlineStyle = useFieldFormat('finalHeadline', {
     fontFamily: 'var(--font-display)',
@@ -101,22 +124,6 @@ export function SeasonalScene({
     textTransform: 'uppercase',
     color: '#fff',
   });
-  const {
-    colors,
-    boutiqueName,
-    sideEditorialLine,
-    tickerItems,
-    word1,
-    word2,
-    word3,
-    products,
-    seasonChip,
-    finalKicker,
-    finalHeadline,
-    finalSubline,
-    ctaButton,
-    logo,
-  } = props;
 
   const words = [word1, word2, word3];
 
@@ -296,8 +303,6 @@ export function SeasonalScene({
             whiteSpace: 'nowrap',
             textAlign: 'center',
             ...refrainStyle,
-            // Template color default uses the brand accent; override wins.
-            color: refrainStyle.color ?? colors.accent,
             opacity: (refrainStyle.opacity ?? 1) * wordOp,
             transform: `translateY(${h(wordDy)}px) scale(${wordScale}) rotate(${wordRot}deg)`,
           }}
@@ -453,7 +458,6 @@ export function SeasonalScene({
           style={{
             marginBottom: h(18),
             ...finalKickerStyle,
-            color: finalKickerStyle.color ?? colors.accent,
           }}
         >
           {finalKicker}

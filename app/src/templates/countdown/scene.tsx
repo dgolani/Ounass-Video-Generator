@@ -87,6 +87,31 @@ function Hook({ props, T, s, safe: _safe }: ActProps) {
   const { kicker, headline, subhead, colors } = props;
   const { h, wh } = s;
 
+  const kickerStyle = useFieldFormat('kicker', {
+    fontFamily: 'var(--font-body)',
+    fontSize: wh(24),
+    fontWeight: 700,
+    letterSpacing: `${wh(8)}px`,
+    textTransform: 'uppercase',
+    color: colors.accent,
+  });
+  const headlineStyle = useFieldFormat('headline', {
+    fontFamily: 'var(--font-display)',
+    fontStyle: 'italic',
+    fontSize: wh(260),
+    fontWeight: 300,
+    lineHeight: 0.9,
+    letterSpacing: '-0.04em',
+    color: colors.paper,
+  });
+  const subheadStyle = useFieldFormat('subhead', {
+    fontFamily: 'var(--font-display)',
+    fontStyle: 'italic',
+    fontSize: wh(42),
+    fontWeight: 300,
+    color: colors.paper,
+  });
+
   const kickerOp = interpolate([T(0.2), T(0.6), T(1.7), T(2.0)], [0, 1, 1, 0], Easing.easeInOutCubic)(t);
   const headlineOp = interpolate([T(0.5), T(0.9), T(1.9), T(2.2)], [0, 1, 1, 0], Easing.easeInOutCubic)(t);
   const headlineScale = interpolate([T(0.5), T(0.9)], [0.82, 1], Easing.easeOutBack)(t);
@@ -102,13 +127,8 @@ function Hook({ props, T, s, safe: _safe }: ActProps) {
           right: 0,
           top: h(360),
           textAlign: 'center',
-          opacity: kickerOp,
-          fontFamily: 'var(--font-body)',
-          fontWeight: 700,
-          fontSize: wh(24),
-          letterSpacing: `${wh(8)}px`,
-          textTransform: 'uppercase',
-          color: colors.accent,
+          ...kickerStyle,
+          opacity: (kickerStyle.opacity ?? 1) * kickerOp,
         }}
       >
         {kicker}
@@ -122,17 +142,11 @@ function Hook({ props, T, s, safe: _safe }: ActProps) {
           right: 0,
           top: h(640),
           textAlign: 'center',
-          opacity: headlineOp,
-          transform: `scale(${headlineScale})`,
           transformOrigin: 'center',
-          fontFamily: 'var(--font-display)',
-          fontStyle: 'italic',
-          fontWeight: 300,
-          fontSize: wh(260),
-          lineHeight: 0.9,
-          color: colors.paper,
-          letterSpacing: '-0.04em',
           textShadow: '0 6px 40px rgba(0,0,0,0.6)',
+          ...headlineStyle,
+          opacity: (headlineStyle.opacity ?? 1) * headlineOp,
+          transform: `scale(${headlineScale})`,
         }}
       >
         {headline}
@@ -146,12 +160,8 @@ function Hook({ props, T, s, safe: _safe }: ActProps) {
           right: 0,
           top: h(1040),
           textAlign: 'center',
-          opacity: subheadOp,
-          fontFamily: 'var(--font-display)',
-          fontStyle: 'italic',
-          fontWeight: 300,
-          fontSize: wh(42),
-          color: colors.paper,
+          ...subheadStyle,
+          opacity: (subheadStyle.opacity ?? 1) * subheadOp,
         }}
       >
         {subhead}

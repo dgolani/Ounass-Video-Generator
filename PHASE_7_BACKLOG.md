@@ -1,152 +1,143 @@
-# Phase 7 backlog — alignment + animation polish + loose ends
+# Phase 7 backlog — landed + still-deferred items
 
-Everything we deferred during Phases 3–6 so the final polish pass has
-a single source of truth. Grouped by the phase where it was introduced,
-not the phase where it's fixed (all get fixed in Phase 7).
+This was the polish pass after Phases 3–6. What's checked has shipped to
+local `main`; what's unchecked is deferred to a later pass (no promised
+timeline, capture requests here as they come up).
 
-Last updated: after Phase 5 merge (commit `4d35294`).
+Last updated: Phase 7 commit landed — see local `main` history.
 
 ---
 
-## From Phase 3 — Safe-zone template retrofit
+## From Phase 3 — Safe-zone template retrofit aftermath
 
-When the editor's safe-zone toggle is ON (or in preview cards / exports,
-which always enforce), content anchors shift inward. Several templates
-weren't tuned for that reflowed layout. Fix in Phase 7:
-
-1. **Truncated entry animations.** CTAs that slide up from `y = below-
-   canvas` now stop at `safe.bottom` instead of `0`, shortening the
-   slide distance and making the easing feel abrupt. Retune per-template.
-
-2. **Broken element pairings.** Rank dots → CTA slab gap in Bestsellers;
-   kicker → headline rhythm in Seasonal's final frame; companion strip
-   → hero product card in Brand Spotlight. Each pair shifted
-   independently, now the spacing looks off. Re-group into shifted
-   blocks where it matters.
-
-3. **Orphaned decoration.** Some gradients / radials / seams anchor to
-   the canvas edge while the foreground pulled inward. Inset the
-   decoration to match, OR extend it further off-edge so the bleed
-   is intentional.
-
-4. **Stack rhythm breaks in Lookbook Act 4.** The outro stack is
-   kicker → wordmark → tagline → CTA. Currently only the CTA is
-   anchored to `safe.bottom`; the three above it follow the original
-   design. That breaks the rhythm when content should lift as a block.
-
-5. **Aspect-specific quirks.** 4:5 has safe 120/200, 1:1 has 100/100,
-   9:16 has 250/300. Templates designed for 9:16 margins may look fine
-   at 9:16 but cramped at 1:1 where the safe zone eats less of the
-   canvas. Audit all 9 templates × 3 aspects × [enforce on / off].
+- [ ] **#1. Truncated entry animations.** CTAs that slide up from below
+      the canvas now stop at `safe.bottom` instead of `0`, shortening
+      the slide distance. Retune per-template timing / easing to feel
+      the same at the new stop point. _Visual QA needed._
+- [ ] **#2. Broken element pairings.** Rank-dots ↔ CTA slab (Bestsellers),
+      kicker ↔ headline rhythm (Seasonal final), companion strip ↔ hero
+      (Brand Spotlight). Shifted independently. Re-group into blocks
+      where pairings matter.
+- [ ] **#3. Orphaned decoration.** Edge-anchored gradients / radials
+      now mismatch inset foreground. Re-anchor or extend bleed.
+- [x] **#4. Lookbook Act 4 outro stack rhythm.** _Assessed, closed as
+      not-an-issue._ The lockup is already wrapped in a single
+      positioned `<div>` at `top: h(640)`; the CTA's `safe.bottom`
+      shift only tightens the gap from 572 → 472px at 9:16, which is
+      visually fine, not broken.
+- [ ] **#5. Aspect-specific quirks.** Audit 9 templates × 3 aspects ×
+      safe-zone ON/OFF for cramping or unused space. Iterative visual
+      work.
 
 ---
 
 ## From Phase 4 — Brand Kit editor surfaces
 
-6. **Brand-color-aware typography samples.** The live samples in the
-   Typography tiles use hardcoded color values (e.g. `#B87253`) rather
-   than reading `brand.colors.accent` / etc. If Faizan changes the
-   brand accent, the samples don't update. Swap the hardcoded values
-   for reads from the brand context.
+- [x] **#6. Brand-color-aware typography samples.** _Closed as
+      misnotation._ BrandKit.tsx Typography tiles already render
+      samples in `var(--editor-text)` (editor chrome colors), not
+      hardcoded hex. No brand-color-bound samples to fix.
 
 ---
 
 ## From Phase 5 — Per-field format drawer
 
-7. **Lookbook / Editorial / Countdown / Hero — partial wiring.** Only
-   the primary CTA (+ a couple of key headlines) are refactored to use
-   `useFieldFormat`. The other text fields in these four templates
-   show the "Aa" button but clicking it and changing values has no
-   visible effect — the template's inline styles still render. Wire
-   every remaining text element:
-     - **Lookbook**: `kicker` (Act 1), `tagline` (Act 1),
-       `act2Kicker`, `act2TitleLine1/2`, `outroKicker`,
-       `boutiqueName`, `ctaFooter`, `watermark`.
-     - **Editorial**: `masthead`, `issueDate`, `headlineLine1/2`,
-       `byline`, `closingKicker`, `signatureText`, `boutiqueName`,
-       `ctaFooter`.
-     - **Countdown**: `kicker`, `headline`, `subhead`, `body`,
-       `endsText`, `terms`, `boutiqueName`, `ctaFooter`.
-     - **Hero**: `preTitle`, `headlineLine1/2`, `subhead`,
-       `product.name`, `product.category`, `product.price`,
-       `boutiqueName`, `ctaFooter`.
-
-8. **Per-product sub-field formatting.** Fields inside `productList`
-   (per-row `name`, `price`, `brandline`) don't have format buttons.
-   Indexed paths change when products reorder, so the override has
-   to key on something stable (product id?). Design + wire.
-
-9. **Brand-accent reactivity in `useFieldFormat` base values.** Several
-   templates pass hardcoded colors (e.g. `color: '#B87253'`) into the
-   `useFieldFormat` base because I wrote them before the scene's
-   `colors` destructure. If the brand accent changes, fields that
-   haven't been overridden still render the hardcoded color. Rewrite
-   each base to reference the live `colors.*` values.
-
-10. **Drawer doesn't preview template default next to override.** The
-    sample inside the drawer renders the current (possibly overridden)
-    style. Showing a "template default" swatch alongside would make
-    the diff obvious and "reset" more intentional.
-
-11. **Family dropdown doesn't show family samples.** Dropdown shows
-    plain family names as text; each row should render the family
-    name in the family itself so marketers can see the face before
-    selecting it.
+- [ ] **#7. Lookbook / Editorial / Countdown / Hero — remaining
+      un-wired fields.** Primary CTA + main headlines + kickers now
+      wired in Phase 7. **Still unwired** (long-tail decorative text
+      where format-drawer changes have no visible effect):
+        - Lookbook: `act2Kicker`, `act2TitleLine1/2`, `ctaFooter`,
+          `watermark`, boutiqueName.
+        - Editorial: `masthead`, `issueDate`, `byline`, `closingKicker`,
+          `signatureText`, `boutiqueName`, `ctaFooter`.
+        - Countdown: `body`, `endsText`, `terms`, `boutiqueName`,
+          `ctaFooter`.
+        - Hero: `product.name`, `product.category`, `boutiqueName`,
+          `ctaFooter`.
+      The `Aa` button still appears next to these in the Properties
+      panel; clicking opens the drawer and changes save, but the
+      corresponding scene element keeps its inline style. Diminishing
+      returns on these — marketer most-edits are on the primary
+      headline + CTA which are now wired.
+- [ ] **#8. Per-product sub-field formatting.** Fields inside
+      `productList` (per-row name / price / brandline) still don't
+      have format buttons. Indexed paths change on reorder. Needs
+      a stable per-row id as the override key.
+- [x] **#9. Brand-accent reactivity in `useFieldFormat` bases.**
+      _Done in Phase 7a._ Seasonal, Gift Guide, and Brand Spotlight
+      now destructure `colors` before the hook calls and pass the
+      live brand colors (`colors.accent`, `colors.ink`, `colors.cream`)
+      into the hook bases. Un-overridden fields now update when the
+      brand palette changes.
+- [ ] **#10. Drawer: template-default swatch alongside override.**
+      Visual diff between "template intent" and "current override"
+      would make reset decisions clearer.
+- [x] **#11. Family dropdown shows font samples.** _Done in Phase 7a._
+      The drawer's family picker is now a vertical radio-group where
+      each family name renders in its own family (display italic for
+      display role, normal for body, RTL for Arabic). Live comparison
+      before selection. Active family shows an "ACTIVE" chip.
 
 ---
 
-## Displaced per-project overrides (original Phase 5 plan)
+## Displaced per-project overrides (original Phase 5 scope)
 
-These were scoped out when Phase 5 became the rich format drawer. They
-give marketers brand-kit-parity controls *per ad* (not per field). Worth
-landing in Phase 7 if there's capacity, or as a dedicated follow-up:
-
-12. **Per-project safe-zone override.** Collapsible section on the
-    Properties panel: per-aspect top/bottom/left/right inputs,
-    inherits brand kit until the marketer flips an "Override for this
-    ad" toggle. Data lives on `project.props.safeZoneOverride`.
-
-13. **Per-project typography override.** Same pattern, one toggle per
-    role (display/body/numeric/arabic). Lets a campaign pick a
-    different headline face without flipping the brand default.
-
-14. **Per-project locale override.** Surfaced in Phase 6 as a toggle in
-    the Properties panel — this item is closed the moment 6e ships.
+- [ ] **#12. Per-project safe-zone override.** Section on Properties
+      panel — per-aspect inputs inheriting from brand kit.
+- [ ] **#13. Per-project typography override.** Per-role family/weight
+      override on a single ad.
+- [x] **#14. Per-project locale override.** _Landed in Phase 6e._
+      Segmented EN / AR at top of editor, stored as
+      `project.localeOverride`, composes with brand default.
 
 ---
 
-## From Phase 6 — Arabic / RTL (will fill in as issues surface)
+## From Phase 6 — Arabic / RTL
 
-_(Add bidi fixes discovered during the per-template Arabic validation
-pass. Expected categories: side markers that should mirror, icon
-positions that must flip, `letterSpacing` negative values that need
-inversion for Arabic text.)_
-
-15. **Currency-suffix composition.** `BrandKit.currencyByLocale` exists
-    but templates render prices like `"1,890 AED"` where the currency
-    is baked into the string. To have prices localize (`AED` in English
-    → `د.إ.` in Arabic), template schemas need to split amount + currency
-    and compose at render time. That's a breaking change for saved
-    projects — needs a migration. Deferred to Phase 7.
-
-16. **Safe-zone overlay doesn't mirror in RTL.** The "SAFE · 9:16" pill
-    in the overlay's top-left always reads left-to-right. When
-    validating RTL templates, the pill should flip to the top-right
-    or stay LTR as-is — TBD on aesthetic preference.
+- [x] **#15. Currency-suffix composition.** _Done in Phase 7b._ New
+      `lib/price.ts` with `composePrice(raw, currency)` +
+      `useCurrencyForLocale()`. 5 templates now render prices with
+      locale-appropriate currency suffix (AED / د.إ.) composed from
+      the brand kit's `currencyByLocale[locale]`. Non-destructive:
+      strips known currency trails (AED / SAR / BHD / KWD / QAR / OMR
+      / USD / EUR / GBP + Arabic abbreviations) before appending the
+      new one. No schema migration.
+- [ ] **#16. Safe-zone overlay pill mirror in RTL.** "SAFE · 9:16"
+      pill always reads LTR. When overlay is shown in an RTL-locale
+      ad, flip to top-right or leave LTR on aesthetic grounds.
 
 ---
 
-## Nice-to-haves (un-phased, optional)
+## Nice-to-haves (still un-phased)
 
-17. **Custom font uploader.** Dropped at Phase 1.5 because Portrait is
-    vendored. If the boutique ever licenses a second paid family, this
-    comes back — not a blocker.
+- [ ] **#17. Custom font uploader.** Dropped at Phase 1.5. Comes back
+      if the boutique licenses a second paid family.
+- [ ] **#18. "No safe zone" export preset surfaced in aspect picker.**
+      `9:16-no-chrome` preset exists in the data model but isn't
+      pickable. Add to aspect switcher or export modal.
+- [ ] **#19. Drawer keyboard navigation.** Arrow keys between fields
+      would help power users.
 
-18. **"No safe zone" export preset surfaced in the aspect picker.** The
-    `9:16-no-chrome` preset exists in the data model since Phase 2 but
-    isn't surfaced in the aspect switcher UI. Add as a fourth entry
-    or as an "Export" modal option.
+---
 
-19. **Drawer: keyboard navigation between fields.** Current drawer is
-    mouse-driven; arrow keys in the drawer could jump to the next /
-    previous formattable field for power users.
+## Closed summary for Phase 7
+
+Landed:
+- #4 (closed as not-an-issue)
+- #6 (closed as misnotation)
+- #9 (brand-color reactivity)
+- #11 (family samples)
+- #14 (was closed in Phase 6e)
+- #15 (currency composition)
+- Partial #7 (primary CTAs + main headlines wired in the 4 original
+  templates — long-tail fields remain)
+
+Still open: #1, #2, #3, #5, partial-#7, #8, #10, #12, #13, #16, #17, #18, #19.
+
+The **still-open items** fall into three buckets:
+1. **Visual QA** (#1, #2, #3, #5) — need eyes-on iteration, not blind
+   code changes.
+2. **Further template wiring** (partial-#7, #8, #10) — tedious, low
+   marginal value after the primary fields are formatted.
+3. **Out-of-scope / nice-to-have** (#12, #13, #16, #17, #18, #19) —
+   worthwhile but not blocking; pull forward if marketers request.

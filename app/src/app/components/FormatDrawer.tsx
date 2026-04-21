@@ -386,30 +386,66 @@ export function FormatDrawer({
           </div>
         </header>
 
-        {/* Family */}
+        {/* Family — each option rendered IN its own family so marketers
+         *  can compare typefaces visually before committing. */}
         <DrawerSection label="Family">
-          <select
-            value={currentFamily}
-            onChange={(e) => patch({ family: e.target.value })}
-            style={{
-              background: 'var(--editor-panel-2)',
-              color: 'var(--editor-text)',
-              border: '1px solid var(--editor-border)',
-              borderRadius: 'var(--r-md)',
-              padding: '10px 12px',
-              fontFamily: 'var(--sans)',
-              fontSize: 13,
-              outline: 'none',
-              width: '100%',
-              cursor: 'pointer',
-            }}
+          <div
+            role="radiogroup"
+            aria-label="Font family"
+            style={{ display: 'flex', flexDirection: 'column', gap: 6 }}
           >
-            {families.map((f) => (
-              <option key={f} value={f}>
-                {f}
-              </option>
-            ))}
-          </select>
+            {families.map((f) => {
+              const active = currentFamily === f;
+              return (
+                <button
+                  key={f}
+                  type="button"
+                  role="radio"
+                  aria-checked={active}
+                  onClick={() => patch({ family: f })}
+                  style={{
+                    textAlign: role === 'arabic' ? 'right' : 'left',
+                    direction: role === 'arabic' ? 'rtl' : 'ltr',
+                    padding: '10px 14px',
+                    background: active ? 'var(--editor-panel-2)' : 'transparent',
+                    border: `1px solid ${active ? 'var(--editor-accent)' : 'var(--editor-border)'}`,
+                    borderRadius: 'var(--r-md)',
+                    cursor: 'pointer',
+                    color: active ? 'var(--editor-text)' : 'rgba(255,255,255,0.75)',
+                    // Render the family name in the family itself so the
+                    // dropdown doubles as a live comparison.
+                    fontFamily: `'${f}', serif`,
+                    fontSize: role === 'display' ? 22 : 17,
+                    fontStyle: role === 'display' ? 'italic' : 'normal',
+                    fontWeight: role === 'body' ? 500 : 400,
+                    letterSpacing: role === 'display' ? '-0.02em' : 'normal',
+                    lineHeight: 1.2,
+                    transition: 'background 120ms, border-color 120ms',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: 12,
+                  }}
+                >
+                  <span>{f}</span>
+                  {active && (
+                    <span
+                      aria-hidden
+                      style={{
+                        fontSize: 10,
+                        fontFamily: 'var(--sans)',
+                        fontWeight: 700,
+                        letterSpacing: '0.1em',
+                        color: 'var(--editor-accent)',
+                      }}
+                    >
+                      ACTIVE
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
           {/* Live preview of the chosen family */}
           <div
             style={{

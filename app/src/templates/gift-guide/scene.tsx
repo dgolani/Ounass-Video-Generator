@@ -75,36 +75,7 @@ export function GiftGuideScene({
   const { w, h, wh } = s;
   const { base: safe } = useSafeZone({ width, height });
 
-  const kickerStyle = useFieldFormat('kicker', {
-    fontFamily: 'var(--font-body)',
-    fontSize: wh(24),
-    fontWeight: 700,
-    letterSpacing: '0.5em',
-    textTransform: 'uppercase',
-    color: '#B87253',
-  });
-  const headLineStyle = useFieldFormat('headLine1', {
-    fontFamily: 'var(--font-display)',
-    fontStyle: 'italic',
-    fontSize: wh(150),
-    fontWeight: 300,
-    lineHeight: 0.95,
-    letterSpacing: '-0.03em',
-  });
-  const footHeadStyle = useFieldFormat('footHead', {
-    fontFamily: 'var(--font-display)',
-    fontStyle: 'italic',
-    fontSize: wh(76),
-    lineHeight: 1,
-    letterSpacing: '-0.02em',
-  });
-  const ctaButtonStyle = useFieldFormat('ctaButton', {
-    fontFamily: 'var(--font-body)',
-    fontSize: wh(26),
-    fontWeight: 800,
-    letterSpacing: '0.35em',
-    textTransform: 'uppercase',
-  });
+  // Destructure before hooks so bases reference live brand values.
   const {
     colors,
     boutiqueName,
@@ -119,6 +90,40 @@ export function GiftGuideScene({
     ctaButton,
     logo,
   } = props;
+
+  const kickerStyle = useFieldFormat('kicker', {
+    fontFamily: 'var(--font-body)',
+    fontSize: wh(24),
+    fontWeight: 700,
+    letterSpacing: '0.5em',
+    textTransform: 'uppercase',
+    color: colors.accent,
+  });
+  const headLineStyle = useFieldFormat('headLine1', {
+    fontFamily: 'var(--font-display)',
+    fontStyle: 'italic',
+    fontSize: wh(150),
+    fontWeight: 300,
+    lineHeight: 0.95,
+    letterSpacing: '-0.03em',
+    color: colors.ink,
+  });
+  const footHeadStyle = useFieldFormat('footHead', {
+    fontFamily: 'var(--font-display)',
+    fontStyle: 'italic',
+    fontSize: wh(76),
+    lineHeight: 1,
+    letterSpacing: '-0.02em',
+    color: colors.ink,
+  });
+  const ctaButtonStyle = useFieldFormat('ctaButton', {
+    fontFamily: 'var(--font-body)',
+    fontSize: wh(26),
+    fontWeight: 800,
+    letterSpacing: '0.35em',
+    textTransform: 'uppercase',
+    color: colors.accent,
+  });
 
   // Title fade-in
   const titleP = clamp(time / Math.max(T(0.8), 0.01), 0, 1);
@@ -223,7 +228,6 @@ export function GiftGuideScene({
         <div
           style={{
             ...kickerStyle,
-            color: kickerStyle.color ?? colors.accent,
           }}
         >
           {kicker}
@@ -233,7 +237,6 @@ export function GiftGuideScene({
             marginTop: h(18),
             padding: `0 ${w(40)}px`,
             ...headLineStyle,
-            color: headLineStyle.color ?? colors.ink,
           }}
         >
           {headLine1}
@@ -570,7 +573,6 @@ export function GiftGuideScene({
             marginBottom: h(24),
             padding: `0 ${w(60)}px`,
             ...footHeadStyle,
-            color: footHeadStyle.color ?? colors.ink,
           }}
         >
           {footHead}
@@ -587,7 +589,6 @@ export function GiftGuideScene({
             borderRadius: wh(4),
             cursor: 'pointer',
             ...ctaButtonStyle,
-            color: ctaButtonStyle.color ?? colors.accent,
           }}
         >
           {ctaButton}

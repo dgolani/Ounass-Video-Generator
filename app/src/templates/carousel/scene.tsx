@@ -12,6 +12,7 @@ import {
   useSafeZone,
   useFieldFormat,
 } from '../../engine';
+import { composePrice, useCurrencyForLocale } from '../../lib/price';
 import type { CarouselProps } from './schema';
 import { BoutiqueLogo } from '../BoutiqueLogo';
 
@@ -58,6 +59,7 @@ export function CarouselScene({
   const s = makeScale(width, height);
   const { w, h, wh } = s;
   const { base: safe } = useSafeZone({ width, height });
+  const currency = useCurrencyForLocale();
 
   // Per-field format overrides.
   const titleKickerStyle = useFieldFormat('titleKicker', {
@@ -331,7 +333,7 @@ export function CarouselScene({
                       marginTop: h(8),
                     }}
                   >
-                    {it.price}
+                    {composePrice(it.price, currency)}
                   </div>
                 </div>
               </div>

@@ -53,6 +53,24 @@ function Masthead({ props, T, s, safe: _safe }: ActProps) {
   const { masthead, issueDate, headlineLine1, headlineLine2, byline, colors } = props;
   const { w, h, wh } = s;
 
+  const headlineLine1Style = useFieldFormat('headlineLine1', {
+    fontFamily: 'var(--font-display)',
+    fontSize: wh(132),
+    fontWeight: 300,
+    lineHeight: 0.95,
+    letterSpacing: '-0.03em',
+    color: colors.ink,
+  });
+  const headlineLine2Style = useFieldFormat('headlineLine2', {
+    fontFamily: 'var(--font-display)',
+    fontStyle: 'italic',
+    fontSize: wh(132),
+    fontWeight: 300,
+    lineHeight: 0.95,
+    letterSpacing: '-0.02em',
+    color: colors.accent,
+  });
+
   // Top rule draws in
   const ruleT = interpolate([T(0.1), T(0.7)], [0, 1], Easing.easeOutExpo)(t);
   const bottomRuleT = interpolate([T(0.3), T(0.9)], [0, 1], Easing.easeOutExpo)(t);
@@ -124,31 +142,10 @@ function Masthead({ props, T, s, safe: _safe }: ActProps) {
           textAlign: 'center',
         }}
       >
-        <div
-          style={{
-            fontFamily: 'var(--font-display)',
-            fontWeight: 300,
-            fontSize: wh(132),
-            lineHeight: 0.95,
-            color: colors.ink,
-            letterSpacing: '-0.03em',
-            marginBottom: wh(6),
-          }}
-        >
+        <div style={{ marginBottom: wh(6), ...headlineLine1Style }}>
           {headlineLine1}
         </div>
-        <div
-          style={{
-            fontFamily: 'var(--font-display)',
-            fontStyle: 'italic',
-            fontWeight: 300,
-            fontSize: wh(132),
-            lineHeight: 0.95,
-            color: colors.accent,
-            letterSpacing: '-0.02em',
-            marginBottom: wh(50),
-          }}
-        >
+        <div style={{ marginBottom: wh(50), ...headlineLine2Style }}>
           {headlineLine2}
         </div>
         <div

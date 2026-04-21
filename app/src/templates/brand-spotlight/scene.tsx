@@ -13,6 +13,7 @@ import {
   useSafeZone,
   useFieldFormat,
 } from '../../engine';
+import { composePrice, useCurrencyForLocale } from '../../lib/price';
 import type { SpotlightProps } from './schema';
 import { BoutiqueLogo } from '../BoutiqueLogo';
 
@@ -57,46 +58,9 @@ export function BrandSpotlightScene({
   const s = makeScale(width, height);
   const { w, h, wh } = s;
   const { base: safe } = useSafeZone({ width, height });
+  const currency = useCurrencyForLocale();
 
-  const featuredBrandStyle = useFieldFormat('featuredBrand', {
-    fontFamily: 'var(--font-display)',
-    fontStyle: 'italic',
-    fontSize: wh(290),
-    fontWeight: 300,
-    lineHeight: 1,
-    letterSpacing: '-0.03em',
-  });
-  const brandTagStyle = useFieldFormat('brandTag', {
-    fontFamily: 'var(--font-body)',
-    fontSize: wh(26),
-    fontWeight: 700,
-    letterSpacing: '0.5em',
-    textTransform: 'uppercase',
-    color: '#B87253',
-  });
-  const quoteStyle = useFieldFormat('quote', {
-    fontFamily: 'var(--font-display)',
-    fontStyle: 'italic',
-    fontSize: wh(68),
-    fontWeight: 300,
-    lineHeight: 1.15,
-    letterSpacing: '-0.01em',
-  });
-  const finalHeadStyle = useFieldFormat('finalHead', {
-    fontFamily: 'var(--font-display)',
-    fontStyle: 'italic',
-    fontSize: wh(82),
-    letterSpacing: '-0.02em',
-    color: '#fff',
-  });
-  const ctaButtonStyle = useFieldFormat('ctaButton', {
-    fontFamily: 'var(--font-body)',
-    fontSize: wh(26),
-    fontWeight: 800,
-    letterSpacing: '0.35em',
-    textTransform: 'uppercase',
-    color: '#fff',
-  });
+  // Destructure before hooks so bases reference live brand values.
   const {
     colors,
     boutiqueName,
@@ -114,6 +78,48 @@ export function BrandSpotlightScene({
     ctaButton,
     logo,
   } = props;
+
+  const featuredBrandStyle = useFieldFormat('featuredBrand', {
+    fontFamily: 'var(--font-display)',
+    fontStyle: 'italic',
+    fontSize: wh(290),
+    fontWeight: 300,
+    lineHeight: 1,
+    letterSpacing: '-0.03em',
+    color: colors.cream,
+  });
+  const brandTagStyle = useFieldFormat('brandTag', {
+    fontFamily: 'var(--font-body)',
+    fontSize: wh(26),
+    fontWeight: 700,
+    letterSpacing: '0.5em',
+    textTransform: 'uppercase',
+    color: colors.accent,
+  });
+  const quoteStyle = useFieldFormat('quote', {
+    fontFamily: 'var(--font-display)',
+    fontStyle: 'italic',
+    fontSize: wh(68),
+    fontWeight: 300,
+    lineHeight: 1.15,
+    letterSpacing: '-0.01em',
+    color: colors.cream,
+  });
+  const finalHeadStyle = useFieldFormat('finalHead', {
+    fontFamily: 'var(--font-display)',
+    fontStyle: 'italic',
+    fontSize: wh(82),
+    letterSpacing: '-0.02em',
+    color: '#fff',
+  });
+  const ctaButtonStyle = useFieldFormat('ctaButton', {
+    fontFamily: 'var(--font-body)',
+    fontSize: wh(26),
+    fontWeight: 800,
+    letterSpacing: '0.35em',
+    textTransform: 'uppercase',
+    color: '#fff',
+  });
 
   const letters = featuredBrand.split('');
 
@@ -251,7 +257,6 @@ export function BrandSpotlightScene({
             display: 'flex',
             gap: w(6),
             ...featuredBrandStyle,
-            color: featuredBrandStyle.color ?? colors.cream,
           }}
         >
           {letters.map((ch, i) => {
@@ -300,7 +305,6 @@ export function BrandSpotlightScene({
           textAlign: 'center',
           zIndex: 6,
           ...brandTagStyle,
-          color: brandTagStyle.color ?? colors.accent,
           opacity: (brandTagStyle.opacity ?? 1) * tagOp,
         }}
       >
@@ -408,7 +412,7 @@ export function BrandSpotlightScene({
                 marginTop: h(10),
               }}
             >
-              {hero.price}
+              {composePrice(hero.price, currency)}
             </div>
           </div>
         </div>
@@ -476,7 +480,6 @@ export function BrandSpotlightScene({
           zIndex: 8,
           pointerEvents: 'none',
           ...quoteStyle,
-          color: quoteStyle.color ?? colors.cream,
           opacity: (quoteStyle.opacity ?? 1) * quoteOp,
           transform: `translateY(${h(quoteTy)}px)`,
         }}

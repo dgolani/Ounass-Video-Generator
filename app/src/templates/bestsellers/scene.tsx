@@ -14,6 +14,7 @@ import {
   useSafeZone,
   useFieldFormat,
 } from '../../engine';
+import { composePrice, useCurrencyForLocale } from '../../lib/price';
 import type { BestsellersProps } from './schema';
 import { BoutiqueLogo } from '../BoutiqueLogo';
 
@@ -64,6 +65,7 @@ export function BestsellersScene({
   const s = makeScale(width, height);
   const { w, h, wh } = s;
   const { base: safe } = useSafeZone({ width, height });
+  const currency = useCurrencyForLocale();
   const { colors, products, boutiqueName, headerMeta, kicker, logo } = props;
 
   // Per-field format overrides — marketer may have customised these via
@@ -361,7 +363,7 @@ export function BestsellersScene({
                     color: colors.accent,
                   }}
                 >
-                  {product.price}
+                  {composePrice(product.price, currency)}
                 </div>
               </div>
             </div>

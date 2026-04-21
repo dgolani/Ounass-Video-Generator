@@ -8,6 +8,7 @@ import {
   useSafeZone,
   useTimeline,
 } from '../../engine';
+import { composePrice, useCurrencyForLocale } from '../../lib/price';
 import type { LookbookProps } from './schema';
 import { BoutiqueLogo } from '../BoutiqueLogo';
 
@@ -62,6 +63,14 @@ function Act1Title({ props, T, s, safe: _safe }: ActProps) {
   const { colors, kicker, brand, tagline } = props;
   const { h, wh } = s;
 
+  const kickerStyle = useFieldFormat('kicker', {
+    fontFamily: 'var(--font-body)',
+    fontSize: wh(22),
+    fontWeight: 700,
+    letterSpacing: `${wh(6)}px`,
+    textTransform: 'uppercase',
+    color: colors.accent,
+  });
   const brandStyle = useFieldFormat('brand', {
     fontFamily: 'var(--font-display)',
     fontSize: wh(96),
@@ -69,6 +78,14 @@ function Act1Title({ props, T, s, safe: _safe }: ActProps) {
     lineHeight: 1,
     letterSpacing: '-0.02em',
     color: colors.paper,
+  });
+  const taglineStyle = useFieldFormat('tagline', {
+    fontFamily: 'var(--font-display)',
+    fontStyle: 'italic',
+    fontSize: wh(32),
+    fontWeight: 300,
+    letterSpacing: '0.01em',
+    color: 'rgba(245,243,239,0.6)',
   });
 
   const lineH = animate({
@@ -111,13 +128,8 @@ function Act1Title({ props, T, s, safe: _safe }: ActProps) {
           right: 0,
           top: h(780),
           textAlign: 'center',
-          color: colors.accent,
-          fontFamily: 'var(--font-body)',
-          fontWeight: 700,
-          fontSize: wh(22),
-          letterSpacing: `${wh(6)}px`,
-          textTransform: 'uppercase',
-          opacity: subOpacity,
+          ...kickerStyle,
+          opacity: (kickerStyle.opacity ?? 1) * subOpacity,
           transform: `translateY(${titleY}px)`,
         }}
       >
@@ -144,13 +156,8 @@ function Act1Title({ props, T, s, safe: _safe }: ActProps) {
           right: 0,
           top: h(990),
           textAlign: 'center',
-          color: 'rgba(245,243,239,0.6)',
-          fontFamily: 'var(--font-display)',
-          fontStyle: 'italic',
-          fontWeight: 300,
-          fontSize: wh(32),
-          letterSpacing: '0.01em',
-          opacity: subOpacity,
+          ...taglineStyle,
+          opacity: (taglineStyle.opacity ?? 1) * subOpacity,
         }}
       >
         {tagline}
@@ -333,6 +340,7 @@ function Act3Filmstrip({ props, T, s, safe, focusOverride, onFocusClick }: Act3P
   const { time: t } = useTimeline();
   const { products, colors, brand } = props;
   const { w, h, wh, W, H } = s;
+  const currency = useCurrencyForLocale();
 
   const cycleStart = T(4.3);
   const perProduct = T(0.55);
@@ -456,7 +464,7 @@ function Act3Filmstrip({ props, T, s, safe, focusOverride, onFocusClick }: Act3P
               color: '#1A1A1A',
             }}
           >
-            {product.price}
+            {composePrice(product.price, currency)}
           </div>
         </div>
       </div>
@@ -581,6 +589,15 @@ function Act4Outro({ props, T, s, safe }: ActProps) {
   } = props;
   const { w, h, wh, W, H } = s;
 
+  const outroKickerStyle = useFieldFormat('outroKicker', {
+    fontFamily: 'var(--font-body)',
+    fontSize: wh(22),
+    fontWeight: 700,
+    letterSpacing: `${wh(8)}px`,
+    color: colors.accent,
+    textTransform: 'uppercase',
+  });
+
   const ctaTextStyle = useFieldFormat('ctaText', {
     fontFamily: 'var(--font-body)',
     fontSize: wh(26),
@@ -689,13 +706,8 @@ function Act4Outro({ props, T, s, safe }: ActProps) {
       >
         <div
           style={{
-            fontFamily: 'var(--font-body)',
-            fontWeight: 700,
-            fontSize: wh(22),
-            letterSpacing: `${wh(8)}px`,
-            color: colors.accent,
-            textTransform: 'uppercase',
             marginBottom: wh(40),
+            ...outroKickerStyle,
           }}
         >
           {outroKicker}
