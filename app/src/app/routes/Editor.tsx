@@ -458,49 +458,31 @@ export function Editor() {
 
         <div style={{ flex: 1 }} />
 
-        {/* Undo/redo — covers props AND timeline mutations now */}
-        <div style={{ display: 'flex', gap: 4 }}>
-          <Button
-            size="sm"
-            variant="ghost"
-            onClick={undo}
-            disabled={!canUndo}
-            title="Undo (⌘Z)"
-          >
-            ↶
-          </Button>
-          <Button
-            size="sm"
-            variant="ghost"
-            onClick={redo}
-            disabled={!canRedo}
-            title="Redo (⌘⇧Z)"
-          >
-            ↷
-          </Button>
+        {/* Undo/redo — SVG arrow icons, square 32px ghost buttons.
+         *  Tight 2px gap marks them as one functional unit. */}
+        <div style={{ display: 'flex', gap: 2 }}>
+          <IconButton onClick={undo} disabled={!canUndo} title="Undo (⌘Z)">
+            <UndoIcon />
+          </IconButton>
+          <IconButton onClick={redo} disabled={!canRedo} title="Redo (⌘⇧Z)">
+            <RedoIcon />
+          </IconButton>
         </div>
 
-        {/* Aspect switcher */}
+        {/* Aspect switcher — segmented with neutral-tint active state. */}
         <AspectSwitcher
           aspects={template.meta.aspects}
           index={aspectIndex}
           onChange={onAspectChange}
         />
 
-        {/* Safe-zone guide toggle — draws the keep-clear margins per aspect
-         *  on the stage. Editor-only; not rendered in exports or previews. */}
-        <Button
-          variant={showSafeZones ? 'primary' : 'ghost'}
-          size="sm"
+        {/* Safe-zone guide toggle — subtle copper-tinted chip when on;
+         *  ghost when off. Never full-primary so it doesn't compete
+         *  with the Export CTA for attention. */}
+        <SafeToggle
+          active={showSafeZones}
           onClick={() => setShowSafeZones((v) => !v)}
-          title={
-            showSafeZones
-              ? 'Hide safe-zone guide (platform UI clearance)'
-              : 'Show safe-zone guide (platform UI clearance)'
-          }
-        >
-          {showSafeZones ? 'Safe ✓' : 'Safe'}
-        </Button>
+        />
 
         {/* Per-project locale toggle: override the brand-kit default for
          *  this ad only. Two-state segmented; the active side shows a
@@ -740,6 +722,164 @@ export function Editor() {
   );
 }
 
+/** Clean-line SVG icon — 16×16 on a 24-viewbox. currentColor follows
+ *  the button text color, so the same icon works in ghost / disabled /
+ *  hover states without extra tokens. */
+function UndoIcon() {
+  return (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.75"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <path d="M9 14L4 9l5-5" />
+      <path d="M4 9h10a6 6 0 016 6v1" />
+    </svg>
+  );
+}
+
+function RedoIcon() {
+  return (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.75"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <path d="M15 14l5-5-5-5" />
+      <path d="M20 9H10a6 6 0 00-6 6v1" />
+    </svg>
+  );
+}
+
+/** 32×32 square ghost icon button. Monochrome by default, subtly tints
+ *  on hover. Matches the visual language of the segmented controls
+ *  without competing with the Export CTA. */
+function IconButton({
+  onClick,
+  disabled,
+  title,
+  children,
+}: {
+  onClick: () => void;
+  disabled?: boolean;
+  title: string;
+  children: React.ReactNode;
+}) {
+  const [hover, setHover] = useState(false);
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      title={title}
+      aria-label={title}
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        width: 32,
+        height: 32,
+        padding: 0,
+        background:
+          !disabled && hover ? 'rgba(255,255,255,0.06)' : 'transparent',
+        border: '1px solid transparent',
+        borderRadius: 'var(--r-md)',
+        color: disabled ? 'var(--editor-text-dim)' : 'var(--editor-text)',
+        opacity: disabled ? 0.35 : 1,
+        cursor: disabled ? 'not-allowed' : 'pointer',
+        transition: 'background 120ms, opacity 120ms',
+      }}
+    >
+      {children}
+    </button>
+  );
+}
+
+/** Safe-zone guide toggle. Ghost when off, subtle copper-tinted chip
+ *  when on — visibly "active" without stealing attention from Export. */
+function SafeToggle({
+  active,
+  onClick,
+}: {
+  active: boolean;
+  onClick: () => void;
+}) {
+  const [hover, setHover] = useState(false);
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+      title={
+        active
+          ? 'Hide safe-zone guide (platform UI clearance)'
+          : 'Show safe-zone guide (platform UI clearance)'
+      }
+      aria-pressed={active}
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: 6,
+        height: 32,
+        padding: '0 12px',
+        fontFamily: 'var(--sans)',
+        fontSize: 11,
+        fontWeight: 700,
+        letterSpacing: '0.12em',
+        textTransform: 'uppercase',
+        color: active
+          ? 'var(--editor-text)'
+          : hover
+            ? 'var(--editor-text)'
+            : 'var(--editor-text-dim)',
+        background: active
+          ? 'rgba(196,147,115,0.14)'
+          : hover
+            ? 'rgba(255,255,255,0.04)'
+            : 'transparent',
+        border: `1px solid ${
+          active ? 'rgba(196,147,115,0.45)' : 'var(--editor-border)'
+        }`,
+        borderRadius: 'var(--r-md)',
+        cursor: 'pointer',
+        transition: 'background 120ms, color 120ms, border-color 120ms',
+      }}
+    >
+      {/* Outlined/filled dot visually reinforces the state beyond just
+       *  the label change — "Safe" stays the same word in both states. */}
+      <span
+        aria-hidden
+        style={{
+          width: 8,
+          height: 8,
+          borderRadius: '50%',
+          border: `1.5px solid ${
+            active ? 'var(--editor-accent)' : 'var(--editor-text-dim)'
+          }`,
+          background: active ? 'var(--editor-accent)' : 'transparent',
+          transition: 'background 120ms, border-color 120ms',
+        }}
+      />
+      Safe
+    </button>
+  );
+}
+
 /** Per-project locale toggle in the editor top bar. Segmented
  *  EN / العربية. Click the active side again to clear the override
  *  (revert to the brand default). */
@@ -792,8 +932,9 @@ function LocaleSegmented({
               else onChange(opt.value);
             }}
             style={{
-              background: active ? 'var(--editor-accent)' : 'transparent',
-              color: active ? '#0A0A0A' : 'var(--editor-text-dim)',
+              // Neutral tint for active — same vocabulary as AspectSwitcher.
+              background: active ? 'rgba(255,255,255,0.08)' : 'transparent',
+              color: active ? 'var(--editor-text)' : 'var(--editor-text-dim)',
               border: 0,
               padding: '4px 10px',
               fontFamily: opt.value === 'ar' ? 'var(--serif)' : 'var(--sans)',
@@ -808,6 +949,9 @@ function LocaleSegmented({
           >
             {opt.label}
             {active && isOverride && (
+              // Tiny copper dot signals "this ad overrides the brand
+              // default locale". Copper is allowed here because the
+              // dot is 5px — it doesn't compete with the Export CTA.
               <span
                 aria-hidden
                 style={{
@@ -817,7 +961,7 @@ function LocaleSegmented({
                   width: 5,
                   height: 5,
                   borderRadius: '50%',
-                  background: '#0A0A0A',
+                  background: 'var(--editor-accent)',
                 }}
               />
             )}
@@ -845,6 +989,7 @@ function AspectSwitcher({
         alignItems: 'center',
         gap: 2,
         padding: 2,
+        background: 'var(--editor-panel-2)',
         border: '1px solid var(--editor-border)',
         borderRadius: 'var(--r-md)',
       }}
@@ -864,12 +1009,16 @@ function AspectSwitcher({
               fontWeight: 700,
               letterSpacing: '0.12em',
               textTransform: 'uppercase',
-              background: active ? 'var(--editor-accent)' : 'transparent',
-              color: active ? '#0A0A0A' : 'var(--editor-text-dim)',
+              // Active = subtle lighter tint on the panel bg (not copper).
+              // Keeps the visual hierarchy: only Export pulls the eye with
+              // the brand colour; state indicators use monochrome tint.
+              background: active ? 'rgba(255,255,255,0.08)' : 'transparent',
+              color: active ? 'var(--editor-text)' : 'var(--editor-text-dim)',
               border: 0,
-              borderRadius: 4,
+              borderRadius: 3,
               cursor: single ? 'default' : 'pointer',
               opacity: single && !active ? 0.5 : 1,
+              transition: 'background 120ms, color 120ms',
             }}
           >
             {a.label.split(' ')[0]}
