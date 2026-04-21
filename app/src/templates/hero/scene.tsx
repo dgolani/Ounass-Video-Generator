@@ -1,4 +1,11 @@
-import { Easing, clamp, interpolate, useTimeline, useSafeZone } from '../../engine';
+import {
+  Easing,
+  clamp,
+  interpolate,
+  useTimeline,
+  useSafeZone,
+  useFieldFormat,
+} from '../../engine';
 import type { HeroProps } from './schema';
 import { BoutiqueLogo } from '../BoutiqueLogo';
 
@@ -293,6 +300,15 @@ function CTA({ props, T, s, safe }: ActProps) {
   const { boutiqueName, ctaText, ctaFooter, logo, colors } = props;
   const { w, h, wh } = s;
 
+  const ctaTextStyle = useFieldFormat('ctaText', {
+    fontFamily: 'var(--font-body)',
+    fontSize: wh(24),
+    fontWeight: 700,
+    letterSpacing: `${wh(4)}px`,
+    textTransform: 'uppercase',
+    color: colors.paper,
+  });
+
   if (t < T(5.0)) return null;
 
   const fadeIn = interpolate([T(5.0), T(5.6)], [0, 1], Easing.easeOutExpo)(t);
@@ -346,17 +362,13 @@ function CTA({ props, T, s, safe }: ActProps) {
           }}
           style={{
             background: colors.accent,
-            color: colors.background,
             border: 0,
             padding: `${wh(32)}px ${wh(80)}px`,
-            fontFamily: 'var(--font-body)',
-            fontWeight: 700,
-            fontSize: wh(26),
-            letterSpacing: `${wh(5)}px`,
-            textTransform: 'uppercase',
             cursor: 'pointer',
             position: 'relative',
             overflow: 'hidden',
+            ...ctaTextStyle,
+            color: ctaTextStyle.color ?? colors.background,
           }}
         >
           {ctaText}

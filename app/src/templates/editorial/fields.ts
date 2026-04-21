@@ -11,13 +11,13 @@ export const fields: FieldDescriptor[] = [
   },
 
   { kind: 'section', label: 'Masthead' },
-  { kind: 'text', path: 'masthead', label: 'Masthead', sceneIds: ['masthead'] },
-  { kind: 'text', path: 'issueDate', label: 'Issue date', sceneIds: ['masthead'] },
+  { kind: 'text', path: 'masthead', label: 'Masthead', sceneIds: ['masthead'], role: 'body' },
+  { kind: 'text', path: 'issueDate', label: 'Issue date', sceneIds: ['masthead'], role: 'body' },
 
   { kind: 'section', label: 'Headline' },
-  { kind: 'text', path: 'headlineLine1', label: 'Line 1 (serif)', sceneIds: ['masthead'] },
-  { kind: 'text', path: 'headlineLine2', label: 'Line 2 (italic)', sceneIds: ['masthead'] },
-  { kind: 'text', path: 'byline', label: 'Byline', sceneIds: ['masthead'] },
+  { kind: 'text', path: 'headlineLine1', label: 'Line 1 (serif)', sceneIds: ['masthead'], role: 'display' },
+  { kind: 'text', path: 'headlineLine2', label: 'Line 2 (italic)', sceneIds: ['masthead'], role: 'display' },
+  { kind: 'text', path: 'byline', label: 'Byline', sceneIds: ['masthead'], role: 'body' },
 
   { kind: 'section', label: 'Products (2×2 grid)' },
   {
@@ -50,11 +50,11 @@ export const fields: FieldDescriptor[] = [
   },
 
   { kind: 'section', label: 'Closing' },
-  { kind: 'text', path: 'closingKicker', label: 'Kicker', sceneIds: ['closing'] },
-  { kind: 'text', path: 'signatureText', label: 'Signature', sceneIds: ['closing'] },
-  { kind: 'text', path: 'boutiqueName', label: 'Boutique name', sceneIds: ['closing'] },
-  { kind: 'text', path: 'ctaText', label: 'CTA text', sceneIds: ['closing'] },
-  { kind: 'text', path: 'ctaFooter', label: 'CTA footer', sceneIds: ['closing'] },
+  { kind: 'text', path: 'closingKicker', label: 'Kicker', sceneIds: ['closing'], role: 'body' },
+  { kind: 'text', path: 'signatureText', label: 'Signature', sceneIds: ['closing'], role: 'display' },
+  { kind: 'text', path: 'boutiqueName', label: 'Boutique name', sceneIds: ['closing'], role: 'body' },
+  { kind: 'text', path: 'ctaText', label: 'CTA text', sceneIds: ['closing'], role: 'body' },
+  { kind: 'text', path: 'ctaFooter', label: 'CTA footer', sceneIds: ['closing'], role: 'body' },
 
   { kind: 'section', label: 'Colors' },
   { kind: 'color', path: 'colors.paper', label: 'Paper (background)' },

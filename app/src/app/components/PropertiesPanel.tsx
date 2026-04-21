@@ -8,7 +8,11 @@ import {
   TextField,
   Textarea,
 } from '../../ui/primitives';
-import type { FieldDescriptor, ProductListSubField } from '../../templates/fields';
+import type {
+  FieldDescriptor,
+  FieldRole,
+  ProductListSubField,
+} from '../../templates/fields';
 import { getPath, setPath } from '../../lib/path';
 import { resizeImageToDataURL } from '../../lib/image';
 import {
@@ -27,6 +31,16 @@ type Props = {
   compact?: boolean;
   /** Current timeline scene id (`meta.scenes`) — highlights matching `sceneIds` on text fields */
   activeSceneId?: string | null;
+  /** Field paths with a non-empty format override — lights up the "Aa" button so
+   *  marketers can tell at a glance which fields have been customized. */
+  overriddenPaths?: Set<string>;
+  /** Open the Format drawer for a specific text field. When provided, every
+   *  text field renders a small "Aa" icon next to the input. */
+  onOpenFormatField?: (
+    path: string,
+    label: string,
+    role: FieldRole,
+  ) => void;
 };
 
 function sceneIdsActive(
@@ -44,12 +58,56 @@ function sceneInputHaloClass(active: boolean): string {
     .join(' ');
 }
 
+/** Small "Aa" button that opens the Format drawer for a text field.
+ *  Lit when the field has any override applied. */
+function FormatButton({
+  onClick,
+  hasOverride,
+  label,
+}: {
+  onClick: () => void;
+  hasOverride: boolean;
+  label: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label={`Format ${label}`}
+      title={hasOverride ? `Format · customised` : `Format ${label}`}
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        width: 28,
+        height: 28,
+        padding: 0,
+        background: hasOverride ? 'var(--editor-accent)' : 'var(--editor-panel-2)',
+        color: hasOverride ? '#0A0A0A' : 'var(--editor-text-dim)',
+        border: `1px solid ${hasOverride ? 'var(--editor-accent)' : 'var(--editor-border)'}`,
+        borderRadius: 4,
+        cursor: 'pointer',
+        fontFamily: 'var(--serif)',
+        fontSize: 14,
+        fontWeight: 500,
+        lineHeight: 1,
+        transition: 'background 120ms, color 120ms, border-color 120ms',
+        flexShrink: 0,
+      }}
+    >
+      Aa
+    </button>
+  );
+}
+
 export function PropertiesPanel({
   fields,
   value,
   onChange,
   compact,
   activeSceneId = null,
+  overriddenPaths,
+  onOpenFormatField,
 }: Props) {
   return (
     <div
@@ -67,21 +125,41 @@ export function PropertiesPanel({
 
         if (field.kind === 'text') {
           const hi = sceneIdsActive(field.sceneIds, activeSceneId);
+          const hasOverride = overriddenPaths?.has(field.path) ?? false;
+          const role: FieldRole = field.role ?? 'body';
+          const showFormatBtn = !!onOpenFormatField;
           return (
             <div key={i} style={{ marginTop: compact ? 12 : 16 }}>
               <Field label={field.label}>
-                <div className={sceneInputHaloClass(hi)}>
-                  {field.multiline ? (
-                    <Textarea
-                      value={String(current ?? '')}
-                      onChange={(e) => set(e.target.value)}
-                      placeholder={field.placeholder}
-                    />
-                  ) : (
-                    <TextField
-                      value={String(current ?? '')}
-                      onChange={(e) => set(e.target.value)}
-                      placeholder={field.placeholder}
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: showFormatBtn ? 'flex-start' : 'stretch',
+                    gap: 8,
+                  }}
+                >
+                  <div className={sceneInputHaloClass(hi)} style={{ flex: 1, minWidth: 0 }}>
+                    {field.multiline ? (
+                      <Textarea
+                        value={String(current ?? '')}
+                        onChange={(e) => set(e.target.value)}
+                        placeholder={field.placeholder}
+                      />
+                    ) : (
+                      <TextField
+                        value={String(current ?? '')}
+                        onChange={(e) => set(e.target.value)}
+                        placeholder={field.placeholder}
+                      />
+                    )}
+                  </div>
+                  {showFormatBtn && (
+                    <FormatButton
+                      hasOverride={hasOverride}
+                      label={field.label}
+                      onClick={() =>
+                        onOpenFormatField?.(field.path, field.label, role)
+                      }
                     />
                   )}
                 </div>

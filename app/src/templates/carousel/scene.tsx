@@ -4,7 +4,14 @@
 // settling into center focus before handing off to the next; final frame
 // blooms a rotating dashed stamp + CTA.
 
-import { Easing, clamp, interpolate, useTimeline, useSafeZone } from '../../engine';
+import {
+  Easing,
+  clamp,
+  interpolate,
+  useTimeline,
+  useSafeZone,
+  useFieldFormat,
+} from '../../engine';
 import type { CarouselProps } from './schema';
 import { BoutiqueLogo } from '../BoutiqueLogo';
 
@@ -51,6 +58,41 @@ export function CarouselScene({
   const s = makeScale(width, height);
   const { w, h, wh } = s;
   const { base: safe } = useSafeZone({ width, height });
+
+  // Per-field format overrides.
+  const titleKickerStyle = useFieldFormat('titleKicker', {
+    fontFamily: 'var(--font-body)',
+    fontSize: wh(24),
+    fontWeight: 700,
+    letterSpacing: '0.45em',
+    textTransform: 'uppercase',
+    color: 'rgba(255,255,255,0.55)',
+  });
+  const titleLineStyle = useFieldFormat('titleLine1', {
+    fontFamily: 'var(--font-display)',
+    fontStyle: 'italic',
+    fontSize: wh(150),
+    fontWeight: 300,
+    lineHeight: 0.95,
+    letterSpacing: '-0.03em',
+    color: '#fff',
+  });
+  const finalHeadlineStyle = useFieldFormat('finalHeadline', {
+    fontFamily: 'var(--font-display)',
+    fontStyle: 'italic',
+    fontSize: wh(120),
+    lineHeight: 1,
+    color: '#fff',
+    letterSpacing: '-0.02em',
+  });
+  const ctaButtonStyle = useFieldFormat('ctaButton', {
+    fontFamily: 'var(--font-body)',
+    fontSize: wh(26),
+    fontWeight: 800,
+    letterSpacing: '0.35em',
+    textTransform: 'uppercase',
+    color: '#fff',
+  });
   const {
     colors,
     items,
@@ -185,29 +227,10 @@ export function CarouselScene({
           padding: `0 ${w(40)}px`,
         }}
       >
-        <div
-          style={{
-            fontFamily: 'var(--font-body)',
-            fontSize: wh(24),
-            fontWeight: 700,
-            letterSpacing: '0.45em',
-            textTransform: 'uppercase',
-            color: 'rgba(255,255,255,0.55)',
-            marginBottom: h(22),
-          }}
-        >
+        <div style={{ marginBottom: h(22), ...titleKickerStyle }}>
           {titleKicker}
         </div>
-        <div
-          style={{
-            fontFamily: 'var(--font-display)',
-            fontStyle: 'italic',
-            fontWeight: 300,
-            fontSize: wh(150),
-            lineHeight: 0.95,
-            letterSpacing: '-0.03em',
-          }}
-        >
+        <div style={{ ...titleLineStyle }}>
           {titleLine1}
           <br />
           <em>{titleLine2}</em>
@@ -414,14 +437,9 @@ export function CarouselScene({
         </div>
         <div
           style={{
-            fontFamily: 'var(--font-display)',
-            fontStyle: 'italic',
-            fontSize: wh(120),
-            lineHeight: 1,
-            color: '#fff',
             textAlign: 'center',
-            letterSpacing: '-0.02em',
             padding: `0 ${w(60)}px`,
+            ...finalHeadlineStyle,
           }}
         >
           {finalHeadline}
@@ -445,16 +463,11 @@ export function CarouselScene({
           style={{
             padding: `${h(22)}px ${w(64)}px`,
             background: colors.accent,
-            color: '#fff',
-            fontFamily: 'var(--font-body)',
-            fontSize: wh(26),
-            fontWeight: 800,
-            letterSpacing: '0.35em',
-            textTransform: 'uppercase',
             border: 0,
             borderRadius: wh(4),
             marginTop: h(14),
             cursor: 'pointer',
+            ...ctaButtonStyle,
           }}
         >
           {ctaButton}

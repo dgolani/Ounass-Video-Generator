@@ -9,13 +9,13 @@ export const fields: FieldDescriptor[] = [
     aspectRatio: 16 / 9,
     hint: 'Shown in the top bar.',
   },
-  { kind: 'text', path: 'boutiqueName', label: 'Boutique name', sceneIds: ['opening', 'cycle', 'final'] },
-  { kind: 'text', path: 'categoryLabel', label: 'Category label (top-right)', sceneIds: ['cycle'] },
+  { kind: 'text', path: 'boutiqueName', label: 'Boutique name', sceneIds: ['opening', 'cycle', 'final'], role: 'body' },
+  { kind: 'text', path: 'categoryLabel', label: 'Category label (top-right)', sceneIds: ['cycle'], role: 'body' },
 
   { kind: 'section', label: 'Opening title' },
-  { kind: 'text', path: 'titleKicker', label: 'Kicker', sceneIds: ['opening'] },
-  { kind: 'text', path: 'titleLine1', label: 'Headline — line 1', sceneIds: ['opening'] },
-  { kind: 'text', path: 'titleLine2', label: 'Headline — line 2 (italic)', sceneIds: ['opening'] },
+  { kind: 'text', path: 'titleKicker', label: 'Kicker', sceneIds: ['opening'], role: 'body' },
+  { kind: 'text', path: 'titleLine1', label: 'Headline — line 1', sceneIds: ['opening'], role: 'display' },
+  { kind: 'text', path: 'titleLine2', label: 'Headline — line 2 (italic)', sceneIds: ['opening'], role: 'display' },
 
   { kind: 'section', label: 'Carousel items' },
   {
@@ -41,11 +41,11 @@ export const fields: FieldDescriptor[] = [
   },
 
   { kind: 'section', label: 'Final frame' },
-  { kind: 'text', path: 'finalStat', label: 'Stat stamp (e.g. "120+")', sceneIds: ['final'] },
-  { kind: 'text', path: 'finalKicker', label: 'Kicker', sceneIds: ['final'] },
-  { kind: 'text', path: 'finalHeadline', label: 'Headline', sceneIds: ['final'] },
-  { kind: 'text', path: 'finalSubline', label: 'Subline', sceneIds: ['final'] },
-  { kind: 'text', path: 'ctaButton', label: 'Button label', sceneIds: ['final'] },
+  { kind: 'text', path: 'finalStat', label: 'Stat stamp (e.g. "120+")', sceneIds: ['final'], role: 'display' },
+  { kind: 'text', path: 'finalKicker', label: 'Kicker', sceneIds: ['final'], role: 'body' },
+  { kind: 'text', path: 'finalHeadline', label: 'Headline', sceneIds: ['final'], role: 'display' },
+  { kind: 'text', path: 'finalSubline', label: 'Subline', sceneIds: ['final'], role: 'body' },
+  { kind: 'text', path: 'ctaButton', label: 'Button label', sceneIds: ['final'], role: 'body' },
 
   { kind: 'section', label: 'Colors' },
   { kind: 'color', path: 'colors.background', label: 'Background (ink)' },

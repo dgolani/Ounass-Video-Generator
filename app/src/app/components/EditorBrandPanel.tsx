@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import type { FieldDescriptor } from '../../templates/fields';
 import { PropertiesPanel } from './PropertiesPanel';
+import type { FieldRole } from '../../templates/fields';
 
 function isBrandColumnImage(f: FieldDescriptor): f is Extract<FieldDescriptor, { kind: 'image' }> {
   return f.kind === 'image' && (f.path === 'logo' || f.brandColumn === true);
@@ -88,6 +89,8 @@ type Props = {
   value: unknown;
   onChange: (next: unknown) => void;
   activeSceneId?: string | null;
+  overriddenPaths?: Set<string>;
+  onOpenFormatField?: (path: string, label: string, role: FieldRole) => void;
 };
 
 export function EditorBrandPanel({
@@ -95,6 +98,8 @@ export function EditorBrandPanel({
   value,
   onChange,
   activeSceneId = null,
+  overriddenPaths,
+  onOpenFormatField,
 }: Props) {
   const emptyHint = useMemo(
     () => (
@@ -126,6 +131,8 @@ export function EditorBrandPanel({
       onChange={onChange}
       compact
       activeSceneId={activeSceneId}
+      overriddenPaths={overriddenPaths}
+      onOpenFormatField={onOpenFormatField}
     />
   );
 }

@@ -13,9 +13,9 @@ export const fields: FieldDescriptor[] = [
   { kind: 'text', path: 'sideEditorialLine', label: 'Side editorial line (e.g. "Vol. XII · SS26")', sceneIds: ['word-1', 'word-2', 'word-3', 'products'] },
 
   { kind: 'section', label: 'Typographic refrain' },
-  { kind: 'text', path: 'word1', label: 'Word 1 (e.g. "Summer")', sceneIds: ['word-1'] },
-  { kind: 'text', path: 'word2', label: 'Word 2 (e.g. "in bloom")', sceneIds: ['word-2'] },
-  { kind: 'text', path: 'word3', label: 'Word 3 (e.g. "is here")', sceneIds: ['word-3'] },
+  { kind: 'text', path: 'word1', label: 'Word 1 (e.g. "Summer")', sceneIds: ['word-1'], role: 'display' },
+  { kind: 'text', path: 'word2', label: 'Word 2 (e.g. "in bloom")', sceneIds: ['word-2'], role: 'display' },
+  { kind: 'text', path: 'word3', label: 'Word 3 (e.g. "is here")', sceneIds: ['word-3'], role: 'display' },
 
   { kind: 'section', label: 'Floating products' },
   {
@@ -43,11 +43,11 @@ export const fields: FieldDescriptor[] = [
   },
 
   { kind: 'section', label: 'Final frame' },
-  { kind: 'text', path: 'seasonChip', label: 'Season chip (e.g. "26")', sceneIds: ['final'] },
-  { kind: 'text', path: 'finalKicker', label: 'Kicker', sceneIds: ['final'] },
-  { kind: 'text', path: 'finalHeadline', label: 'Headline', sceneIds: ['final'] },
-  { kind: 'text', path: 'finalSubline', label: 'Subline', sceneIds: ['final'] },
-  { kind: 'text', path: 'ctaButton', label: 'Button label', sceneIds: ['final'] },
+  { kind: 'text', path: 'seasonChip', label: 'Season chip (e.g. "26")', sceneIds: ['final'], role: 'display' },
+  { kind: 'text', path: 'finalKicker', label: 'Kicker', sceneIds: ['final'], role: 'body' },
+  { kind: 'text', path: 'finalHeadline', label: 'Headline', sceneIds: ['final'], role: 'display' },
+  { kind: 'text', path: 'finalSubline', label: 'Subline', sceneIds: ['final'], role: 'body' },
+  { kind: 'text', path: 'ctaButton', label: 'Button label', sceneIds: ['final'], role: 'body' },
 
   { kind: 'section', label: 'Colors' },
   { kind: 'color', path: 'colors.background', label: 'Background (cream)' },

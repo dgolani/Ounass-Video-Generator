@@ -4,6 +4,7 @@ import {
   animate,
   clamp,
   interpolate,
+  useFieldFormat,
   useSafeZone,
   useTimeline,
 } from '../../engine';
@@ -60,6 +61,15 @@ function Act1Title({ props, T, s, safe: _safe }: ActProps) {
   const { time: t } = useTimeline();
   const { colors, kicker, brand, tagline } = props;
   const { h, wh } = s;
+
+  const brandStyle = useFieldFormat('brand', {
+    fontFamily: 'var(--font-display)',
+    fontSize: wh(96),
+    fontWeight: 300,
+    lineHeight: 1,
+    letterSpacing: '-0.02em',
+    color: colors.paper,
+  });
 
   const lineH = animate({
     from: 0,
@@ -120,13 +130,8 @@ function Act1Title({ props, T, s, safe: _safe }: ActProps) {
           right: 0,
           top: h(870),
           textAlign: 'center',
-          color: colors.paper,
-          fontFamily: 'var(--font-display)',
-          fontWeight: 300,
-          fontSize: wh(96),
-          letterSpacing: '-0.02em',
-          lineHeight: 1,
-          opacity: titleOpacity,
+          ...brandStyle,
+          opacity: (brandStyle.opacity ?? 1) * titleOpacity,
           transform: `translateY(${titleY}px)`,
         }}
       >
@@ -576,6 +581,23 @@ function Act4Outro({ props, T, s, safe }: ActProps) {
   } = props;
   const { w, h, wh, W, H } = s;
 
+  const ctaTextStyle = useFieldFormat('ctaText', {
+    fontFamily: 'var(--font-body)',
+    fontSize: wh(26),
+    fontWeight: 700,
+    letterSpacing: `${wh(5)}px`,
+    textTransform: 'uppercase',
+    color: colors.background,
+  });
+  const boutiqueTaglineStyle = useFieldFormat('boutiqueTagline', {
+    fontFamily: 'var(--font-display)',
+    fontStyle: 'italic',
+    fontSize: wh(36),
+    fontWeight: 300,
+    letterSpacing: '0.01em',
+    color: 'rgba(245,243,239,0.72)',
+  });
+
   if (t < T(7.0)) return null;
 
   const wipeT = interpolate([T(7.0), T(7.5)], [0, 1], Easing.easeInOutCubic)(t);
@@ -692,13 +714,8 @@ function Act4Outro({ props, T, s, safe }: ActProps) {
         <div
           style={{
             marginTop: wh(28),
-            fontFamily: 'var(--font-display)',
-            fontStyle: 'italic',
-            fontWeight: 300,
-            fontSize: wh(36),
-            color: 'rgba(245,243,239,0.72)',
-            letterSpacing: '0.01em',
-            opacity: tagOp,
+            ...boutiqueTaglineStyle,
+            opacity: (boutiqueTaglineStyle.opacity ?? 1) * tagOp,
           }}
         >
           {boutiqueTagline}
@@ -725,17 +742,12 @@ function Act4Outro({ props, T, s, safe }: ActProps) {
           }}
           style={{
             background: colors.accent,
-            color: colors.background,
             border: 0,
             padding: `${wh(32)}px ${wh(80)}px`,
-            fontFamily: 'var(--font-body)',
-            fontWeight: 700,
-            fontSize: wh(26),
-            letterSpacing: `${wh(5)}px`,
-            textTransform: 'uppercase',
             cursor: 'pointer',
             position: 'relative',
             overflow: 'hidden',
+            ...ctaTextStyle,
           }}
         >
           {ctaText}

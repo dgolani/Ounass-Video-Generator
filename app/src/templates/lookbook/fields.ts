@@ -11,14 +11,14 @@ export const fields: FieldDescriptor[] = [
   },
 
   { kind: 'section', label: 'Opening' },
-  { kind: 'text', path: 'kicker', label: 'Kicker', sceneIds: ['act-1'] },
-  { kind: 'text', path: 'brand', label: 'Brand', sceneIds: ['act-1'] },
-  { kind: 'text', path: 'tagline', label: 'Tagline', sceneIds: ['act-1'] },
+  { kind: 'text', path: 'kicker', label: 'Kicker', sceneIds: ['act-1'], role: 'body' },
+  { kind: 'text', path: 'brand', label: 'Brand', sceneIds: ['act-1'], role: 'display' },
+  { kind: 'text', path: 'tagline', label: 'Tagline', sceneIds: ['act-1'], role: 'display' },
 
   { kind: 'section', label: 'Columns act' },
-  { kind: 'text', path: 'act2Kicker', label: 'Kicker', sceneIds: ['act-2'] },
-  { kind: 'text', path: 'act2TitleLine1', label: 'Title — line 1', sceneIds: ['act-2'] },
-  { kind: 'text', path: 'act2TitleLine2', label: 'Title — line 2', sceneIds: ['act-2'] },
+  { kind: 'text', path: 'act2Kicker', label: 'Kicker', sceneIds: ['act-2'], role: 'body' },
+  { kind: 'text', path: 'act2TitleLine1', label: 'Title — line 1', sceneIds: ['act-2'], role: 'display' },
+  { kind: 'text', path: 'act2TitleLine2', label: 'Title — line 2', sceneIds: ['act-2'], role: 'display' },
 
   { kind: 'section', label: 'Products' },
   {
@@ -44,11 +44,11 @@ export const fields: FieldDescriptor[] = [
   },
 
   { kind: 'section', label: 'Outro' },
-  { kind: 'text', path: 'outroKicker', label: 'Kicker', sceneIds: ['act-4'] },
-  { kind: 'text', path: 'boutiqueName', label: 'Boutique name', sceneIds: ['act-4'] },
-  { kind: 'text', path: 'boutiqueTagline', label: 'Boutique tagline', sceneIds: ['act-4'] },
-  { kind: 'text', path: 'ctaText', label: 'CTA text', sceneIds: ['act-4'] },
-  { kind: 'text', path: 'ctaFooter', label: 'CTA footer', sceneIds: ['act-4'] },
+  { kind: 'text', path: 'outroKicker', label: 'Kicker', sceneIds: ['act-4'], role: 'body' },
+  { kind: 'text', path: 'boutiqueName', label: 'Boutique name', sceneIds: ['act-4'], role: 'body' },
+  { kind: 'text', path: 'boutiqueTagline', label: 'Boutique tagline', sceneIds: ['act-4'], role: 'display' },
+  { kind: 'text', path: 'ctaText', label: 'CTA text', sceneIds: ['act-4'], role: 'body' },
+  { kind: 'text', path: 'ctaFooter', label: 'CTA footer', sceneIds: ['act-4'], role: 'body' },
 
   { kind: 'section', label: 'Watermark' },
   {
@@ -57,6 +57,7 @@ export const fields: FieldDescriptor[] = [
     label: 'Boutique signature',
     placeholder: 'Leave blank to hide',
     sceneIds: ['act-4'],
+    role: 'display',
   },
 
   { kind: 'section', label: 'Colors' },

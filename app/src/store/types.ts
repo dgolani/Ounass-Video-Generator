@@ -1,3 +1,5 @@
+import type { FieldFormatOverrides } from './fieldFormat';
+
 export type Project = {
   id: string;
   name: string;
@@ -17,6 +19,10 @@ export type Project = {
   musicTrimStartSec: number;
   /** Video time where the music bed ends (exclusive tail is silent). Default = full video. */
   musicEndVideoTime: number;
+  /** Per-field typography + style overrides keyed by FieldDescriptor.path.
+   *  Added in Phase 5. Optional — pre-Phase-5 projects load with an empty
+   *  map injected by the project reader. */
+  fieldFormatOverrides?: FieldFormatOverrides;
   createdAt: number;
   updatedAt: number;
 };

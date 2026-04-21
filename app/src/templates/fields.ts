@@ -7,6 +7,20 @@
 // under PRODUCTS / BRAND KIT. Use optional `brandColumn` / `brandColumn: false`
 // when a template needs different paths.
 
+/** Typography role a text field belongs to in the template's design.
+ *  Drives the Format drawer's family dropdown — a "kicker" labelled
+ *  `role: 'body'` shows only body-role families (Portrait, Inter,
+ *  DM Sans, Nunito Sans), so marketers can't accidentally pick a
+ *  display serif for a small uppercase chip.
+ *
+ *  When omitted, the drawer defaults to `'body'` as the safest
+ *  assumption (most inline text is body-weight in our templates).
+ *  Headlines, refrains, and hero wordmarks should be explicitly
+ *  `'display'`; prices/countdowns `'numeric'`; Arabic-script fields
+ *  can declare `'arabic'` so the drawer shows RTL-friendly options.
+ */
+export type FieldRole = 'display' | 'body' | 'numeric' | 'arabic';
+
 /** Sub-field rows inside a `productList` control */
 export type ProductListSubField = {
   path: string;
@@ -14,6 +28,8 @@ export type ProductListSubField = {
   kind: 'text';
   /** When the playhead is in any of these `meta.scenes[].id`s, emphasize this row */
   sceneIds?: string[];
+  /** Typography role for the per-field Format drawer. See FieldRole. */
+  role?: FieldRole;
 };
 
 export type FieldDescriptor =
@@ -26,6 +42,8 @@ export type FieldDescriptor =
       multiline?: boolean;
       /** When the playhead is in any of these `meta.scenes[].id`s, emphasize this field */
       sceneIds?: string[];
+      /** Typography role for the per-field Format drawer. See FieldRole. */
+      role?: FieldRole;
     }
   | {
       kind: 'color';

@@ -6,7 +6,14 @@
 //   hold  0.25..0.85  subtle sine float
 //   exit  0.85..1.0  slide-out + counter-rotate + fade-out
 
-import { Easing, clamp, interpolate, useTimeline, useSafeZone } from '../../engine';
+import {
+  Easing,
+  clamp,
+  interpolate,
+  useTimeline,
+  useSafeZone,
+  useFieldFormat,
+} from '../../engine';
 import type { BestsellersProps } from './schema';
 import { BoutiqueLogo } from '../BoutiqueLogo';
 
@@ -58,6 +65,50 @@ export function BestsellersScene({
   const { w, h, wh } = s;
   const { base: safe } = useSafeZone({ width, height });
   const { colors, products, boutiqueName, headerMeta, kicker, logo } = props;
+
+  // Per-field format overrides — marketer may have customised these via
+  // the Format drawer. Hooks called unconditionally at the top.
+  const headerMetaStyle = useFieldFormat('headerMeta', {
+    fontFamily: 'var(--font-body)',
+    fontSize: wh(22),
+    fontWeight: 700,
+    letterSpacing: '0.3em',
+    textTransform: 'uppercase',
+    color: 'rgba(0,0,0,0.60)',
+  });
+  const kickerStyle = useFieldFormat('kicker', {
+    fontFamily: 'var(--font-body)',
+    fontSize: wh(28),
+    fontWeight: 700,
+    letterSpacing: '0.5em',
+    textTransform: 'uppercase',
+    color: colors.accent,
+  });
+  const ctaKickerStyle = useFieldFormat('ctaKicker', {
+    fontFamily: 'var(--font-body)',
+    fontSize: wh(26),
+    fontWeight: 700,
+    letterSpacing: '0.4em',
+    textTransform: 'uppercase',
+    color: 'rgba(0,0,0,0.60)',
+  });
+  const ctaHeadlineStyle = useFieldFormat('ctaHeadline', {
+    fontFamily: 'var(--font-display)',
+    fontStyle: 'italic',
+    fontSize: wh(76),
+    fontWeight: 300,
+    lineHeight: 1,
+    color: colors.ink,
+    letterSpacing: '-0.01em',
+  });
+  const ctaButtonStyle = useFieldFormat('ctaButton', {
+    fontFamily: 'var(--font-body)',
+    fontSize: wh(26),
+    fontWeight: 800,
+    letterSpacing: '0.35em',
+    textTransform: 'uppercase',
+    color: '#fff',
+  });
 
   // Only 5 product slots are supported. If more are provided, extra are ignored;
   // if fewer, remaining slots stay blank.
@@ -149,16 +200,7 @@ export function BestsellersScene({
           fontWeight={800}
           letterSpacing="0.5em"
         />
-        <div
-          style={{
-            fontFamily: 'var(--font-body)',
-            fontSize: wh(22),
-            fontWeight: 700,
-            letterSpacing: '0.3em',
-            textTransform: 'uppercase',
-            color: 'rgba(0,0,0,0.60)',
-          }}
-        >
+        <div style={{ ...headerMetaStyle }}>
           {headerMeta}
         </div>
       </div>
@@ -172,14 +214,15 @@ export function BestsellersScene({
           left: 0,
           right: 0,
           textAlign: 'center',
-          fontFamily: 'var(--font-body)',
-          fontSize: wh(28),
-          fontWeight: 700,
-          letterSpacing: '0.5em',
-          textTransform: 'uppercase',
-          color: colors.accent,
           zIndex: 10,
-          opacity: time < ctaIn ? 1 : interpolate([0, 0.4], [1, 0], Easing.easeInCubic)(time - ctaIn),
+          ...kickerStyle,
+          // Animation opacity takes precedence over the override's static
+          // opacity — multiplied in applyFieldFormat so both compose.
+          opacity:
+            (kickerStyle.opacity ?? 1) *
+            (time < ctaIn
+              ? 1
+              : interpolate([0, 0.4], [1, 0], Easing.easeInCubic)(time - ctaIn)),
         }}
       >
         {kicker}
@@ -396,29 +439,14 @@ export function BestsellersScene({
           transform: `translateY(${h(ctaY)}px)`,
         }}
       >
-        <div
-          style={{
-            fontFamily: 'var(--font-body)',
-            fontSize: wh(26),
-            fontWeight: 700,
-            letterSpacing: '0.4em',
-            textTransform: 'uppercase',
-            color: 'rgba(0,0,0,0.60)',
-          }}
-        >
+        <div style={{ ...ctaKickerStyle }}>
           {props.ctaKicker}
         </div>
         <div
           style={{
-            fontFamily: 'var(--font-display)',
-            fontStyle: 'italic',
-            fontWeight: 300,
-            fontSize: wh(76),
-            lineHeight: 1,
-            color: colors.ink,
-            letterSpacing: '-0.01em',
             textAlign: 'center',
             padding: `0 ${w(60)}px`,
+            ...ctaHeadlineStyle,
           }}
         >
           {props.ctaHeadline}
@@ -431,15 +459,10 @@ export function BestsellersScene({
           style={{
             padding: `${h(22)}px ${w(56)}px`,
             background: '#2D2D2D',
-            color: '#fff',
-            fontFamily: 'var(--font-body)',
-            fontSize: wh(26),
-            fontWeight: 800,
-            letterSpacing: '0.35em',
-            textTransform: 'uppercase',
             border: 0,
             borderRadius: wh(4),
             cursor: 'pointer',
+            ...ctaButtonStyle,
           }}
         >
           {props.ctaButton}

@@ -3,7 +3,14 @@
 // `02-seasonal-campaign`. Three-word serif crossfade, ticker scrolls,
 // products stagger-in then drift, final frame blooms over dark ink.
 
-import { Easing, clamp, interpolate, useTimeline, useSafeZone } from '../../engine';
+import {
+  Easing,
+  clamp,
+  interpolate,
+  useTimeline,
+  useSafeZone,
+  useFieldFormat,
+} from '../../engine';
 import type { SeasonalProps } from './schema';
 import { BoutiqueLogo } from '../BoutiqueLogo';
 
@@ -51,6 +58,49 @@ export function SeasonalScene({
   const s = makeScale(width, height);
   const { w, h, wh } = s;
   const { base: safe } = useSafeZone({ width, height });
+
+  // Per-field format overrides.
+  const refrainStyle = useFieldFormat('word1', {
+    fontFamily: 'var(--font-display)',
+    fontStyle: 'italic',
+    fontSize: wh(520),
+    fontWeight: 300,
+    lineHeight: 0.9,
+    letterSpacing: '-0.04em',
+    color: '#B87253', // resolved from brand accent at the override level
+  });
+  const finalKickerStyle = useFieldFormat('finalKicker', {
+    fontFamily: 'var(--font-body)',
+    fontSize: wh(26),
+    fontWeight: 700,
+    letterSpacing: '0.5em',
+    textTransform: 'uppercase',
+    color: '#B87253',
+  });
+  const finalHeadlineStyle = useFieldFormat('finalHeadline', {
+    fontFamily: 'var(--font-display)',
+    fontStyle: 'italic',
+    fontSize: wh(128),
+    fontWeight: 300,
+    lineHeight: 1,
+    letterSpacing: '-0.02em',
+  });
+  const finalSublineStyle = useFieldFormat('finalSubline', {
+    fontFamily: 'var(--font-body)',
+    fontSize: wh(26),
+    fontWeight: 400,
+    letterSpacing: '0.2em',
+    textTransform: 'uppercase',
+    color: 'rgba(255,255,255,0.7)',
+  });
+  const ctaButtonStyle = useFieldFormat('ctaButton', {
+    fontFamily: 'var(--font-body)',
+    fontSize: wh(26),
+    fontWeight: 800,
+    letterSpacing: '0.35em',
+    textTransform: 'uppercase',
+    color: '#fff',
+  });
   const {
     colors,
     boutiqueName,
@@ -243,16 +293,12 @@ export function SeasonalScene({
       >
         <div
           style={{
-            fontFamily: 'var(--font-display)',
-            fontStyle: 'italic',
-            fontWeight: 300,
-            fontSize: wh(520),
-            lineHeight: 0.9,
-            letterSpacing: '-0.04em',
-            color: colors.accent,
             whiteSpace: 'nowrap',
             textAlign: 'center',
-            opacity: wordOp,
+            ...refrainStyle,
+            // Template color default uses the brand accent; override wins.
+            color: refrainStyle.color ?? colors.accent,
+            opacity: (refrainStyle.opacity ?? 1) * wordOp,
             transform: `translateY(${h(wordDy)}px) scale(${wordScale}) rotate(${wordRot}deg)`,
           }}
         >
@@ -405,40 +451,26 @@ export function SeasonalScene({
         </div>
         <div
           style={{
-            fontFamily: 'var(--font-body)',
-            fontSize: wh(26),
-            fontWeight: 700,
-            letterSpacing: '0.5em',
-            textTransform: 'uppercase',
-            color: colors.accent,
             marginBottom: h(18),
+            ...finalKickerStyle,
+            color: finalKickerStyle.color ?? colors.accent,
           }}
         >
           {finalKicker}
         </div>
         <div
           style={{
-            fontFamily: 'var(--font-display)',
-            fontStyle: 'italic',
-            fontWeight: 300,
-            fontSize: wh(128),
-            lineHeight: 1,
-            letterSpacing: '-0.02em',
             marginBottom: h(14),
             textAlign: 'center',
+            ...finalHeadlineStyle,
           }}
         >
           {finalHeadline}
         </div>
         <div
           style={{
-            fontFamily: 'var(--font-body)',
-            fontSize: wh(26),
-            fontWeight: 400,
-            letterSpacing: '0.2em',
-            color: 'rgba(255,255,255,0.7)',
             marginBottom: h(48),
-            textTransform: 'uppercase',
+            ...finalSublineStyle,
           }}
         >
           {finalSubline}
@@ -451,15 +483,10 @@ export function SeasonalScene({
           style={{
             padding: `${h(22)}px ${w(64)}px`,
             background: colors.accent,
-            color: '#fff',
-            fontFamily: 'var(--font-body)',
-            fontSize: wh(26),
-            fontWeight: 800,
-            letterSpacing: '0.35em',
-            textTransform: 'uppercase',
             border: 0,
             borderRadius: wh(4),
             cursor: 'pointer',
+            ...ctaButtonStyle,
           }}
         >
           {ctaButton}

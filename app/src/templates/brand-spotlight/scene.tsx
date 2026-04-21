@@ -5,7 +5,14 @@
 //   Act 4 (11.5+)   : monogram hold frame with CTA
 // Ported from the Claude-Design HTML prototype `05-brand-spotlight`.
 
-import { Easing, clamp, interpolate, useTimeline, useSafeZone } from '../../engine';
+import {
+  Easing,
+  clamp,
+  interpolate,
+  useTimeline,
+  useSafeZone,
+  useFieldFormat,
+} from '../../engine';
 import type { SpotlightProps } from './schema';
 import { BoutiqueLogo } from '../BoutiqueLogo';
 
@@ -50,6 +57,46 @@ export function BrandSpotlightScene({
   const s = makeScale(width, height);
   const { w, h, wh } = s;
   const { base: safe } = useSafeZone({ width, height });
+
+  const featuredBrandStyle = useFieldFormat('featuredBrand', {
+    fontFamily: 'var(--font-display)',
+    fontStyle: 'italic',
+    fontSize: wh(290),
+    fontWeight: 300,
+    lineHeight: 1,
+    letterSpacing: '-0.03em',
+  });
+  const brandTagStyle = useFieldFormat('brandTag', {
+    fontFamily: 'var(--font-body)',
+    fontSize: wh(26),
+    fontWeight: 700,
+    letterSpacing: '0.5em',
+    textTransform: 'uppercase',
+    color: '#B87253',
+  });
+  const quoteStyle = useFieldFormat('quote', {
+    fontFamily: 'var(--font-display)',
+    fontStyle: 'italic',
+    fontSize: wh(68),
+    fontWeight: 300,
+    lineHeight: 1.15,
+    letterSpacing: '-0.01em',
+  });
+  const finalHeadStyle = useFieldFormat('finalHead', {
+    fontFamily: 'var(--font-display)',
+    fontStyle: 'italic',
+    fontSize: wh(82),
+    letterSpacing: '-0.02em',
+    color: '#fff',
+  });
+  const ctaButtonStyle = useFieldFormat('ctaButton', {
+    fontFamily: 'var(--font-body)',
+    fontSize: wh(26),
+    fontWeight: 800,
+    letterSpacing: '0.35em',
+    textTransform: 'uppercase',
+    color: '#fff',
+  });
   const {
     colors,
     boutiqueName,
@@ -199,17 +246,12 @@ export function BrandSpotlightScene({
       >
         <div
           style={{
-            fontFamily: 'var(--font-display)',
-            fontStyle: 'italic',
-            fontWeight: 300,
-            fontSize: wh(290),
-            lineHeight: 1,
-            letterSpacing: '-0.03em',
-            color: colors.cream,
             whiteSpace: 'nowrap',
             textAlign: 'center',
             display: 'flex',
             gap: w(6),
+            ...featuredBrandStyle,
+            color: featuredBrandStyle.color ?? colors.cream,
           }}
         >
           {letters.map((ch, i) => {
@@ -257,13 +299,9 @@ export function BrandSpotlightScene({
           right: 0,
           textAlign: 'center',
           zIndex: 6,
-          fontFamily: 'var(--font-body)',
-          fontSize: wh(26),
-          fontWeight: 700,
-          letterSpacing: '0.5em',
-          textTransform: 'uppercase',
-          color: colors.accent,
-          opacity: tagOp,
+          ...brandTagStyle,
+          color: brandTagStyle.color ?? colors.accent,
+          opacity: (brandTagStyle.opacity ?? 1) * tagOp,
         }}
       >
         {brandTag}
@@ -436,16 +474,11 @@ export function BrandSpotlightScene({
           top: '40%',
           textAlign: 'center',
           zIndex: 8,
-          fontFamily: 'var(--font-display)',
-          fontStyle: 'italic',
-          fontWeight: 300,
-          fontSize: wh(68),
-          lineHeight: 1.15,
-          color: colors.cream,
-          letterSpacing: '-0.01em',
-          opacity: quoteOp,
-          transform: `translateY(${h(quoteTy)}px)`,
           pointerEvents: 'none',
+          ...quoteStyle,
+          color: quoteStyle.color ?? colors.cream,
+          opacity: (quoteStyle.opacity ?? 1) * quoteOp,
+          transform: `translateY(${h(quoteTy)}px)`,
         }}
       >
         {quote}
@@ -508,13 +541,9 @@ export function BrandSpotlightScene({
         </div>
         <div
           style={{
-            fontFamily: 'var(--font-display)',
-            fontStyle: 'italic',
-            fontSize: wh(82),
-            color: '#fff',
-            letterSpacing: '-0.02em',
             textAlign: 'center',
             padding: `0 ${w(60)}px`,
+            ...finalHeadStyle,
           }}
         >
           {finalHead}
@@ -541,16 +570,11 @@ export function BrandSpotlightScene({
           style={{
             padding: `${h(22)}px ${w(64)}px`,
             background: colors.accent,
-            color: '#fff',
-            fontFamily: 'var(--font-body)',
-            fontSize: wh(26),
-            fontWeight: 800,
-            letterSpacing: '0.35em',
-            textTransform: 'uppercase',
             border: 0,
             borderRadius: wh(4),
             marginTop: h(18),
             cursor: 'pointer',
+            ...ctaButtonStyle,
           }}
         >
           {ctaButton}

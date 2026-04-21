@@ -9,16 +9,16 @@ export const fields: FieldDescriptor[] = [
     aspectRatio: 16 / 9,
     hint: 'Shown above the opening headline.',
   },
-  { kind: 'text', path: 'boutiqueName', label: 'Boutique name', sceneIds: ['open'] },
+  { kind: 'text', path: 'boutiqueName', label: 'Boutique name', sceneIds: ['open'], role: 'body' },
 
   { kind: 'section', label: 'Opening' },
-  { kind: 'text', path: 'kicker', label: 'Kicker', sceneIds: ['open'] },
-  { kind: 'text', path: 'headLine1', label: 'Headline — line 1', sceneIds: ['open'] },
-  { kind: 'text', path: 'headLine2', label: 'Headline — line 2', sceneIds: ['open'] },
+  { kind: 'text', path: 'kicker', label: 'Kicker', sceneIds: ['open'], role: 'body' },
+  { kind: 'text', path: 'headLine1', label: 'Headline — line 1', sceneIds: ['open'], role: 'display' },
+  { kind: 'text', path: 'headLine2', label: 'Headline — line 2', sceneIds: ['open'], role: 'display' },
 
   { kind: 'section', label: 'Gift box' },
-  { kind: 'text', path: 'boxLabel', label: 'Lid label (italic)', sceneIds: ['open'] },
-  { kind: 'text', path: 'ribbonLabel', label: 'Ribbon tag', sceneIds: ['ribbon'] },
+  { kind: 'text', path: 'boxLabel', label: 'Lid label (italic)', sceneIds: ['open'], role: 'display' },
+  { kind: 'text', path: 'ribbonLabel', label: 'Ribbon tag', sceneIds: ['ribbon'], role: 'body' },
 
   { kind: 'section', label: 'Gift picks (4)' },
   {
@@ -42,9 +42,9 @@ export const fields: FieldDescriptor[] = [
   },
 
   { kind: 'section', label: 'Foot CTA' },
-  { kind: 'text', path: 'footKicker', label: 'Kicker', sceneIds: ['cta'] },
-  { kind: 'text', path: 'footHead', label: 'Headline', sceneIds: ['cta'] },
-  { kind: 'text', path: 'ctaButton', label: 'Button label', sceneIds: ['cta'] },
+  { kind: 'text', path: 'footKicker', label: 'Kicker', sceneIds: ['cta'], role: 'body' },
+  { kind: 'text', path: 'footHead', label: 'Headline', sceneIds: ['cta'], role: 'display' },
+  { kind: 'text', path: 'ctaButton', label: 'Button label', sceneIds: ['cta'], role: 'body' },
 
   { kind: 'section', label: 'Colors' },
   { kind: 'color', path: 'colors.background', label: 'Background (paper)' },

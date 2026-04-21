@@ -1,4 +1,11 @@
-import { Easing, clamp, interpolate, useTimeline, useSafeZone } from '../../engine';
+import {
+  Easing,
+  clamp,
+  interpolate,
+  useTimeline,
+  useSafeZone,
+  useFieldFormat,
+} from '../../engine';
 import type { EditorialProps } from './schema';
 import { BoutiqueLogo } from '../BoutiqueLogo';
 
@@ -456,6 +463,15 @@ function Signature({ props, T, s, safe }: ActProps) {
   } = props;
   const { w, h, wh } = s;
 
+  const ctaTextStyle = useFieldFormat('ctaText', {
+    fontFamily: 'var(--font-body)',
+    fontSize: wh(22),
+    fontWeight: 700,
+    letterSpacing: `${wh(4)}px`,
+    textTransform: 'uppercase',
+    color: colors.paper,
+  });
+
   if (t < T(7.4)) return null;
 
   const fadeIn = interpolate([T(7.4), T(8.0)], [0, 1], Easing.easeOutExpo)(t);
@@ -566,17 +582,12 @@ function Signature({ props, T, s, safe }: ActProps) {
           }}
           style={{
             background: colors.ink,
-            color: colors.paper,
             border: 0,
             padding: `${wh(32)}px ${wh(76)}px`,
-            fontFamily: 'var(--font-body)',
-            fontWeight: 700,
-            fontSize: wh(26),
-            letterSpacing: `${wh(5)}px`,
-            textTransform: 'uppercase',
             cursor: 'pointer',
             position: 'relative',
             overflow: 'hidden',
+            ...ctaTextStyle,
           }}
         >
           {ctaText}

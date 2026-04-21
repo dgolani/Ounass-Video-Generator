@@ -4,6 +4,7 @@
 // input blur, updatedAt — server/timestamp metadata).
 
 import type { Project } from './types';
+import type { FieldFormatOverrides } from './fieldFormat';
 
 export type EditableState = {
   props: unknown;
@@ -15,6 +16,10 @@ export type EditableState = {
   musicAnchorVideoTime: number;
   musicTrimStartSec: number;
   musicEndVideoTime: number;
+  /** Per-field format overrides keyed by FieldDescriptor.path. Always a
+   *  plain object (possibly empty) — never undefined — so the editor's
+   *  history can diff it without null checks. */
+  fieldFormatOverrides: FieldFormatOverrides;
 };
 
 export function projectToEditable(p: Project): EditableState {
@@ -28,11 +33,12 @@ export function projectToEditable(p: Project): EditableState {
     musicAnchorVideoTime: p.musicAnchorVideoTime,
     musicTrimStartSec: p.musicTrimStartSec,
     musicEndVideoTime: p.musicEndVideoTime,
+    fieldFormatOverrides: p.fieldFormatOverrides ?? {},
   };
 }
 
-/** Shallow-equal two EditableStates. `props` is identity-compared
- *  (our updates always produce new references). */
+/** Shallow-equal two EditableStates. `props` and `fieldFormatOverrides`
+ *  are identity-compared — our setters always produce new references. */
 export function editablesEqual(a: EditableState, b: EditableState): boolean {
   return (
     a.props === b.props &&
@@ -43,7 +49,8 @@ export function editablesEqual(a: EditableState, b: EditableState): boolean {
     a.musicVolume === b.musicVolume &&
     a.musicAnchorVideoTime === b.musicAnchorVideoTime &&
     a.musicTrimStartSec === b.musicTrimStartSec &&
-    a.musicEndVideoTime === b.musicEndVideoTime
+    a.musicEndVideoTime === b.musicEndVideoTime &&
+    a.fieldFormatOverrides === b.fieldFormatOverrides
   );
 }
 
@@ -59,5 +66,6 @@ export function editableToPatch(e: EditableState): Partial<Project> {
     musicAnchorVideoTime: e.musicAnchorVideoTime,
     musicTrimStartSec: e.musicTrimStartSec,
     musicEndVideoTime: e.musicEndVideoTime,
+    fieldFormatOverrides: e.fieldFormatOverrides,
   };
 }

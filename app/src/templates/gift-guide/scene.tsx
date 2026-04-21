@@ -3,7 +3,14 @@
 // the frame shut before the foot CTA fades in.
 // Ported from the Claude-Design HTML prototype `04-gift-guide`.
 
-import { Easing, clamp, interpolate, useTimeline, useSafeZone } from '../../engine';
+import {
+  Easing,
+  clamp,
+  interpolate,
+  useTimeline,
+  useSafeZone,
+  useFieldFormat,
+} from '../../engine';
 import type { GiftGuideProps } from './schema';
 import { BoutiqueLogo } from '../BoutiqueLogo';
 
@@ -67,6 +74,37 @@ export function GiftGuideScene({
   const s = makeScale(width, height);
   const { w, h, wh } = s;
   const { base: safe } = useSafeZone({ width, height });
+
+  const kickerStyle = useFieldFormat('kicker', {
+    fontFamily: 'var(--font-body)',
+    fontSize: wh(24),
+    fontWeight: 700,
+    letterSpacing: '0.5em',
+    textTransform: 'uppercase',
+    color: '#B87253',
+  });
+  const headLineStyle = useFieldFormat('headLine1', {
+    fontFamily: 'var(--font-display)',
+    fontStyle: 'italic',
+    fontSize: wh(150),
+    fontWeight: 300,
+    lineHeight: 0.95,
+    letterSpacing: '-0.03em',
+  });
+  const footHeadStyle = useFieldFormat('footHead', {
+    fontFamily: 'var(--font-display)',
+    fontStyle: 'italic',
+    fontSize: wh(76),
+    lineHeight: 1,
+    letterSpacing: '-0.02em',
+  });
+  const ctaButtonStyle = useFieldFormat('ctaButton', {
+    fontFamily: 'var(--font-body)',
+    fontSize: wh(26),
+    fontWeight: 800,
+    letterSpacing: '0.35em',
+    textTransform: 'uppercase',
+  });
   const {
     colors,
     boutiqueName,
@@ -184,27 +222,18 @@ export function GiftGuideScene({
         </div>
         <div
           style={{
-            fontFamily: 'var(--font-body)',
-            fontSize: wh(24),
-            fontWeight: 700,
-            letterSpacing: '0.5em',
-            textTransform: 'uppercase',
-            color: colors.accent,
+            ...kickerStyle,
+            color: kickerStyle.color ?? colors.accent,
           }}
         >
           {kicker}
         </div>
         <div
           style={{
-            fontFamily: 'var(--font-display)',
-            fontStyle: 'italic',
-            fontWeight: 300,
-            fontSize: wh(150),
-            lineHeight: 0.95,
-            letterSpacing: '-0.03em',
-            color: colors.ink,
             marginTop: h(18),
             padding: `0 ${w(40)}px`,
+            ...headLineStyle,
+            color: headLineStyle.color ?? colors.ink,
           }}
         >
           {headLine1}
@@ -538,14 +567,10 @@ export function GiftGuideScene({
         </div>
         <div
           style={{
-            fontFamily: 'var(--font-display)',
-            fontStyle: 'italic',
-            fontSize: wh(76),
-            lineHeight: 1,
-            color: colors.ink,
             marginBottom: h(24),
-            letterSpacing: '-0.02em',
             padding: `0 ${w(60)}px`,
+            ...footHeadStyle,
+            color: footHeadStyle.color ?? colors.ink,
           }}
         >
           {footHead}
@@ -558,15 +583,11 @@ export function GiftGuideScene({
           style={{
             padding: `${h(22)}px ${w(60)}px`,
             background: colors.ink,
-            color: colors.accent,
-            fontFamily: 'var(--font-body)',
-            fontSize: wh(26),
-            fontWeight: 800,
-            letterSpacing: '0.35em',
-            textTransform: 'uppercase',
             border: 0,
             borderRadius: wh(4),
             cursor: 'pointer',
+            ...ctaButtonStyle,
+            color: ctaButtonStyle.color ?? colors.accent,
           }}
         >
           {ctaButton}

@@ -1,4 +1,10 @@
-import { Easing, interpolate, useTimeline, useSafeZone } from '../../engine';
+import {
+  Easing,
+  interpolate,
+  useTimeline,
+  useSafeZone,
+  useFieldFormat,
+} from '../../engine';
 import type { CountdownProps } from './schema';
 import { BoutiqueLogo } from '../BoutiqueLogo';
 
@@ -287,6 +293,15 @@ function CTA({ props, T, s, safe }: ActProps) {
   const { boutiqueName, ctaText, ctaFooter, logo, colors } = props;
   const { w, h, wh } = s;
 
+  const ctaTextStyle = useFieldFormat('ctaText', {
+    fontFamily: 'var(--font-body)',
+    fontSize: wh(24),
+    fontWeight: 700,
+    letterSpacing: `${wh(4)}px`,
+    textTransform: 'uppercase',
+    color: colors.paper,
+  });
+
   if (t < T(4.8)) return null;
 
   const fadeIn = interpolate([T(4.8), T(5.4)], [0, 1], Easing.easeOutExpo)(t);
@@ -359,17 +374,13 @@ function CTA({ props, T, s, safe }: ActProps) {
           }}
           style={{
             background: colors.accent,
-            color: colors.background,
             border: 0,
             padding: `${wh(34)}px ${wh(84)}px`,
-            fontFamily: 'var(--font-body)',
-            fontWeight: 700,
-            fontSize: wh(28),
-            letterSpacing: `${wh(5)}px`,
-            textTransform: 'uppercase',
             cursor: 'pointer',
             position: 'relative',
             overflow: 'hidden',
+            ...ctaTextStyle,
+            color: ctaTextStyle.color ?? colors.background,
           }}
         >
           {ctaText}

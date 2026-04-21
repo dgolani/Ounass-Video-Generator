@@ -6,7 +6,14 @@ import {
   useStageController,
   SafeZoneOverlay,
   SafeZoneEnforcementContext,
+  FieldFormatContext,
 } from '../../engine';
+import { FormatDrawer } from '../components/FormatDrawer';
+import type { FieldRole } from '../../templates/fields';
+import {
+  isFieldFormatEmpty,
+  type FieldFormat,
+} from '../../store/fieldFormat';
 import { useProject } from '../../store/projects';
 import {
   editablesEqual,
@@ -61,6 +68,7 @@ const EMPTY_EDITABLE: EditableState = {
   musicAnchorVideoTime: 0,
   musicTrimStartSec: 0,
   musicEndVideoTime: 9,
+  fieldFormatOverrides: {},
 };
 
 export function Editor() {
@@ -104,6 +112,13 @@ export function Editor() {
       /* ignore quota / private mode */
     }
   }, [showSafeZones]);
+
+  /** Active field in the Format drawer (null when drawer is closed).
+   *  Tracks path + label + role so the drawer can render its header and
+   *  family picker without PropertiesPanel needing to stay mounted. */
+  const [formatField, setFormatField] = useState<
+    { path: string; label: string; role: FieldRole } | null
+  >(null);
   const canvasRef = useRef<HTMLDivElement | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const videoTimeRef = useRef(0);
@@ -164,6 +179,26 @@ export function Editor() {
     [setEditable],
   );
 
+  /** Update the format override for a single field path. Passing an empty
+   *  format (all undefined) clears the override so the field reverts to
+   *  the template's designer-intent style. Routes through the history
+   *  stack so undo/redo rolls field formatting back with everything else. */
+  const onFieldFormatChange = useCallback(
+    (path: string, next: FieldFormat) => {
+      setEditable((prev) => {
+        const cur = prev.fieldFormatOverrides;
+        const nextMap = { ...cur };
+        if (isFieldFormatEmpty(next)) {
+          delete nextMap[path];
+        } else {
+          nextMap[path] = next;
+        }
+        return { ...prev, fieldFormatOverrides: nextMap };
+      });
+    },
+    [setEditable],
+  );
+
   const template = project ? getTemplate(project.templateId) : null;
   const aspectIndex = editable.aspectIndex;
   const aspect = template?.meta.aspects[aspectIndex];
@@ -171,6 +206,16 @@ export function Editor() {
   const defaultDuration = template?.meta.defaultDuration ?? 9;
   const timeScale = duration / defaultDuration;
   const localProps = editable.props;
+  const fieldFormatOverrides = editable.fieldFormatOverrides;
+  /** Paths with any non-empty override — lights up the "Aa" button so
+   *  marketers can see which fields have been customised at a glance. */
+  const overriddenPaths = useMemo(() => {
+    const s = new Set<string>();
+    for (const [path, fmt] of Object.entries(fieldFormatOverrides)) {
+      if (!isFieldFormatEmpty(fmt)) s.add(path);
+    }
+    return s;
+  }, [fieldFormatOverrides]);
 
   const controller = useStageController({
     duration,
@@ -443,6 +488,10 @@ export function Editor() {
           value={localProps}
           onChange={setLocalProps}
           activeSceneId={activeSceneId}
+          overriddenPaths={overriddenPaths}
+          onOpenFormatField={(path, label, role) =>
+            setFormatField({ path, label, role })
+          }
         />
       </div>
 
@@ -489,17 +538,25 @@ export function Editor() {
              *  designer-intent position (unshifted). Flipping the toggle
              *  reflows the stage instantly. Preview cards and exports
              *  don't override the context default (true), so they always
-             *  render enforced regardless of what the editor toggle is. */}
+             *  render enforced regardless of what the editor toggle is.
+             *
+             *  The FieldFormatContext.Provider carries per-field overrides
+             *  from this project's EditableState down to every useFieldFormat
+             *  call inside the scene. Preview cards don't provide overrides
+             *  (empty map default), so their thumbnails render at template
+             *  defaults — exactly like the gallery. */}
             <SafeZoneEnforcementContext.Provider value={showSafeZones}>
-              <Scene
-                props={localProps}
-                timeScale={timeScale}
-                width={aspect.width}
-                height={aspect.height}
-              />
-              {/* Editor-only guide; sibling of the Scene so it shares the
-               *  stage transform and stays pixel-aligned at any zoom. */}
-              {showSafeZones && <SafeZoneOverlay aspect={aspect} />}
+              <FieldFormatContext.Provider value={fieldFormatOverrides}>
+                <Scene
+                  props={localProps}
+                  timeScale={timeScale}
+                  width={aspect.width}
+                  height={aspect.height}
+                />
+                {/* Editor-only guide; sibling of the Scene so it shares the
+                 *  stage transform and stays pixel-aligned at any zoom. */}
+                {showSafeZones && <SafeZoneOverlay aspect={aspect} />}
+              </FieldFormatContext.Provider>
             </SafeZoneEnforcementContext.Provider>
           </Stage>
         </div>
@@ -564,8 +621,26 @@ export function Editor() {
           value={localProps}
           onChange={setLocalProps}
           activeSceneId={activeSceneId}
+          overriddenPaths={overriddenPaths}
+          onOpenFormatField={(path, label, role) =>
+            setFormatField({ path, label, role })
+          }
         />
       </div>
+
+      <FormatDrawer
+        open={formatField !== null}
+        onClose={() => setFormatField(null)}
+        fieldPath={formatField?.path ?? ''}
+        fieldLabel={formatField?.label ?? ''}
+        role={formatField?.role ?? 'body'}
+        value={
+          formatField ? fieldFormatOverrides[formatField.path] ?? {} : {}
+        }
+        onChange={(next) => {
+          if (formatField) onFieldFormatChange(formatField.path, next);
+        }}
+      />
 
       <ExportModal
         open={exportOpen}

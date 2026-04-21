@@ -9,11 +9,11 @@ export const fields: FieldDescriptor[] = [
     aspectRatio: 16 / 9,
     hint: 'Shown in the header in place of the text wordmark.',
   },
-  { kind: 'text', path: 'boutiqueName', label: 'Boutique name' },
-  { kind: 'text', path: 'headerMeta', label: 'Header line (e.g. "The Edit · Spring")' },
+  { kind: 'text', path: 'boutiqueName', label: 'Boutique name', role: 'body' },
+  { kind: 'text', path: 'headerMeta', label: 'Header line (e.g. "The Edit · Spring")', role: 'body' },
 
   { kind: 'section', label: 'Opening' },
-  { kind: 'text', path: 'kicker', label: 'Kicker', sceneIds: ['slot-1'] },
+  { kind: 'text', path: 'kicker', label: 'Kicker', sceneIds: ['slot-1'], role: 'body' },
 
   { kind: 'section', label: 'Products (ranked 5 → 1)' },
   {
@@ -40,9 +40,9 @@ export const fields: FieldDescriptor[] = [
   },
 
   { kind: 'section', label: 'Closing CTA' },
-  { kind: 'text', path: 'ctaKicker', label: 'Kicker', sceneIds: ['cta'] },
-  { kind: 'text', path: 'ctaHeadline', label: 'Headline', sceneIds: ['cta'] },
-  { kind: 'text', path: 'ctaButton', label: 'Button label', sceneIds: ['cta'] },
+  { kind: 'text', path: 'ctaKicker', label: 'Kicker', sceneIds: ['cta'], role: 'body' },
+  { kind: 'text', path: 'ctaHeadline', label: 'Headline', sceneIds: ['cta'], role: 'display' },
+  { kind: 'text', path: 'ctaButton', label: 'Button label', sceneIds: ['cta'], role: 'body' },
 
   { kind: 'section', label: 'Colors' },
   { kind: 'color', path: 'colors.background', label: 'Background (paper)' },
