@@ -346,8 +346,8 @@ const ROLE_META: Record<
   },
   arabic: {
     label: 'Arabic',
-    hint: 'RTL copy + Arabic script',
-    sample: 'الأناقة الهادئة · ١٣٥ د.إ.',
+    hint: 'RTL copy + Arabic script (prices keep Latin digits)',
+    sample: 'الأناقة الهادئة · 135 د.إ.',
     sampleSize: 20,
     italic: false,
   },
@@ -540,7 +540,7 @@ function LocaleSection({
           marginBottom: 20,
         }}
       >
-        Default locale for new ads. Flipping to Arabic triggers RTL layout + Arabic typography at the scene level. Currency suffix is appended to prices per locale (e.g. <code>135 AED</code> / <code>١٣٥ د.إ.</code>).
+        Default locale for new ads. Flipping to Arabic triggers RTL layout + Arabic typography at the scene level. Currency suffix is appended to prices per locale; digits always stay Latin (e.g. <code>135 AED</code> / <code>135 د.إ.</code>).
       </p>
 
       <div
