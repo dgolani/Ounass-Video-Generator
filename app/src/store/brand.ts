@@ -2,6 +2,16 @@ import { useEffect, useState } from 'react';
 import ounassLogoRaw from '../assets/ounass-logo.svg?raw';
 import { sanitizeSvg, svgToDataURL } from '../lib/logo';
 import { DEFAULT_TYPOGRAPHY, type Typography } from '../engine/typography';
+import {
+  DEFAULT_SAFE_ZONES,
+  type AspectKey,
+  type SafeZone,
+} from '../engine/safeZones';
+
+/** Two-character locale key. `en` is the English/LTR default; `ar` flips
+ *  scenes to RTL and swaps display/body typography to the Arabic role.
+ *  More locales can be added later (fr, es) without a schema break. */
+export type Locale = 'en' | 'ar';
 
 export type BrandKit = {
   boutiqueName: string;
@@ -20,6 +30,19 @@ export type BrandKit = {
    *  that are set on :root whenever the brand kit changes. Defaults flow
    *  through DEFAULT_TYPOGRAPHY when no brand override is saved. */
   typography: Typography;
+  /** Per-aspect safe-zone margins (output pixels). Templates resolve
+   *  these through `useSafeZone(aspect)` and anchor safe-layer elements
+   *  (CTAs, kickers, badges) to the zone via `Math.max(design, safe.X)`.
+   *  Seeded from DEFAULT_SAFE_ZONES — which matches marketing's spec —
+   *  and editable per boutique from Brand Kit → Safe zones. */
+  safeZones: Record<AspectKey, SafeZone>;
+  /** Active locale for new ads. 'ar' triggers RTL + Arabic typography
+   *  fallback at the scene level. Per-project override lands in Phase 5. */
+  locale: Locale;
+  /** Currency suffix appended to prices per locale. Defaults: English
+   *  'AED', Arabic 'د.إ.' (UAE dirham abbreviation). Editable so other
+   *  markets (e.g. SAR / ر.س.) can be configured without a code change. */
+  currencyByLocale: Record<Locale, string>;
   updatedAt: number;
 };
 
@@ -37,6 +60,9 @@ export const DEFAULT_BRAND: BrandKit = {
     accentDark: '#9C6B48',
   },
   typography: DEFAULT_TYPOGRAPHY,
+  safeZones: DEFAULT_SAFE_ZONES,
+  locale: 'en',
+  currencyByLocale: { en: 'AED', ar: 'د.إ.' },
   updatedAt: 0,
 };
 
@@ -57,6 +83,16 @@ export function readBrand(): BrandKit {
       typography: {
         ...DEFAULT_BRAND.typography,
         ...(parsed.typography ?? {}),
+      },
+      // Per-aspect safe zones merge so newly introduced aspects (e.g. a
+      // future 9:16-no-chrome-v2) don't strand older saves.
+      safeZones: {
+        ...DEFAULT_BRAND.safeZones,
+        ...(parsed.safeZones ?? {}),
+      },
+      currencyByLocale: {
+        ...DEFAULT_BRAND.currencyByLocale,
+        ...(parsed.currencyByLocale ?? {}),
       },
     };
   } catch {

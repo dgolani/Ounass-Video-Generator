@@ -75,26 +75,34 @@ export function resolveSafeZone(key: AspectKey | null): SafeZone {
   return DEFAULT_SAFE_ZONES[key] ?? ZERO_SAFE_ZONE;
 }
 
-/** React hook — resolve the safe zone for a given aspect. Honours the
- *  SafeZoneEnforcementContext: when enforcement is disabled (editor
- *  toggle OFF), returns a zero-margin zone so `Math.max(h(x), safe.X)`
- *  anchors collapse back to their designer-intent values.
+/** Context for per-aspect safe-zone overrides supplied by the brand kit.
+ *  When null (default), `useSafeZone` falls back to DEFAULT_SAFE_ZONES.
+ *  The app top-level mounts a Provider fed by useBrand() so every scene
+ *  reactively picks up Brand Kit → Safe Zones edits without prop drilling. */
+export const SafeZoneOverridesContext = createContext<
+  Record<AspectKey, SafeZone> | null
+>(null);
+
+/** React hook — resolve the safe zone for a given aspect.
  *
- *  Usage in a scene:
- *    const { base: safe } = useSafeZone({ width, height });
- *    style={{ bottom: Math.max(h(60), safe.bottom) }}
+ *  Resolution order (first non-null wins):
+ *    1. brand kit's `safeZones[key]`  (via SafeZoneOverridesContext)
+ *    2. DEFAULT_SAFE_ZONES[key]
+ *    3. ZERO_SAFE_ZONE (unknown aspect)
  *
- *  Usage in the overlay:
- *    const { baseW, baseH, base } = useSafeZone(aspect);
- *    // rect at (base.left, base.top) sized (baseW - left - right) × ...
+ *  Honours SafeZoneEnforcementContext: when enforcement is off (editor
+ *  toggle OFF), ZERO is returned regardless of the resolved values so
+ *  designers can preview the unshifted layout.
  */
 export function useSafeZone(aspect: Pick<AspectRatio, 'width' | 'height'>) {
   const enforce = useContext(SafeZoneEnforcementContext);
+  const overrides = useContext(SafeZoneOverridesContext);
   return useMemo(() => {
     const key = aspectKeyOf(aspect);
-    // When enforcement is off, hand back zeros so Math.max() in templates
-    // resolves to the original designer-intent position.
-    const base = enforce ? resolveSafeZone(key) : ZERO_SAFE_ZONE;
+    const resolved = key
+      ? overrides?.[key] ?? DEFAULT_SAFE_ZONES[key]
+      : ZERO_SAFE_ZONE;
+    const base = enforce ? resolved : ZERO_SAFE_ZONE;
     return {
       /** Resolved key ('9:16' / '4:5' / '1:1' / null for custom). */
       key,
@@ -106,5 +114,5 @@ export function useSafeZone(aspect: Pick<AspectRatio, 'width' | 'height'>) {
       /** Whether enforcement is currently on for this render. */
       enforced: enforce,
     };
-  }, [aspect.width, aspect.height, enforce]);
+  }, [aspect.width, aspect.height, enforce, overrides]);
 }
