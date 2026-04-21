@@ -124,6 +124,13 @@ export async function exportVideoToMP4({
         height,
         cacheBust: false,
         fontEmbedCSS,
+        // Skip any node tagged `data-export-ignore="true"` — today that's
+        // the editor's safe-zone overlay (SafeZoneOverlay.tsx), so the
+        // dim strips + the "Safe · 9:16" pill never bake into the
+        // rasterized frame even if the user kept the overlay visible
+        // while clicking Export. Future editor-only chrome can opt out
+        // by setting the same attribute.
+        filter: (node) => node.dataset?.exportIgnore !== 'true',
         style: {
           // Neutralise the auto-fit transform so we rasterize at native res.
           transform: 'none',

@@ -8,8 +8,15 @@
 //
 // Rendered as a sibling of the Scene inside <Stage>, so it's in stage
 // coordinate space (1080 × 1920) and scales with the stage transform.
-// Editor-only; not rendered in template previews, export output, or the
-// gallery (`showSafeZones` toggle gates the render in Editor.tsx).
+// Editor-only; not rendered in template previews or the gallery
+// (`showSafeZones` toggle gates the render in Editor.tsx).
+//
+// Export safety: every overlay node carries `data-export-ignore="true"`.
+// The MP4 pipeline in `lib/export.ts` filters nodes with this attribute
+// out of the rasterized frames, so even if the marketer forgets to
+// toggle safe zones off before exporting, the dim strips and the pill
+// physically cannot land in the output video. Belt-and-braces — the
+// in-editor toggle is still the primary UX, this is the safety net.
 
 import type { AspectRatio } from '../templates/types';
 import { useSafeZone } from './safeZones';
@@ -56,6 +63,12 @@ export function SafeZoneOverlay({ aspect }: Props) {
     zIndex: 1000,
   };
 
+  // Shared flag that the export pipeline's `html-to-image` filter looks
+  // for. Attaching it to every node inside the overlay — not just a
+  // parent wrapper — keeps us safe even if someone later flattens the
+  // structure or moves a node out.
+  const exportIgnore = { 'data-export-ignore': 'true' } as const;
+
   return (
     <>
       {/* Four dim strips covering the unsafe regions. Corners are
@@ -65,6 +78,7 @@ export function SafeZoneOverlay({ aspect }: Props) {
       {base.top > 0 && (
         <div
           aria-hidden
+          {...exportIgnore}
           style={{
             ...common,
             left: 0,
@@ -78,6 +92,7 @@ export function SafeZoneOverlay({ aspect }: Props) {
       {base.bottom > 0 && (
         <div
           aria-hidden
+          {...exportIgnore}
           style={{
             ...common,
             left: 0,
@@ -91,6 +106,7 @@ export function SafeZoneOverlay({ aspect }: Props) {
       {base.left > 0 && (
         <div
           aria-hidden
+          {...exportIgnore}
           style={{
             ...common,
             left: 0,
@@ -104,6 +120,7 @@ export function SafeZoneOverlay({ aspect }: Props) {
       {base.right > 0 && (
         <div
           aria-hidden
+          {...exportIgnore}
           style={{
             ...common,
             left: safeRight,
@@ -121,6 +138,7 @@ export function SafeZoneOverlay({ aspect }: Props) {
        *  areas where the dim alone might not read cleanly. */}
       <div
         aria-hidden
+        {...exportIgnore}
         style={{
           position: 'absolute',
           left: safeLeft,
@@ -140,6 +158,7 @@ export function SafeZoneOverlay({ aspect }: Props) {
        *  scene's content direction. */}
       <div
         aria-hidden
+        {...exportIgnore}
         style={{
           position: 'absolute',
           top: safeTop + 12,
