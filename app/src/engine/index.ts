@@ -17,6 +17,7 @@ export {
   type SafeZone,
   DEFAULT_SAFE_ZONES,
   ZERO_SAFE_ZONE,
+  SafeZoneEnforcementContext,
   aspectKeyOf,
   resolveSafeZone,
   useSafeZone,

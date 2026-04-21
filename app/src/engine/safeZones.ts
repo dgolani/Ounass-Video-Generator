@@ -9,8 +9,23 @@
 // defaults per boutique without a code change.
 // Phase 5 will add per-project overrides.
 
-import { useMemo } from 'react';
+import { createContext, useContext, useMemo } from 'react';
 import type { AspectRatio } from '../templates/types';
+
+/** Whether the current render should enforce safe-zone margins on content.
+ *
+ *  - `true`  → scenes anchor safe-layer content to the resolved zone
+ *              (CTAs / kickers / badges get pulled in).
+ *  - `false` → scenes render at their original designer-intent positions
+ *              (content may sit under platform UI — useful in the editor
+ *              to preview the pure design).
+ *
+ *  Default is `true`. The editor overrides this to the value of its
+ *  "Safe zones" toggle so designers can flip between designer-view
+ *  (toggle OFF) and platform-view (toggle ON). MP4 export and preview
+ *  cards don't override the default — they always render enforced so
+ *  what ships is what platforms can show. */
+export const SafeZoneEnforcementContext = createContext<boolean>(true);
 
 /** Identifier per aspect preset. Matches the width/height ratios used in
  *  templates' meta.aspects[]. A fourth `'9:16-no-chrome'` preset exists
@@ -60,30 +75,36 @@ export function resolveSafeZone(key: AspectKey | null): SafeZone {
   return DEFAULT_SAFE_ZONES[key] ?? ZERO_SAFE_ZONE;
 }
 
-/** React hook — resolve the safe zone for a given aspect and return both
- *  base-canvas values (for templates that compute against the 1080×1920
- *  base) and scaled pixel values (convenience for the editor overlay).
+/** React hook — resolve the safe zone for a given aspect. Honours the
+ *  SafeZoneEnforcementContext: when enforcement is disabled (editor
+ *  toggle OFF), returns a zero-margin zone so `Math.max(h(x), safe.X)`
+ *  anchors collapse back to their designer-intent values.
  *
  *  Usage in a scene:
- *    const { base } = useSafeZone(aspect);
- *    style={{ bottom: h(base.bottom) }}  // respects the zone
+ *    const { base: safe } = useSafeZone({ width, height });
+ *    style={{ bottom: Math.max(h(60), safe.bottom) }}
  *
  *  Usage in the overlay:
  *    const { baseW, baseH, base } = useSafeZone(aspect);
- *    // draw rect at (base.left, base.top) sized (baseW - left - right) × ...
+ *    // rect at (base.left, base.top) sized (baseW - left - right) × ...
  */
 export function useSafeZone(aspect: Pick<AspectRatio, 'width' | 'height'>) {
+  const enforce = useContext(SafeZoneEnforcementContext);
   return useMemo(() => {
     const key = aspectKeyOf(aspect);
-    const base = resolveSafeZone(key);
+    // When enforcement is off, hand back zeros so Math.max() in templates
+    // resolves to the original designer-intent position.
+    const base = enforce ? resolveSafeZone(key) : ZERO_SAFE_ZONE;
     return {
       /** Resolved key ('9:16' / '4:5' / '1:1' / null for custom). */
       key,
-      /** Raw margins in base-1080-canvas pixels. Feed through h()/w(). */
+      /** Resolved margins in output pixels. Zeros if enforcement is off. */
       base,
       /** Aspect's own base dimensions (pass-through for convenience). */
       baseW: aspect.width,
       baseH: aspect.height,
+      /** Whether enforcement is currently on for this render. */
+      enforced: enforce,
     };
-  }, [aspect.width, aspect.height]);
+  }, [aspect.width, aspect.height, enforce]);
 }

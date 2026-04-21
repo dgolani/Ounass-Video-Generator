@@ -1,7 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { quickHash } from '../../lib/quickHash';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Stage, useStageController, SafeZoneOverlay } from '../../engine';
+import {
+  Stage,
+  useStageController,
+  SafeZoneOverlay,
+  SafeZoneEnforcementContext,
+} from '../../engine';
 import { useProject } from '../../store/projects';
 import {
   editablesEqual,
@@ -478,15 +483,24 @@ export function Editor() {
             onChromelessCanvasActivate={() => setCinemaMode(true)}
             onChromelessLetterboxPointerDown={() => setCinemaMode((c) => !c)}
           >
-            <Scene
-              props={localProps}
-              timeScale={timeScale}
-              width={aspect.width}
-              height={aspect.height}
-            />
-            {/* Editor-only guide; sibling of the Scene so it shares the
-             *  stage transform and stays pixel-aligned at any zoom. */}
-            {showSafeZones && <SafeZoneOverlay aspect={aspect} />}
+            {/* Scene renders inside the enforcement context — when the
+             *  safe-zone toggle is OFF, useSafeZone returns a zero zone
+             *  and every Math.max(h(x), safe.*) collapses back to its
+             *  designer-intent position (unshifted). Flipping the toggle
+             *  reflows the stage instantly. Preview cards and exports
+             *  don't override the context default (true), so they always
+             *  render enforced regardless of what the editor toggle is. */}
+            <SafeZoneEnforcementContext.Provider value={showSafeZones}>
+              <Scene
+                props={localProps}
+                timeScale={timeScale}
+                width={aspect.width}
+                height={aspect.height}
+              />
+              {/* Editor-only guide; sibling of the Scene so it shares the
+               *  stage transform and stays pixel-aligned at any zoom. */}
+              {showSafeZones && <SafeZoneOverlay aspect={aspect} />}
+            </SafeZoneEnforcementContext.Provider>
           </Stage>
         </div>
         <div
