@@ -124,33 +124,59 @@ export async function exportVideoToMP4({
         requestAnimationFrame(() => requestAnimationFrame(() => r())),
       );
       const overlayPresent = !!canvasEl.querySelector('[data-export-ignore]');
-      const absChildren = Array.from(
+
+      // Find the closest-to-canvas-bottom absolutely-positioned elements —
+      // those are the ones safe.bottom actually moves. Measuring via
+      // offsetTop + offsetHeight (designer-space pixels inside canvasEl)
+      // sidesteps the browser's reverse-computed `getComputedStyle.bottom`
+      // on top-anchored elements which otherwise pollutes the scan.
+      const bottomAnchored = Array.from(
         canvasEl.querySelectorAll<HTMLElement>('*'),
-      ).filter((el) => {
-        const s = getComputedStyle(el);
-        return s.position === 'absolute' && s.bottom && s.bottom !== 'auto';
-      });
-      const sampleBottoms = absChildren
-        .slice(0, 6)
+      )
+        .filter((el) => {
+          if (getComputedStyle(el).position !== 'absolute') return false;
+          // Explicit inline `bottom` OR `.style.top === ''` (purely
+          // bottom-anchored). We also exclude the scene root which has
+          // inset:0 (both top AND bottom set to 0).
+          const hasBottom = el.style.bottom !== '';
+          const hasTop = el.style.top !== '';
+          return hasBottom && !hasTop;
+        })
         .map((el) => {
-          const s = getComputedStyle(el);
-          const text = (el.textContent || '').slice(0, 28).replace(/\s+/g, ' ').trim();
-          return `${s.bottom}${text ? ` [${text}]` : ''}`;
-        });
+          // height - (offsetTop + offsetHeight) === designer-space distance
+          // from the bottom edge of the 1080 × H canvas.
+          const dist = Math.round(height - el.offsetTop - el.offsetHeight);
+          const text = (el.textContent || '')
+            .slice(0, 40)
+            .replace(/\s+/g, ' ')
+            .trim();
+          return { el, dist, text };
+        })
+        .sort((a, b) => a.dist - b.dist)
+        .slice(0, 8);
+
       console.info(
         '[Export] rasterize start | canvas %dx%d | safe-zone overlay present: %s',
         width,
         height,
         overlayPresent,
       );
-      if (sampleBottoms.length) {
+      if (bottomAnchored.length) {
         console.info(
-          '[Export] first 6 absolutely-positioned `bottom` values in the live DOM:\n  ' +
-            sampleBottoms.join('\n  '),
+          '[Export] bottom-anchored elements (sorted by distance from canvas bottom):\n  ' +
+            bottomAnchored
+              .map((r) => `${r.dist}px from bottom${r.text ? ` [${r.text}]` : ''}`)
+              .join('\n  '),
+        );
+      } else {
+        console.warn(
+          '[Export] NO bottom-anchored absolutely-positioned elements found at 85%. ' +
+            'If your template has a bottom CTA this is suspicious.',
         );
       }
       console.info(
-        '[Export] If "safe zones" was ON when you clicked Export, the above should show the overlay present AND bottom values reflecting the keep-clear margins (e.g., 360px at 9:16 for a CTA instead of 300px).',
+        '[Export] Expected at 9:16 with safe zones ON: CTA sits ≈ 360px from bottom. ' +
+          'With safe zones OFF: ≈ 300px. Delta = ~60px per template element (some bigger).',
       );
     } catch (diagErr) {
       // Diagnostics must never break the export
