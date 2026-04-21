@@ -1,13 +1,15 @@
-// Safe-zone visualiser — renders a dashed copper rectangle inside the
-// Stage showing the resolved keep-clear zone for the current aspect.
+// Safe-zone visualiser — camera-viewfinder / QR-scanner pattern.
+//
+// Instead of drawing a border around the safe zone, we dim the UNSAFE
+// regions (top / bottom / left / right strips) so the inside stays at
+// full opacity and the outside fades. The marketer immediately sees
+// "content I place here is in the clear, content out there gets clipped"
+// — same UX vocabulary every phone camera / scanner uses.
+//
 // Rendered as a sibling of the Scene inside <Stage>, so it's in stage
-// coordinate space (1080×1920) and scales with the stage transform.
-//
-// Phase 2: editor-only (toggled from the top chrome). Not rendered in
-// template previews, export output, or the gallery.
-//
-// The rectangle has a subtle pulse animation so the guide is visible
-// but doesn't compete with the scene content when left on for a while.
+// coordinate space (1080 × 1920) and scales with the stage transform.
+// Editor-only; not rendered in template previews, export output, or the
+// gallery (`showSafeZones` toggle gates the render in Editor.tsx).
 
 import type { AspectRatio } from '../templates/types';
 import { useSafeZone } from './safeZones';
@@ -16,77 +18,128 @@ type Props = {
   aspect: Pick<AspectRatio, 'width' | 'height'>;
 };
 
+/** How much the outside gets dimmed. 0 = no dim (useless); 1 = pitch black.
+ *  0.58 is the sweet spot: clearly "off-limits" but the content behind is
+ *  still visible enough to reposition by eye. */
+const DIM_ALPHA = 0.58;
+
+/** Thin accent edge inside the safe-zone boundary. Not pulsing — the
+ *  contrast between dim and clear is the primary signal now. */
+const EDGE_COLOR = 'rgba(196, 147, 115, 0.7)';
+
 export function SafeZoneOverlay({ aspect }: Props) {
   const { key, base, baseW, baseH } = useSafeZone(aspect);
 
   // Unknown aspect → zero zone → nothing useful to show.
   if (!key) return null;
 
-  // If every margin is zero (e.g. 9:16-no-chrome preset), don't draw —
-  // a full-bleed rectangle isn't meaningful feedback.
+  // If every margin is zero (e.g. 9:16-no-chrome preset), the whole
+  // canvas is the safe zone — nothing to dim, nothing to frame.
   if (base.top === 0 && base.bottom === 0 && base.left === 0 && base.right === 0) {
     return null;
   }
 
-  const left = base.left;
-  const top = base.top;
-  const width = baseW - base.left - base.right;
-  const height = baseH - base.top - base.bottom;
+  const safeLeft = base.left;
+  const safeTop = base.top;
+  const safeRight = baseW - base.right;
+  const safeBottom = baseH - base.bottom;
+  const safeWidth = safeRight - safeLeft;
+  const safeHeight = safeBottom - safeTop;
+
+  const dimBg = `rgba(0,0,0,${DIM_ALPHA})`;
+  const common = {
+    position: 'absolute' as const,
+    background: dimBg,
+    pointerEvents: 'none' as const,
+    zIndex: 1000,
+  };
 
   return (
     <>
-      <style>{`
-        @keyframes safeZonePulse {
-          0%, 100% { opacity: 0.75; }
-          50%      { opacity: 0.45; }
-        }
-      `}</style>
-      <div
-        aria-hidden
-        style={{
-          position: 'absolute',
-          left,
-          top,
-          width,
-          height,
-          pointerEvents: 'none',
-          border: '2px dashed rgba(196, 147, 115, 0.95)',
-          zIndex: 1000,
-          animation: 'safeZonePulse 2.4s ease-in-out infinite',
-          boxSizing: 'border-box',
-        }}
-      />
-      {/* Corner ticks — four 24px L-shaped marks at each corner so the
-          zone boundary is readable even when the dashed line is behind
-          content. Rendered in the same layer, same copper. */}
-      {[
-        { top: top - 1, left: left - 1, borderTop: '3px solid', borderLeft: '3px solid' },
-        { top: top - 1, left: left + width - 23, borderTop: '3px solid', borderRight: '3px solid' },
-        { top: top + height - 23, left: left - 1, borderBottom: '3px solid', borderLeft: '3px solid' },
-        { top: top + height - 23, left: left + width - 23, borderBottom: '3px solid', borderRight: '3px solid' },
-      ].map((s, i) => (
+      {/* Four dim strips covering the unsafe regions. Corners are
+       *  covered by the top + bottom strips (which span full-width)
+       *  so the left + right strips only need to fill the middle band. */}
+      {/* Top strip (full width, 0 → safeTop) */}
+      {base.top > 0 && (
         <div
-          key={i}
           aria-hidden
           style={{
-            position: 'absolute',
-            width: 24,
-            height: 24,
-            borderColor: 'rgba(196, 147, 115, 0.95)',
-            pointerEvents: 'none',
-            zIndex: 1000,
-            ...s,
+            ...common,
+            left: 0,
+            top: 0,
+            width: baseW,
+            height: safeTop,
           }}
         />
-      ))}
-      {/* Label — small pill top-left of the zone with the active key so
-          Faizan can tell which aspect's zone he's seeing at a glance. */}
+      )}
+      {/* Bottom strip (full width, safeBottom → baseH) */}
+      {base.bottom > 0 && (
+        <div
+          aria-hidden
+          style={{
+            ...common,
+            left: 0,
+            top: safeBottom,
+            width: baseW,
+            height: baseH - safeBottom,
+          }}
+        />
+      )}
+      {/* Left strip (just the middle band, between the top + bottom) */}
+      {base.left > 0 && (
+        <div
+          aria-hidden
+          style={{
+            ...common,
+            left: 0,
+            top: safeTop,
+            width: safeLeft,
+            height: safeHeight,
+          }}
+        />
+      )}
+      {/* Right strip (just the middle band, between the top + bottom) */}
+      {base.right > 0 && (
+        <div
+          aria-hidden
+          style={{
+            ...common,
+            left: safeRight,
+            top: safeTop,
+            width: baseW - safeRight,
+            height: safeHeight,
+          }}
+        />
+      )}
+
+      {/* Precise 1px copper edge along the safe-zone boundary.
+       *  Not dashed, not pulsing — the dim-to-clear transition already
+       *  creates a strong boundary; this adds just a hairline of colour
+       *  to reinforce where the zone is, especially at high-contrast
+       *  areas where the dim alone might not read cleanly. */}
       <div
         aria-hidden
         style={{
           position: 'absolute',
-          top: top + 12,
-          left: left + 12,
+          left: safeLeft,
+          top: safeTop,
+          width: safeWidth,
+          height: safeHeight,
+          border: `1px solid ${EDGE_COLOR}`,
+          boxSizing: 'border-box',
+          pointerEvents: 'none',
+          zIndex: 1001,
+        }}
+      />
+
+      {/* Label pill in the safe-zone top-left — tells Faizan which
+       *  aspect's zone he's looking at at a glance. */}
+      <div
+        aria-hidden
+        style={{
+          position: 'absolute',
+          top: safeTop + 12,
+          left: safeLeft + 12,
           padding: '6px 12px',
           background: 'rgba(196, 147, 115, 0.95)',
           color: '#fff',
@@ -97,7 +150,7 @@ export function SafeZoneOverlay({ aspect }: Props) {
           textTransform: 'uppercase',
           borderRadius: 4,
           pointerEvents: 'none',
-          zIndex: 1001,
+          zIndex: 1002,
         }}
       >
         Safe · {key}
