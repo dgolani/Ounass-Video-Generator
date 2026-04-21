@@ -12,3 +12,13 @@ export {
 export { Stage, PlaybackBar } from './Stage';
 export { useStageController, type StageController } from './useStageController';
 export { TextSprite, ImageSprite, RectSprite } from './sprites';
+export {
+  type AspectKey,
+  type SafeZone,
+  DEFAULT_SAFE_ZONES,
+  ZERO_SAFE_ZONE,
+  aspectKeyOf,
+  resolveSafeZone,
+  useSafeZone,
+} from './safeZones';
+export { SafeZoneOverlay } from './SafeZoneOverlay';

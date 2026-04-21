@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { quickHash } from '../../lib/quickHash';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Stage, useStageController } from '../../engine';
+import { Stage, useStageController, SafeZoneOverlay } from '../../engine';
 import { useProject } from '../../store/projects';
 import {
   editablesEqual,
@@ -83,6 +83,22 @@ export function Editor() {
   const [exportOpen, setExportOpen] = useState(false);
   /** Expanded preview: timeline collapses with transition for a larger stage */
   const [cinemaMode, setCinemaMode] = useState(false);
+  /** Visual safe-zone guide overlay on the stage. Editor-only, persisted
+   *  per-user in localStorage so the toggle sticks across sessions. */
+  const [showSafeZones, setShowSafeZones] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('vag:editor:showSafeZones') === '1';
+    } catch {
+      return false;
+    }
+  });
+  useEffect(() => {
+    try {
+      localStorage.setItem('vag:editor:showSafeZones', showSafeZones ? '1' : '0');
+    } catch {
+      /* ignore quota / private mode */
+    }
+  }, [showSafeZones]);
   const canvasRef = useRef<HTMLDivElement | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const videoTimeRef = useRef(0);
@@ -388,6 +404,21 @@ export function Editor() {
           onChange={onAspectChange}
         />
 
+        {/* Safe-zone guide toggle — draws the keep-clear margins per aspect
+         *  on the stage. Editor-only; not rendered in exports or previews. */}
+        <Button
+          variant={showSafeZones ? 'primary' : 'ghost'}
+          size="sm"
+          onClick={() => setShowSafeZones((v) => !v)}
+          title={
+            showSafeZones
+              ? 'Hide safe-zone guide (platform UI clearance)'
+              : 'Show safe-zone guide (platform UI clearance)'
+          }
+        >
+          {showSafeZones ? 'Safe ✓' : 'Safe'}
+        </Button>
+
         <Button variant="primary" size="sm" onClick={() => setExportOpen(true)}>
           Export
         </Button>
@@ -453,6 +484,9 @@ export function Editor() {
               width={aspect.width}
               height={aspect.height}
             />
+            {/* Editor-only guide; sibling of the Scene so it shares the
+             *  stage transform and stays pixel-aligned at any zoom. */}
+            {showSafeZones && <SafeZoneOverlay aspect={aspect} />}
           </Stage>
         </div>
         <div
