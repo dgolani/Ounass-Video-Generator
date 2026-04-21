@@ -13,6 +13,7 @@
 
 import type { AspectRatio } from '../templates/types';
 import { useSafeZone } from './safeZones';
+import { isRTL, useLocale } from './locale';
 
 type Props = {
   aspect: Pick<AspectRatio, 'width' | 'height'>;
@@ -29,6 +30,7 @@ const EDGE_COLOR = 'rgba(196, 147, 115, 0.7)';
 
 export function SafeZoneOverlay({ aspect }: Props) {
   const { key, base, baseW, baseH } = useSafeZone(aspect);
+  const rtl = isRTL(useLocale());
 
   // Unknown aspect → zero zone → nothing useful to show.
   if (!key) return null;
@@ -132,14 +134,17 @@ export function SafeZoneOverlay({ aspect }: Props) {
         }}
       />
 
-      {/* Label pill in the safe-zone top-left — tells Faizan which
-       *  aspect's zone he's looking at at a glance. */}
+      {/* Label pill — anchored to the inside-top corner that matches the
+       *  current text direction. LTR → top-left. RTL (Arabic) → top-right,
+       *  mirroring the natural reading flow so the pill doesn't fight the
+       *  scene's content direction. */}
       <div
         aria-hidden
         style={{
           position: 'absolute',
           top: safeTop + 12,
-          left: safeLeft + 12,
+          left: rtl ? undefined : safeLeft + 12,
+          right: rtl ? baseW - safeRight + 12 : undefined,
           padding: '6px 12px',
           background: 'rgba(196, 147, 115, 0.95)',
           color: '#fff',
@@ -151,6 +156,7 @@ export function SafeZoneOverlay({ aspect }: Props) {
           borderRadius: 4,
           pointerEvents: 'none',
           zIndex: 1002,
+          direction: 'ltr', // keep the "Safe · 9:16" tech label LTR even in RTL scenes
         }}
       >
         Safe · {key}

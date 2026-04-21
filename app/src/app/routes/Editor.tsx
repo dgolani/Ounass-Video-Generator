@@ -272,6 +272,56 @@ export function Editor() {
     return splitEditorFields(template.fields);
   }, [template]);
 
+  /** All top-level text fields, in visual order (left pane first, then
+   *  right). Powers the drawer's ↑/↓ keyboard navigation so power users
+   *  can move between fields without clicking each Aa button. */
+  const allTextFields = useMemo(() => {
+    if (!template) return [] as Array<{ path: string; label: string; role: FieldRole }>;
+    const out: Array<{ path: string; label: string; role: FieldRole }> = [];
+    for (const src of [leftPaneFields, rightPaneFields]) {
+      for (const f of src) {
+        if (f.kind === 'text') {
+          out.push({ path: f.path, label: f.label, role: f.role ?? 'body' });
+        }
+      }
+    }
+    return out;
+  }, [leftPaneFields, rightPaneFields, template]);
+
+  /** Arrow-key / j-k navigation between text fields while the Format
+   *  drawer is open. Also handles Escape to close (complements the
+   *  drawer's own Escape handler). Ignored when focus is inside a text
+   *  input / textarea so typing doesn't get intercepted. */
+  useEffect(() => {
+    if (!formatField) return;
+    const onKey = (e: KeyboardEvent) => {
+      // Don't steal arrow keys from an input / textarea / contenteditable.
+      const tgt = e.target as HTMLElement | null;
+      if (
+        tgt &&
+        (tgt.tagName === 'INPUT' ||
+          tgt.tagName === 'TEXTAREA' ||
+          tgt.isContentEditable)
+      ) {
+        return;
+      }
+      const idx = allTextFields.findIndex((f) => f.path === formatField.path);
+      if (idx < 0) return;
+      if (e.key === 'ArrowDown' || e.key === 'j') {
+        e.preventDefault();
+        const next = allTextFields[(idx + 1) % allTextFields.length];
+        setFormatField(next);
+      } else if (e.key === 'ArrowUp' || e.key === 'k') {
+        e.preventDefault();
+        const prev =
+          allTextFields[(idx - 1 + allTextFields.length) % allTextFields.length];
+        setFormatField(prev);
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [formatField, allTextFields]);
+
   /** Scene ranges in local video time (0…duration), scaled when duration ≠ template default */
   const scaledVideoScenes = useMemo(() => {
     if (!template) return [];
@@ -717,6 +767,8 @@ export function Editor() {
         musicAnchorVideoTime={editable.musicAnchorVideoTime}
         musicTrimStartSec={editable.musicTrimStartSec}
         musicEndVideoTime={editable.musicEndVideoTime}
+        safeZonesOn={showSafeZones}
+        onToggleSafeZones={() => setShowSafeZones((v) => !v)}
       />
     </div>
   );

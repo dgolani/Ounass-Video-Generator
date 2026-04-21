@@ -22,6 +22,13 @@ type Props = {
   musicAnchorVideoTime: number;
   musicTrimStartSec: number;
   musicEndVideoTime: number;
+  /** Current safe-zone enforcement state. Surfaced in the modal so
+   *  marketers know whether their export will have the keep-clear
+   *  margins applied (Instagram / TikTok) or not (WhatsApp / DOOH). */
+  safeZonesOn: boolean;
+  /** Inline toggle to flip the editor's safe-zone state before export
+   *  without closing the modal. */
+  onToggleSafeZones: () => void;
 };
 
 type Phase = 'idle' | 'running' | 'done' | 'error';
@@ -40,6 +47,8 @@ export function ExportModal({
   musicAnchorVideoTime,
   musicTrimStartSec,
   musicEndVideoTime,
+  safeZonesOn,
+  onToggleSafeZones,
 }: Props) {
   const exportMusicTrack = getMusicTrack(backgroundTrackId);
 
@@ -213,6 +222,72 @@ export function ExportModal({
               <span>{Math.ceil(duration * 30)} @ 30 fps</span>
               <span>Engine</span>
               <span>html-to-image → ffmpeg.wasm</span>
+            </div>
+
+            {/* Safe-zone state — surfaces what the marketer is ABOUT to
+             *  export (margins applied or bleed everywhere). One click
+             *  flips it without leaving the modal. Important for exports
+             *  targeting platforms without chrome overlays — WhatsApp,
+             *  DOOH, email — where the marketer wants the ad to fill
+             *  the frame edge-to-edge. */}
+            <div
+              style={{
+                marginBottom: 16,
+                padding: '12px 14px',
+                background: 'var(--editor-panel-2)',
+                borderRadius: 'var(--r-md)',
+                border: '1px solid var(--editor-border)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: 12,
+              }}
+            >
+              <div style={{ minWidth: 0 }}>
+                <div
+                  style={{
+                    fontFamily: 'var(--sans)',
+                    fontSize: 10,
+                    fontWeight: 700,
+                    letterSpacing: '0.14em',
+                    textTransform: 'uppercase',
+                    color: 'var(--editor-accent)',
+                    marginBottom: 6,
+                  }}
+                >
+                  Safe zones
+                </div>
+                <div
+                  style={{
+                    fontFamily: 'var(--sans)',
+                    fontSize: 12,
+                    color: 'var(--editor-text)',
+                    marginBottom: 2,
+                  }}
+                >
+                  {safeZonesOn ? 'Applied — Instagram / TikTok ready' : 'Off — edge-to-edge (WhatsApp / DOOH / email)'}
+                </div>
+                <div
+                  style={{
+                    fontFamily: 'var(--sans)',
+                    fontSize: 11,
+                    color: 'var(--editor-text-dim)',
+                    lineHeight: 1.4,
+                  }}
+                >
+                  {safeZonesOn
+                    ? 'CTAs and copy are pulled inside the keep-clear margins.'
+                    : 'Content fills the frame. Platform UI may overlap.'}
+                </div>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={onToggleSafeZones}
+                title={safeZonesOn ? 'Turn safe zones OFF for this export' : 'Turn safe zones ON for this export'}
+              >
+                {safeZonesOn ? 'Turn off' : 'Turn on'}
+              </Button>
             </div>
 
             <div

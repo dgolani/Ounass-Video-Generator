@@ -44,6 +44,67 @@ import { useBrand } from '../../store/brand';
 
 const Z_DRAWER = 9201;
 
+/** Role-typical defaults used to render the "Template default" swatch in
+ *  the drawer's Preview section. These aren't the exact values every
+ *  template uses — they're representative of each role's typical voice
+ *  so marketers have a fixed reference to compare their override against.
+ *  (Exact template defaults vary per template; wiring each template's
+ *  actual base values into the drawer would be a much bigger refactor.) */
+const ROLE_DEFAULTS: Record<
+  TypographyRole,
+  {
+    family: string;
+    weight: number;
+    italic: boolean;
+    size: number;
+    letterSpacing: string;
+    textTransform: 'none' | 'uppercase';
+    color: string;
+    sample: string;
+  }
+> = {
+  display: {
+    family: 'Cormorant Garamond',
+    weight: 300,
+    italic: true,
+    size: 28,
+    letterSpacing: '-0.02em',
+    textTransform: 'none',
+    color: 'rgba(255,255,255,0.92)',
+    sample: 'The quick brown fox',
+  },
+  body: {
+    family: 'Inter',
+    weight: 500,
+    italic: false,
+    size: 14,
+    letterSpacing: '0.1em',
+    textTransform: 'uppercase',
+    color: 'rgba(255,255,255,0.92)',
+    sample: 'Shop the edit · new in',
+  },
+  numeric: {
+    family: 'Noto Serif Display',
+    weight: 500,
+    italic: false,
+    size: 20,
+    letterSpacing: '0.05em',
+    textTransform: 'none',
+    color: 'rgba(196,147,115,0.95)',
+    sample: '1,890 AED',
+  },
+  arabic: {
+    family: 'Noto Kufi Arabic',
+    weight: 500,
+    italic: false,
+    size: 20,
+    letterSpacing: 'normal',
+    textTransform: 'none',
+    color: 'rgba(255,255,255,0.92)',
+    sample: 'الأناقة الهادئة · 135 د.إ.',
+  },
+};
+
 type Props = {
   open: boolean;
   onClose: () => void;
@@ -343,6 +404,17 @@ export function FormatDrawer({
               >
                 {fieldPath}
               </div>
+              <div
+                style={{
+                  fontSize: 10,
+                  color: 'rgba(255,255,255,0.35)',
+                  marginTop: 8,
+                  fontFamily: 'var(--sans)',
+                  letterSpacing: '0.04em',
+                }}
+              >
+                ↑↓ or j/k to move between fields · Esc to close
+              </div>
             </div>
             <button
               type="button"
@@ -365,6 +437,115 @@ export function FormatDrawer({
             </button>
           </div>
         </header>
+
+        {/* Before/after preview — the template's role-typical default on
+         *  the left, the marketer's current override on the right. When
+         *  no override is set, both samples look identical — the contrast
+         *  communicates "your changes are making this look different." */}
+        <DrawerSection label={nothingOverridden ? 'Preview · Template default' : 'Preview · Default → Your override'}>
+          {(() => {
+            const d = ROLE_DEFAULTS[role];
+            const overrideFamily = value.family ?? d.family;
+            const overrideWeight = value.weight ?? d.weight;
+            const overrideItalic = value.italic ?? d.italic;
+            const overrideSize = d.size * (value.sizeScale ?? 1);
+            const overrideColor = value.color ?? d.color;
+            const overrideLetterSpacing = value.letterSpacing ?? d.letterSpacing;
+            const overrideLineHeight = value.lineHeight;
+            const overrideTransform = value.textTransform ?? d.textTransform;
+            const overrideOpacity = value.opacity ?? 1;
+
+            const baseSwatch: CSSProperties = {
+              padding: '14px 16px',
+              background: 'var(--editor-panel-2)',
+              border: '1px solid var(--editor-border)',
+              borderRadius: 4,
+              minHeight: 64,
+              display: 'flex',
+              alignItems: 'center',
+              direction: role === 'arabic' ? 'rtl' : 'ltr',
+              lineHeight: 1.2,
+            };
+
+            return (
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: nothingOverridden ? '1fr' : '1fr 1fr',
+                  gap: 10,
+                }}
+              >
+                {/* Template default — always shown */}
+                <div>
+                  <div
+                    style={{
+                      fontSize: 9,
+                      fontWeight: 700,
+                      letterSpacing: '0.14em',
+                      textTransform: 'uppercase',
+                      color: 'rgba(255,255,255,0.35)',
+                      marginBottom: 6,
+                      fontFamily: 'var(--sans)',
+                    }}
+                  >
+                    Default
+                  </div>
+                  <div style={{ ...baseSwatch, opacity: 0.55 }}>
+                    <span
+                      style={{
+                        fontFamily: `'${d.family}', serif`,
+                        fontWeight: d.weight,
+                        fontStyle: d.italic ? 'italic' : 'normal',
+                        fontSize: d.size,
+                        letterSpacing: d.letterSpacing,
+                        textTransform: d.textTransform,
+                        color: d.color,
+                      }}
+                    >
+                      {d.sample}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Override preview — only when something's been customised */}
+                {!nothingOverridden && (
+                  <div>
+                    <div
+                      style={{
+                        fontSize: 9,
+                        fontWeight: 700,
+                        letterSpacing: '0.14em',
+                        textTransform: 'uppercase',
+                        color: 'var(--editor-accent)',
+                        marginBottom: 6,
+                        fontFamily: 'var(--sans)',
+                      }}
+                    >
+                      Your override
+                    </div>
+                    <div style={baseSwatch}>
+                      <span
+                        style={{
+                          fontFamily: `'${overrideFamily}', serif`,
+                          fontWeight: overrideWeight,
+                          fontStyle: overrideItalic ? 'italic' : 'normal',
+                          fontSize: overrideSize,
+                          letterSpacing: overrideLetterSpacing,
+                          lineHeight: overrideLineHeight,
+                          textTransform: overrideTransform,
+                          color: overrideColor,
+                          opacity: overrideOpacity,
+                        }}
+                      >
+                        {d.sample}
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
+        </DrawerSection>
 
         {/* Family — each option rendered IN its own family so marketers
          *  can compare typefaces visually before committing. */}
