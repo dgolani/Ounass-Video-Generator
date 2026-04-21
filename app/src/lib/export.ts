@@ -106,6 +106,57 @@ export async function exportVideoToMP4({
     }
     abort();
 
+    // One-off diagnostic at export start. Emits the state of the stage DOM
+    // at time-zero so "safe zones were on but the MP4 shows no margins"
+    // reports can be triaged from a single console read. Specifically:
+    //   • Whether the SafeZoneOverlay is in the tree (→ the toggle was ON).
+    //   • The canvas's rasterize dims (catches custom aspects that don't
+    //     resolve to a preset key and therefore zero the safe zone).
+    //   • A sample of how far the first absolutely-positioned element that
+    //     uses a `bottom` value sits from the canvas bottom — lets you
+    //     eyeball whether content actually shifted.
+    try {
+      // Sample at 85% through so the outro / CTA act is mounted — at t=0
+      // many templates return null for late-act components and the scan
+      // would miss the elements most likely to expose a safe-zone issue.
+      controller.setTime(duration * 0.85);
+      await new Promise<void>((r) =>
+        requestAnimationFrame(() => requestAnimationFrame(() => r())),
+      );
+      const overlayPresent = !!canvasEl.querySelector('[data-export-ignore]');
+      const absChildren = Array.from(
+        canvasEl.querySelectorAll<HTMLElement>('*'),
+      ).filter((el) => {
+        const s = getComputedStyle(el);
+        return s.position === 'absolute' && s.bottom && s.bottom !== 'auto';
+      });
+      const sampleBottoms = absChildren
+        .slice(0, 6)
+        .map((el) => {
+          const s = getComputedStyle(el);
+          const text = (el.textContent || '').slice(0, 28).replace(/\s+/g, ' ').trim();
+          return `${s.bottom}${text ? ` [${text}]` : ''}`;
+        });
+      console.info(
+        '[Export] rasterize start | canvas %dx%d | safe-zone overlay present: %s',
+        width,
+        height,
+        overlayPresent,
+      );
+      if (sampleBottoms.length) {
+        console.info(
+          '[Export] first 6 absolutely-positioned `bottom` values in the live DOM:\n  ' +
+            sampleBottoms.join('\n  '),
+        );
+      }
+      console.info(
+        '[Export] If "safe zones" was ON when you clicked Export, the above should show the overlay present AND bottom values reflecting the keep-clear margins (e.g., 360px at 9:16 for a CTA instead of 300px).',
+      );
+    } catch (diagErr) {
+      // Diagnostics must never break the export
+      console.warn('[Export] diagnostic scan skipped:', diagErr);
+    }
+
     // Render each frame.
     const totalFrames = Math.ceil(duration * fps);
     for (let i = 0; i < totalFrames; i++) {
