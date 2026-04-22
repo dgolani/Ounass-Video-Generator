@@ -43,13 +43,18 @@ If an external tool asks a question not in the table above, ask the user before 
 
 Copy the act-structure, scaling, and timing patterns from the existing templates — do not invent new patterns:
 
-- `app/src/templates/lookbook/scene.tsx` — gold standard for multi-act structure, `Act*` sub-components, and scale threading.
+- `app/src/templates/lookbook/scene.tsx` — gold standard for multi-act structure, `Act*` sub-components, scale + safe-zone threading, full `useFieldFormat` coverage.
 - `app/src/templates/countdown/scene.tsx` — punchy timing + CTA slam pattern.
+- `app/src/templates/hero/scene.tsx` — minimal act count, clean safe-zone anchoring on the outro CTA, price via `composePrice`.
 - `app/src/templates/BoutiqueLogo.tsx` — the logo rendering contract (SVG mask-recolour, raster fallback, text fallback). Never use `<img src={logo}>`.
-- `app/src/templates/fields.ts` — the `FieldDescriptor` union (`section | text | color | image | productList`). Every marketer-editable string must surface via this list.
+- `app/src/templates/fields.ts` — the `FieldDescriptor` union (`section | text | color | image | productList`). Every marketer-editable string must surface via this list. `kind: 'text'` fields automatically get the `Aa` format button next to the input; clicking it opens the right-side Format drawer, which drives overrides via `useFieldFormat` (see below).
 - `app/src/templates/types.ts` — the `TemplateMeta<P>` shape every template must satisfy.
 - `app/src/engine/math.ts` — `animate`, `interpolate`, `Easing`, `clamp`.
 - `app/src/engine/timeline.tsx` — `useTimeline()` returns `{ time, duration, compositionStartSec }`.
+- `app/src/engine/safeZones.ts` — `useSafeZone(aspect)` returns the resolved keep-clear margins for the current aspect + enforcement state. Every bottom-/top-anchored element near an edge must thread through this. Phase 3+.
+- `app/src/engine/fieldFormatContext.ts` — `useFieldFormat(path, baseStyle)` resolves per-field family/weight/italic/color/letter-spacing overrides the marketer sets in the drawer. Phase 5+. Every editable text field should call this hook or drawer edits will silently no-op on that field.
+- `app/src/engine/locale.ts` — `useLocale()` + `isRTL(locale)`. The Stage auto-injects `dir="rtl"` on the canvas root and prepends Noto Kufi Arabic to the font stacks when locale is Arabic, so most scenes don't need locale directly; reach for it only when you're mirroring directional chrome (e.g. a corner-pinned pill). Phase 6+.
+- `app/src/lib/price.ts` — `composePrice(raw, currency)` + `useCurrencyForLocale()`. Non-destructively swaps known currency trails (AED / SAR / BHD / USD / EUR / GBP + Arabic abbreviations) so prices render correctly in both EN and AR. Use this for every price string you render.
 
 ## File contract (strict)
 
@@ -83,7 +88,10 @@ Every template is a directory at `app/src/templates/<slug>/` with exactly five f
 ### 4. `scene.tsx` — the renderer
 
 - Exports `<Name>Scene` as a named function component with signature `({ props, timeScale = 1, width, height }) => JSX`.
-- Break the timeline into `Act*` sub-components that each take `{ props, T, s }`. This keeps the root small and makes timing tweaks local.
+- Break the timeline into `Act*` sub-components that each take `{ props, T, s, safe }`. This keeps the root small and makes timing tweaks local.
+- Call `const { base: safe } = useSafeZone({ width, height })` once at the scene root and thread the result through to every Act component. See *Conventions → Safe-zone anchoring*.
+- Every editable text field routes its style through `useFieldFormat(path, baseStyle)`. See *Conventions → Per-field format hooks*.
+- Every price string routes through `composePrice(raw, useCurrencyForLocale())`. See *Conventions → Price composition*.
 - Use the scaling helpers and the `T(x) = x * timeScale` wrapper (see *Conventions* below).
 - Root returns an absolutely-positioned `<div style={{ position:'absolute', inset:0, overflow:'hidden', background: colors.background }}>` so every scene is self-contained at any aspect.
 
@@ -159,12 +167,109 @@ import { BoutiqueLogo } from '../BoutiqueLogo';
 
 For dark backgrounds pass `color={colors.paper}`; for paper backgrounds pass `color={colors.ink}` or the darkest palette colour in scope.
 
-### Typography palette
+### Typography palette — always via CSS variables, never hardcoded
 
-- Display / serif: `'Fraunces, serif'`, weight 300, letter-spacing `-0.02em` to `-0.03em` for large headlines.
-- UI / sans: `'Nunito Sans, sans-serif'`, weight 700 for kickers, uppercase + wide tracking (`letterSpacing: \`${wh(6)}px\``).
-- Italic serif for tagline / signature / in-quote copy.
-- Monospace is off-brand — avoid.
+Typography is role-bound through CSS custom properties set on the Stage root. Templates reference the role, not the family — that way a Brand Kit change swaps the whole library without touching scene code, and the Arabic fallback (Noto Kufi) can cleanly prepend to the stack when locale flips to AR.
+
+- **Display / serif** — `fontFamily: 'var(--font-display)'`. Weight 300, letter-spacing `-0.02em` to `-0.03em` for large headlines. Italic variant for tagline / signature / in-quote copy.
+- **UI / sans** — `fontFamily: 'var(--font-body)'`. Weight 700 for kickers, uppercase + wide tracking (`letterSpacing: \`${wh(6)}px\``). Weight 500 for body copy.
+- **Numeric / prices** — `fontFamily: 'var(--font-numeric)'`. Tabular numerals for counts, prices, rank indicators. Noto Serif Display in the default boutique stack.
+- **Arabic** — not directly referenced. The Stage prepends `'Noto Kufi Arabic'` to both display and body stacks when locale is Arabic (via `unicode-range`-gated `@font-face`). Arabic glyphs route there automatically; Latin passes through to the boutique family.
+
+**Hard rule:** never write `'Fraunces'`, `'Nunito Sans'`, `'Portrait'`, or any literal family name in `scene.tsx`. Always `var(--font-*)`. Monospace is off-brand — avoid.
+
+### Safe-zone anchoring
+
+Every ad lives inside platform chrome — Instagram caption, TikTok like-stack, Story progress bar. `useSafeZone` returns the keep-clear margins for the current aspect and a live enforcement flag. Elements anywhere near an edge must thread through it.
+
+At the scene root:
+
+```tsx
+import { useSafeZone } from '../../engine';
+
+const { base: safe } = useSafeZone({ width, height });
+// pass `safe` into each Act component alongside `T` and `s`
+<Outro props={props} T={T} s={s} safe={safe} />
+```
+
+At the positioning site, use the **max-of-designer-intent-and-keep-clear** pattern — never raw `safe.bottom`:
+
+```tsx
+bottom: Math.max(h(320), safe.bottom + h(60))
+//          ^ designer intent   ^ safe floor + breathing room
+left:   Math.max(w(80),  safe.left)
+top:    Math.max(h(100), safe.top  + h(40))
+```
+
+Why `Math.max`: if the designer already placed the element inside the safe zone at some aspects, don't yank it further in; if a tighter aspect would push it under platform UI, pull it inward. This is Phase 3's safe-zone retrofit contract — copy it, don't improvise.
+
+Phases 3+ pre-resolved zones: `9:16 → { top: 250, bottom: 300, left: 0, right: 120 }`, `4:5 → { top: 120, bottom: 200, left: 0, right: 0 }`, `1:1 → { top: 100, bottom: 100, left: 0, right: 0 }`. Most templates only need `safe.bottom` (CTAs, footers) and occasionally `safe.top` (kickers, running headers).
+
+### Per-field format hooks
+
+Every marketer-editable text field must route its style through `useFieldFormat(path, baseStyle)` or the Format drawer's overrides will silently no-op on that field (the `Aa` button opens the drawer, the drawer saves the override, but the scene ignores it).
+
+```tsx
+import { useFieldFormat } from '../../engine';
+
+function Hook({ props, T, s }: ActProps) {
+  const { kicker, headline, colors } = props;  // destructure `colors` FIRST
+  const { wh } = s;
+
+  const kickerStyle = useFieldFormat('kicker', {
+    fontFamily: 'var(--font-body)',
+    fontSize: wh(24),
+    fontWeight: 700,
+    letterSpacing: `${wh(8)}px`,
+    textTransform: 'uppercase',
+    color: colors.accent,                       // live brand color, not a hex literal
+  });
+
+  const kickerOp = interpolate([T(0.2), T(0.6)], [0, 1], Easing.easeOutCubic)(t);
+
+  return (
+    <div
+      style={{
+        position: 'absolute',
+        left: 0, right: 0, top: h(360),
+        textAlign: 'center',
+        ...kickerStyle,
+        opacity: (kickerStyle.opacity ?? 1) * kickerOp,  // multiply, don't replace
+      }}
+    >
+      {kicker}
+    </div>
+  );
+}
+```
+
+Two gotchas that have bitten every template port:
+
+1. **Destructure `colors` BEFORE the hook calls.** The hook's deps array captures the base object; if `colors.accent` is read lazily inside the render, brand-color edits don't re-trigger the hook and un-overridden fields freeze on the first palette they saw. Pull `colors` out at the top of the component.
+2. **Animation opacity multiplies with override opacity.** When you spread `kickerStyle` and then set `opacity`, use `(kickerStyle.opacity ?? 1) * animT`. A hard override (e.g. `opacity: animT`) clobbers a marketer-dimmed field; a hard ignore (e.g. just the spread) disables intro animations.
+
+The `path` string you pass is the dotted field path as it appears in `fields.ts` (e.g. `'kicker'`, `'ctaText'`, `'headlineLine1'`). It doubles as the override key in the project's stored overrides map — keep it stable.
+
+### Price composition
+
+Every price string in a template must render through `composePrice` + `useCurrencyForLocale` so the currency suffix follows the active locale (AED in EN, د.إ. in AR) without the marketer having to edit per-locale.
+
+```tsx
+import { composePrice, useCurrencyForLocale } from '../../lib/price';
+
+const currency = useCurrencyForLocale();
+
+// in the JSX:
+<span style={{ fontFamily: 'var(--font-numeric)', fontWeight: 700, fontSize: wh(26) }}>
+  {composePrice(product.price, currency)}
+</span>
+```
+
+`composePrice` strips any known currency trail from the raw prop (`'1,890 AED'`, `'1,890 SAR'`, `'1,890 USD'`, Arabic abbreviations, etc.) before re-appending the active-locale currency — so a boutique switching from AED to SAR in Brand Kit doesn't need to re-author every price.
+
+### Editor-only chrome escape hatch
+
+If you ever render something meant to be visible only in the editor (selection handles, live measurement chips, debug overlays — **not** something the export should bake in), tag its root element with `data-export-ignore="true"`. The MP4 pipeline's `html-to-image` filter skips any node with that attribute, so the editor chrome never leaks into the video even if you forget to gate it on a "not exporting" flag. `SafeZoneOverlay` is the canonical example — see `app/src/engine/SafeZoneOverlay.tsx`.
 
 ### Mobile-readability floor (NON-NEGOTIABLE)
 
@@ -211,20 +316,34 @@ Before handing back, verify:
 2. Registry entry added to `app/src/templates/registry.ts`.
 3. Every string visible in the rendered scene is either from `props` or is a structural literal (e.g. `"—"`, `"· "`). No hidden hardcoded headline copy.
 4. Every path referenced in `fields.ts` resolves in `defaultProps` (no drift between the two).
-5. `npx tsc --noEmit` clean.
-6. `npm run build` clean.
-7. Spot-check the 4:5 and 1:1 aspects in the editor — no overflow, no below-floor text.
-8. One commit per template when multiple are being added in a batch, so review stays tractable.
+5. No literal font family name in `scene.tsx` — every `fontFamily` is `var(--font-display)` / `var(--font-body)` / `var(--font-numeric)`.
+6. Every bottom/top/side-anchored element near an edge uses `Math.max(h(X), safe.{edge} [+ h(Y)])` — no raw `h(X)` for CTAs, footers, kickers.
+7. Every editable text field in `fields.ts` has a matching `useFieldFormat(path, base)` call in `scene.tsx`. Path spellings match exactly.
+8. Every price string renders via `composePrice(raw, useCurrencyForLocale())` — never `{product.price}` directly.
+9. `colors` is destructured BEFORE any `useFieldFormat` call in every Act component (brand-color reactivity).
+10. `npx tsc --noEmit` clean.
+11. `npm run build` clean.
+12. Spot-check the 4:5 and 1:1 aspects in the editor — no overflow, no below-floor text. Toggle safe zones ON + OFF; content should reflow, no clipping.
+13. Spot-check Arabic locale — switch the editor to AR and confirm the scene renders RTL without layout breaks.
+14. One commit per template when multiple are being added in a batch, so review stays tractable.
 
 ## Tone + archetype guidance
 
 Brand voice is luxury Middle East boutique — hushed, editorial, confident. Avoid shouty e-com tropes (`"BUY NOW!!!"`, exclamation points, neon palettes). Price strings are AED by default. When a brief is underspecified, lean toward restraint: slower pacing, fewer elements per frame, more negative space.
 
-Before scaffolding a new archetype, check whether it already exists. Current coverage:
+Before scaffolding a new archetype, check whether it already exists. Current coverage (9 templates):
 
+Phase 1 (originals):
 - **Lookbook** — multi-act editorial narrative, 5 products, slow reveal.
 - **Editorial** — volume / issue framing, masthead typography, monochrome.
 - **Countdown** — time-driven urgency, ticking clock, dramatic CTA slam.
 - **Hero** — single-product arrival / drop reveal.
 
-If the brief overlaps with one of those, either (a) suggest the user extend the existing template via its fields, or (b) clearly differentiate — e.g. a new "Price Drop" template is **price-driven**, distinct from Countdown's **time-driven** urgency.
+Phase 2 expansion (code-port of the five archetypes from the design-preview pre-answers above):
+- **Bestsellers — Top 5** — ranked 05 → 01 with numeric slam.
+- **Seasonal Campaign** — occasion-driven, warmth over urgency.
+- **Category Carousel** — depth in one category, slow lingering reveal.
+- **Brand Spotlight** — single-brand hero + companion strip.
+- **Gift Guide** — curated picks with gift framing.
+
+If the brief overlaps with any of the nine, either (a) suggest the user extend the existing template via its fields, or (b) clearly differentiate — e.g. a new "Price Drop" template is **price-driven**, distinct from Countdown's **time-driven** urgency.
