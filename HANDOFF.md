@@ -9,11 +9,11 @@
 ## 0. TL;DR (45 seconds)
 
 - **Product:** **Ounass Cutroom** — *Cut. Brand. Ship.* Marketers pick a template → edit in-browser → preview live → export an MP4. **Free-tier hostable** (Vercel static + client-side render).
-- **Status:** Phases 0–4 complete (foundation → editor → customization → multi-template → MP4 export). Phase 5 = polish, not started.
-- **Stack:** Vite 6 + React 19 + TypeScript, single-page app, localStorage for state, ffmpeg.wasm for encoding.
+- **Status:** Phases **0–7c** complete. Foundation → editor → customization → multi-template → MP4 export → audio/layered timeline → **typography tokens → vendored fonts → safe zones → Brand Kit editor → per-field format drawer → locale/RTL/Arabic → polish pass (brand-color reactivity, RTL mirror, export no-chrome toggle, drawer keyboard nav, data-export-ignore filter).** 9 templates ship today: Lookbook, Editorial, Countdown, Hero (originals) + Bestsellers, Seasonal, Carousel, Brand Spotlight, Gift Guide (Phase 2 expansion). Still open: #5 aspect matrix QA, #8 per-product sub-field formatting, #12/#13 per-project safe-zone + typography overrides, #17 custom font uploader (see `PHASE_7_BACKLOG.md`).
+- **Stack:** Vite 6 + React 19 + TypeScript, single-page app, localStorage for state, ffmpeg.wasm for encoding, vendored local fonts (Portrait, Noto Serif Display, Noto Kufi Arabic).
 - **Live demo:** `cd app && npm run dev` → http://localhost:5173. Or via Claude Preview MCP: configured in `.claude/launch.json` as `vag-dev`.
-- **Last session ended:** Phase 4 verified end-to-end (Sale Countdown 5s × 1:1 → 8.2 MB MP4).
-- **Read order from here:** §1 Quick start → §3 Mental model → §6 How to add a new template → §9 Gotchas. **§18 Git workflow** describes how we branch and merge (sequential contributors—see there).
+- **Last session ended:** Phase 7c polish committed + pushed (`3d3e9bf` on `origin/main`). The editor's safe-zone overlay can no longer leak into exported MP4s (`data-export-ignore` filter in `lib/export.ts`). `template_skill.md` updated to reflect the current template contract (role-bound typography, `useSafeZone`, `useFieldFormat`, `composePrice`).
+- **Read order from here:** §1 Quick start → §3 Mental model → §5 Conventions (new: 5.9 safe-zone anchoring, 5.10 per-field format hooks, 5.11 locale + RTL, 5.12 price composition, 5.13 editor-only chrome) → §6 How to add a new template → §9 Gotchas. **§18 Git workflow** describes how we branch and merge (sequential contributors—see there). For template authoring, read `template_skill.md` alongside §5–§6; it encodes the port contract in tighter form.
 
 ---
 
@@ -280,6 +280,66 @@ Paths included on the left are removed from the right-hand `PropertiesPanel` via
 
 **Deferred follow-ups** (not in that merge): timeline **⌘-scroll zoom**, splitting the large dock file, consolidating **html-to-image** vs **modern-screenshot**, numeric clip inspector.
 
+### 5.9 Safe-zone anchoring (post-Phase 3)
+Every bottom/top/side-anchored element near a canvas edge threads through `useSafeZone(aspect)`. Pattern:
+
+```tsx
+const { base: safe } = useSafeZone({ width, height });
+// pass safe into Act components alongside T, s
+
+// at the positioning site — never raw safe.{edge}:
+bottom: Math.max(h(320), safe.bottom + h(60))
+```
+
+Why `Math.max`: keep designer intent when it's already inside the margin, pull inward otherwise. Margins are defined in `app/src/engine/safeZones.ts` with Brand-Kit override via `SafeZoneOverridesContext`. Enforcement follows `SafeZoneEnforcementContext` — editor toggle is the only place that sets it to `false`; exports, preview cards, and anything unwrapped default to `true`.
+
+### 5.10 Per-field format hooks (post-Phase 5)
+Every editable text field must route its style through `useFieldFormat(path, baseStyle)` or the Format drawer's overrides silently no-op. The `path` string is the dotted field path from `fields.ts`; it doubles as the override key in the project's stored overrides map.
+
+```tsx
+const { colors } = props;                        // destructure FIRST
+const kickerStyle = useFieldFormat('kicker', {
+  fontFamily: 'var(--font-body)',
+  fontSize: wh(24),
+  fontWeight: 700,
+  color: colors.accent,                          // live brand color, not hex
+});
+
+<div style={{ position: 'absolute', top: h(360), ...kickerStyle,
+             opacity: (kickerStyle.opacity ?? 1) * kickerOp }}>
+```
+
+Two gotchas that have bitten every template port (also see Gotcha #11 below):
+1. **Destructure `colors` BEFORE the hook calls.** Otherwise brand-color edits don't re-trigger the hook and un-overridden fields freeze on the first palette they saw.
+2. **Multiply animation opacity with override opacity.** `opacity: (kickerStyle.opacity ?? 1) * animT` — a hard override clobbers marketer-dimming; a hard spread disables intro animations.
+
+### 5.11 Locale + RTL (post-Phase 6)
+`useLocale()` returns the current locale (`'en'` | `'ar'`). The Stage auto-injects `dir="rtl"` on the canvas root and prepends Noto Kufi Arabic to `var(--font-display)` / `var(--font-body)` when locale is Arabic. Scenes rarely touch locale directly — only when they need to mirror directional chrome (e.g. a corner pill). Project locale overrides brand-kit locale; both compose.
+
+### 5.12 Price composition (post-Phase 7)
+Every rendered price routes through `composePrice(raw, useCurrencyForLocale())` from `lib/price.ts`. It non-destructively strips known currency trails (AED / SAR / BHD / USD / EUR / GBP / Arabic abbreviations) and appends the active-locale currency, so boutique / locale changes don't require re-authoring price strings.
+
+```tsx
+import { composePrice, useCurrencyForLocale } from '../../lib/price';
+const currency = useCurrencyForLocale();
+// ...
+<span style={{ fontFamily: 'var(--font-numeric)' }}>
+  {composePrice(product.price, currency)}
+</span>
+```
+
+### 5.13 Editor-only chrome escape hatch (post-Phase 7c)
+Any DOM node that should be visible in the editor but NEVER in an exported MP4 carries `data-export-ignore="true"`. The export pipeline's `html-to-image` filter skips any such node (and its subtree). Today only `SafeZoneOverlay` uses this; any future editor-only overlay (rulers, selection handles) should reuse the attribute instead of inventing its own gating.
+
+### 5.14 Role-bound typography — never literal family names in `scene.tsx`
+Templates reference typography roles, never families:
+
+- `var(--font-display)` — serif display (headlines, tagline)
+- `var(--font-body)` — sans UI (kickers, captions, CTA labels)
+- `var(--font-numeric)` — Noto Serif Display (prices, rank indicators, counts)
+
+The Stage prepends Noto Kufi Arabic to the display / body stacks when locale is Arabic, via `unicode-range`-gated `@font-face`. Hardcoding `'Fraunces'`, `'Nunito Sans'`, `'Portrait'`, or any literal family name in a scene breaks both Brand-Kit typography swaps AND Arabic glyph routing. Grep check: `grep -E "fontFamily: ['\"](?!var\()" app/src/templates/*/scene.tsx` should return nothing.
+
 **MAINTENANCE — update §5 when you:** introduce a new convention, deprecate an existing one, change the template anatomy, or add/remove a FieldDescriptor kind.
 
 ---
@@ -400,6 +460,31 @@ import ffmpegWasmURL from '@ffmpeg/core/wasm?url'; // → /dist/esm/ffmpeg-core.
 **Fix:** `resizeImageToDataURL` caps at 1080px JPEG q=0.85 (~200–400 KB each). `writeAll` throws `StorageQuotaError`; Editor surfaces "Storage full — drop an image or two".
 **If this becomes a real problem:** migrate image storage to IndexedDB (Phase 5+ candidate). Keep the project metadata in localStorage; just move the data-URL blobs.
 
+### Gotcha #11 — `useFieldFormat` base must close over live `colors`, not stale
+**Symptom:** Change a brand-kit accent color in the editor. All non-overridden text fields keep rendering with the OLD color until you reload the page.
+**Cause:** `useFieldFormat(path, base)` memoizes on the fields of `base`. If your Act component declared the hook like:
+```tsx
+const kickerStyle = useFieldFormat('kicker', {
+  ...
+  color: props.colors.accent,            // read lazily inside the base object
+});
+```
+…the hook's dep array captures `props.colors.accent` via the base object reference, which doesn't invalidate when `props.colors` is swapped as part of a deeper React update.
+**Fix:** Destructure `const { colors } = props;` at the top of the Act function BEFORE any `useFieldFormat` call, then reference `colors.accent` in the base. This puts the brand color into the hook's explicit dependency surface.
+**Caught:** Phase 7a pass — Seasonal, Gift Guide, Brand Spotlight all had this. Fix is uniform.
+
+### Gotcha #12 — Safe-zone overlay baked into exports
+**Symptom:** User exports with "Safe zones" toggle ON. The MP4 has the dim overlay + "Safe · 9:16" pill burned into every frame.
+**Cause:** The overlay is a sibling of the Scene inside `<Stage>`, so it lives inside the same `canvasEl` that `html-to-image.toBlob` rasterizes. Editor visibility and export visibility both gated on a single render.
+**Fix:** Every node inside `SafeZoneOverlay.tsx` carries `data-export-ignore="true"`, and `lib/export.ts` passes `filter: (node) => node.dataset?.exportIgnore !== 'true'` to `html-to-image`. The attribute is a convention — any future editor-only DOM chrome should reuse it.
+**Caught + fixed:** 2026-04-22 (commit `a58afa8`).
+
+### Gotcha #13 — `getComputedStyle().bottom` is NOT a reliable "is bottom-anchored" signal
+**Symptom:** Debugging whether safe-zone margins apply in the export, a DOM scan like `filter: s.bottom !== 'auto'` matches top-anchored kickers and headlines (reported `bottom: 1521.5px` on a `top: 360` element).
+**Cause:** Browsers reverse-compute the unset `bottom` value from `containing_block_height - top - element_height`, so `getComputedStyle` returns a numeric pixel string even on elements that only set `top`. `'auto'` is only returned when neither `top` nor `bottom` is explicitly set AND the containing block layout doesn't imply one.
+**Fix:** Detect bottom-anchoring via inline style instead — `el.style.bottom !== '' && el.style.top === ''`. Or measure distance from canvas bottom via `canvasHeight - el.offsetTop - el.offsetHeight`.
+**Caught:** Phase 7c export-diagnostic work. Documented here so anyone writing future DOM scans doesn't re-burn the hour.
+
 **MAINTENANCE — add to §9 when you:** burn 30+ minutes debugging anything that wasn't obvious from the code. The next person should not re-burn that time.
 
 ---
@@ -431,20 +516,40 @@ Full rationale: see [ROADMAP.md](ROADMAP.md) and the project memory file at `~/.
 | 2 — Customization depth | ✅ | Image upload, product CRUD, undo/redo, editable **duration** (timeline video trim + `timeScale` act scaling), aspect switcher, Brand Kit. |
 | 3 — Multi-template | ✅ | Logo upload + in-scene rendering, multi-aspect Phillip Lim, 3 new templates (editorial, countdown, hero), 8 SVG luxury placeholders. |
 | 4 — Export | ✅ | Frame-by-frame → ffmpeg.wasm → MP4. Verified with Sale Countdown 5s × 1:1 → 8.2 MB. |
-| 5 — Polish | ⬜ | Not started. Candidates listed below. |
+| 5b — Audio + layered timeline | ✅ | Reels-style layered timeline (video lane + music lane + playhead), music library, export muxing. `EditorTimelineDock`. |
+| **Post-5 polish era — numbered independently in git** | | |
+| 1 — Typography tokens | ✅ | Role-bound CSS variables (`--font-display`, `--font-body`, `--font-numeric`). Templates no longer reference literal font names. |
+| 1.5 — Font vendoring | ✅ | Portrait, Noto Serif Display, Noto Kufi Arabic shipped in-repo under `app/src/assets/fonts/`. Google Fonts removed from critical path. |
+| 2 — Safe-zone overlay | ✅ | Camera-viewfinder dim strips in the editor canvas with a toggle in the top bar. Editor-only. |
+| 3 — Safe-zone retrofit | ✅ | All 9 templates anchor bottom/top elements via `Math.max(h(X), safe.{edge} + h(Y))`. Enforcement follows the editor toggle. |
+| 4 — Brand Kit editor surfaces | ✅ | Typography picker, safe-zone override slots, locale toggle. |
+| 5 — Per-field format drawer | ✅ | `Aa` button on every `text` field in the properties panel → right-side drawer → `useFieldFormat` resolves overrides. |
+| 6 — Locale + RTL + Arabic | ✅ | Segmented EN / AR locale toggle, per-project override, `dir="rtl"` auto on the Stage, Noto Kufi prepended to font stacks when locale is Arabic. |
+| 7 (a / b / c) — Polish | ✅ | Brand-color reactivity in `useFieldFormat` bases, family samples in drawer, currency composition (`composePrice`), RTL pill mirror, export no-chrome toggle, drawer default-swatch preview, drawer keyboard nav, `data-export-ignore` filter so the overlay cannot bake into MP4s. |
 
-### Phase 5 candidates (not committed; pick from this menu when starting)
+### Templates shipped (9)
 
-- Keyboard shortcuts (cmd-S to manual save indicator, cmd-E for export, etc.)
-- Shareable read-only preview URLs (encode project state in URL for review)
-- Onboarding empty states (better empty-Dashboard CTA, gallery hover preview loops)
-- Tier 2 "Advanced" panel: per-act timing + easing (the only thing Tier 1 doesn't cover)
-- Parallel rasterization (worker pool) to halve export time
-- IndexedDB-backed image storage (lifts the ~5 MB localStorage cap)
-- Replace SVG placeholders with image-gen PNGs (user is generating these — drop-in swap; see §12)
-- Vercel deploy + custom domain
-- Cloud sync (Vercel Blob or Supabase free tier) for cross-device
-- More templates (3 more would round out: e.g. "Carousel Reveal", "Mood Board", "Quote Card")
+- **Originals (Phase 3):** Lookbook, Editorial, Countdown, Hero.
+- **Phase 2 expansion:** Bestsellers (Top 5), Seasonal Campaign, Category Carousel, Brand Spotlight, Gift Guide.
+
+### Currently open (see `PHASE_7_BACKLOG.md` for the canonical list)
+
+- **#5** Aspect × safe-zone matrix QA — 9 templates × 3 aspects × safe ON/OFF. Genuinely eyes-on; deferred until marketers report a specific off-looking cell.
+- **#8** Per-product sub-field formatting — fields inside `productList` (per-row name / price / brandline) don't yet have format buttons. Needs a stable per-row id as override key.
+- **#12** Per-project safe-zone override — Brand Kit has per-boutique override; not yet per-project.
+- **#13** Per-project typography override — same shape as #12.
+- **#17** Custom font uploader — dropped at Phase 1.5; comes back if a boutique licenses a second paid family.
+
+### Candidates still on the wishlist (not committed)
+
+- Keyboard shortcuts beyond drawer nav (cmd-S manual save indicator, cmd-E for export).
+- Shareable read-only preview URLs (encode project state in URL).
+- Tier 2 "Advanced" panel: per-act timing + easing.
+- Parallel rasterization (worker pool) to halve export time.
+- IndexedDB-backed image storage (lifts the ~5 MB localStorage cap).
+- Replace SVG placeholders with image-gen PNGs (see §12).
+- Vercel deploy + custom domain.
+- Cloud sync (Vercel Blob or Supabase free tier) for cross-device.
 
 ---
 
@@ -467,7 +572,11 @@ The Scene contract | `templates/registry.ts` (`SceneComponentProps`) + every tem
 The Stage `controller` API | `engine/Stage.tsx` + `engine/useStageController.ts` + `app/routes/Editor.tsx` + `lib/export.ts`
 EditableState / Editor history | `store/editableState.ts` + `store/types.ts` (`Project`) + `app/routes/Editor.tsx` + any child that called `save` for those fields (must use `setEditable` / `onTimelinePatch`)
 A token/color | `styles/tokens.css` (single source of truth — never hardcode)
-ROADMAP scope | ROADMAP.md + this HANDOFF §10 / §11
+Safe-zone values or enforcement | `engine/safeZones.ts` + Brand Kit `store/brand.ts` + Editor provider wiring + every template that reads `safe.*`
+A new text field in a template | `schema.ts` (type + default) + `fields.ts` (descriptor) + `scene.tsx` (`useFieldFormat` hook + spread into style) — all three or drawer overrides silently no-op on that field
+Font-family stack or locale routing | `styles/tokens.css` (--font-*) + `engine/locale.ts` + `engine/Stage.tsx` (RTL injection) + `app/src/assets/fonts/` (@font-face rules) — never hardcode a family in a scene
+Export-time DOM filtering | `lib/export.ts` (`filter` option) + any editor-only component that should be filtered (`data-export-ignore="true"` attribute)
+ROADMAP scope | ROADMAP.md + this HANDOFF §10 / §11 + `PHASE_7_BACKLOG.md` (if it affects an open item there) + `template_skill.md` (if it affects the template-author contract)
 
 ---
 
@@ -575,4 +684,6 @@ Contributors **never work in parallel** on this repo—only one active stream at
 
 ---
 
-**Last meaningful update:** 2026-04-18 — **Editor:** unified **`EditableState` + `useHistory`** (undo/redo includes timeline); **`normalizeEditable`** on timeline patches; **`brandColumn`** on `FieldDescriptor` (§5.7). Left **`EditorBrandPanel`**; **`EditorTimelineDock`** scene UI + `snap()` helper. **`Outline.tsx`** unused. **§13** + **§5.8** document `save` vs `setEditable`. Deferred: dock split, raster lib merge, ⌘-scroll zoom, clip inspector.
+**Last meaningful update:** 2026-04-22 — **Post-Phase-5 polish era caught up:** TL;DR rewritten (status now Phases 0–7c). Status snapshot (§11) shows the second-era phase numbering (typography tokens → font vendoring → safe zones → Brand Kit surfaces → per-field format drawer → locale + RTL → 7a/b/c polish). Added §5.9 safe-zone anchoring, §5.10 per-field format hooks, §5.11 locale + RTL, §5.12 price composition, §5.13 editor-only chrome escape hatch, §5.14 role-bound typography. Added Gotchas #11 (destructure `colors` before `useFieldFormat`), #12 (overlay can't bake into MP4 via `data-export-ignore`), #13 (`getComputedStyle().bottom` is not a bottom-anchored signal). Extended §13 cross-boundary table with safe-zone / text-field / typography / export-filter rows. New companion docs: `PHASE_7_BACKLOG.md` (canonical open-items list) and `template_skill.md` (template-author contract — now reflects all post-Phase-5 hooks).
+
+Earlier meaningful update: **2026-04-18** — Editor unified `EditableState` + `useHistory` (undo/redo includes timeline); `normalizeEditable` on timeline patches; `brandColumn` on `FieldDescriptor` (§5.7). Left `EditorBrandPanel`; `EditorTimelineDock` scene UI + `snap()` helper. `Outline.tsx` unused. §13 + §5.8 document `save` vs `setEditable`.
