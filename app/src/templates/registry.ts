@@ -15,6 +15,10 @@ import * as carousel from './carousel';
 import * as giftGuide from './gift-guide';
 import * as brandSpotlight from './brand-spotlight';
 import * as theStack from './the-stack';
+import * as thePairing from './the-pairing';
+import * as newIn from './new-in';
+import * as theCollab from './the-collab';
+import * as theRail from './the-rail';
 
 export type SceneComponentProps = {
   props: any;
@@ -81,6 +85,26 @@ const entries: Record<string, TemplateEntry> = {
     meta: theStack.meta as unknown as TemplateMeta<unknown>,
     fields: theStack.fields,
     Scene: theStack.TheStackScene as unknown as ComponentType<SceneComponentProps>,
+  },
+  [thePairing.meta.id]: {
+    meta: thePairing.meta as unknown as TemplateMeta<unknown>,
+    fields: thePairing.fields,
+    Scene: thePairing.ThePairingScene as unknown as ComponentType<SceneComponentProps>,
+  },
+  [newIn.meta.id]: {
+    meta: newIn.meta as unknown as TemplateMeta<unknown>,
+    fields: newIn.fields,
+    Scene: newIn.NewInScene as unknown as ComponentType<SceneComponentProps>,
+  },
+  [theCollab.meta.id]: {
+    meta: theCollab.meta as unknown as TemplateMeta<unknown>,
+    fields: theCollab.fields,
+    Scene: theCollab.TheCollabScene as unknown as ComponentType<SceneComponentProps>,
+  },
+  [theRail.meta.id]: {
+    meta: theRail.meta as unknown as TemplateMeta<unknown>,
+    fields: theRail.fields,
+    Scene: theRail.TheRailScene as unknown as ComponentType<SceneComponentProps>,
   },
 };
 
