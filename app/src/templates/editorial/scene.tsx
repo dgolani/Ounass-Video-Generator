@@ -10,6 +10,22 @@ import {
 import type { EditorialProps } from './schema';
 import { BoutiqueLogo } from '../BoutiqueLogo';
 
+// Editorial — magazine-style masthead → 2×2 product grid → feature
+// zoom → editor signature. Always-safe regime; composes against the
+// content rect. See SAFE_ZONE_PATTERNS.md.
+//
+// Key lessons baked in (from Hero UX pass + Editorial UX pass):
+// - Masthead chrome (rules + VOL / DATE row) was previously pinned to
+//   h(160..230) and sat inside IG's 250-px top chrome on 9:16 — so
+//   "VOLUME XII · AUTUMN 2026" was literally invisible on a phone.
+//   Now anchored to contentTop.
+// - Grid's running header had the same bug — same fix.
+// - The 2×2 grid block is derived from the content rect, not a fixed
+//   cellH * 2 formula. On 9:16 the cells stay roughly 1.31 aspect
+//   (close to the designer's 1.35); on 4:5 they become near-square
+//   so all 4 plates remain fully visible (previously the bottom row
+//   was clipped by IG's bottom caption strip).
+
 const BASE_W = 1080;
 const BASE_H = 1920;
 
@@ -44,12 +60,14 @@ type ActProps = {
   props: EditorialProps;
   T: (x: number) => number;
   s: Scale;
-  /** Resolved safe zone for the current aspect (output pixels). */
   safe: { top: number; bottom: number; left: number; right: number };
+  /** Content-rect anchors in output pixels. See SAFE_ZONE_PATTERNS.md. */
+  contentTop: number;
+  contentBottom: number;
 };
 
 // ── Act 1 — Masthead & headline ────────────────────────────────────────
-function Masthead({ props, T, s, safe: _safe }: ActProps) {
+function Masthead({ props, T, s, contentTop }: ActProps) {
   const { time: t } = useTimeline();
   const { masthead, issueDate, headlineLine1, headlineLine2, byline, colors } = props;
   const { w, h, wh } = s;
@@ -96,13 +114,18 @@ function Masthead({ props, T, s, safe: _safe }: ActProps) {
     color: colors.ink,
   });
 
-  // Top rule draws in
   const ruleT = interpolate([T(0.1), T(0.7)], [0, 1], Easing.easeOutExpo)(t);
   const bottomRuleT = interpolate([T(0.3), T(0.9)], [0, 1], Easing.easeOutExpo)(t);
 
   const mastheadOp = interpolate([T(0.4), T(0.9), T(1.7), T(2.0)], [0, 1, 1, 0], Easing.easeInOutCubic)(t);
   const headlineOp = interpolate([T(0.6), T(1.1), T(1.7), T(2.0)], [0, 1, 1, 0], Easing.easeInOutCubic)(t);
   const headlineY = interpolate([T(0.6), T(1.1)], [wh(20), 0], Easing.easeOutCubic)(t);
+
+  // Masthead chrome anchored inside the content rect. Previously pinned
+  // to h(160..230), which sat under IG's top chrome on 9:16.
+  const ruleTop = contentTop + h(30);
+  const mastheadRowTop = contentTop + h(60);
+  const bottomRuleTop = contentTop + h(100);
 
   return (
     <>
@@ -112,7 +135,7 @@ function Masthead({ props, T, s, safe: _safe }: ActProps) {
           position: 'absolute',
           left: w(80),
           right: w(80),
-          top: h(160),
+          top: ruleTop,
           height: 1,
           background: colors.rule,
           transform: `scaleX(${ruleT})`,
@@ -125,7 +148,7 @@ function Masthead({ props, T, s, safe: _safe }: ActProps) {
           position: 'absolute',
           left: w(80),
           right: w(80),
-          top: h(190),
+          top: mastheadRowTop,
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'baseline',
@@ -141,7 +164,7 @@ function Masthead({ props, T, s, safe: _safe }: ActProps) {
           position: 'absolute',
           left: w(80),
           right: w(80),
-          top: h(230),
+          top: bottomRuleTop,
           height: 1,
           background: colors.rule,
           transform: `scaleX(${bottomRuleT})`,
@@ -149,7 +172,8 @@ function Masthead({ props, T, s, safe: _safe }: ActProps) {
         }}
       />
 
-      {/* Headline stack */}
+      {/* Headline stack — sits well below the masthead chrome; its
+       *  h(720) base position lands inside safe on both aspects. */}
       <div
         style={{
           position: 'absolute',
@@ -176,33 +200,43 @@ function Masthead({ props, T, s, safe: _safe }: ActProps) {
 }
 
 // ── Act 2 — 2×2 product grid ───────────────────────────────────────────
-function Grid({ props, T, s, safe }: ActProps) {
+function Grid({ props, T, s, safe, contentTop, contentBottom }: ActProps) {
   const { time: t } = useTimeline();
   const { products, colors } = props;
-  const { w, h, wh, W, H } = s;
+  const { w, h, wh, W } = s;
 
   const gridIn = interpolate([T(1.8), T(2.4)], [0, 1], Easing.easeOutExpo)(t);
   const gridOut = interpolate([T(5.2), T(5.6)], [1, 0], Easing.easeInCubic)(t);
   const op = gridIn * gridOut;
   if (op <= 0) return null;
 
-  // 2×2 layout — centered block within safe margins
+  // Grid block fitted to the content rect, with a top band for the
+  // running header and a bottom band for the category strip. Previously
+  // cellH was derived from cellW * 1.35 regardless of canvas height —
+  // which made the block 1181 base-px tall on both aspects, overflowing
+  // the 1030-tall safe window on 4:5.
+  const headerBandH = h(120);   // running header + breathing room
+  const footerBandH = h(120);   // rule + category strip + breathing room
+  const blockTop = contentTop + headerBandH;
+  const blockBottom = contentBottom - footerBandH;
+  const blockHAvail = blockBottom - blockTop;
+
   const outerMargin = w(100);
   const gutter = wh(20);
   const cellW = (W - outerMargin * 2 - gutter) / 2;
-  const cellH = cellW * 1.35;
-  const blockH = cellH * 2 + gutter;
-  const blockY = (H - blockH) / 2 + h(60);
+  const cellH = (blockHAvail - gutter) / 2;
+  const blockY = blockTop;
 
   return (
     <>
-      {/* Running header "THE EDIT N°01" */}
+      {/* Running header "THE EDIT · 04 · PIECES" — anchored inside
+       *  the content rect (previously at h(160), under IG chrome). */}
       <div
         style={{
           position: 'absolute',
           left: w(80),
           right: w(80),
-          top: h(160),
+          top: contentTop + h(30),
           display: 'flex',
           justifyContent: 'space-between',
           opacity: op * 0.8,
@@ -224,11 +258,16 @@ function Grid({ props, T, s, safe }: ActProps) {
         const cellX = outerMargin + col * (cellW + gutter);
         const cellY = blockY + row * (cellH + gutter);
 
-        // Stagger reveal: each cell fades + slides up in turn
         const start = T(1.8) + i * T(0.18);
         const cellT = interpolate([start, start + T(0.5)], [0, 1], Easing.easeOutExpo)(t);
         const cellY2 = (1 - cellT) * wh(30);
         const cellOp = cellT;
+
+        // The caption area below each product image reserves ~wh(60)
+        // on the original design. Keep the same reserve so the
+        // category + name line sits below the image neatly.
+        const captionH = wh(60);
+        const imageH = Math.max(cellH - captionH, h(40));
 
         return (
           <div
@@ -247,7 +286,7 @@ function Grid({ props, T, s, safe }: ActProps) {
             <div
               style={{
                 width: '100%',
-                height: cellH - wh(60),
+                height: imageH,
                 overflow: 'hidden',
                 background: colors.rule,
               }}
@@ -272,7 +311,7 @@ function Grid({ props, T, s, safe }: ActProps) {
                 />
               )}
             </div>
-            {/* Caption: category · numeral · name */}
+            {/* Caption: numeral · name */}
             <div
               style={{
                 marginTop: wh(10),
@@ -313,14 +352,14 @@ function Grid({ props, T, s, safe }: ActProps) {
         );
       })}
 
-      {/* Footer rule + category strip — above the bottom safe zone so
-       *  the IG caption doesn't hide the category labels. */}
+      {/* Footer rule + category strip — anchored above the visible
+       *  bottom edge (content-rect pattern §2). */}
       <div
         style={{
           position: 'absolute',
           left: w(80),
           right: w(80),
-          bottom: Math.max(h(140), safe.bottom + h(20)),
+          bottom: safe.bottom + h(30),
           opacity: op,
         }}
       >
@@ -346,8 +385,8 @@ function Grid({ props, T, s, safe }: ActProps) {
   );
 }
 
-// ── Act 3 — Feature zoom (on product 01) ───────────────────────────────
-function Feature({ props, T, s, safe: _safe }: ActProps) {
+// ── Act 3 — Feature zoom (on product 1) ────────────────────────────────
+function Feature({ props, T, s, contentTop, contentBottom }: ActProps) {
   const { time: t } = useTimeline();
   const { products, featureCaption, colors } = props;
   const { w, h, wh, W } = s;
@@ -359,14 +398,20 @@ function Feature({ props, T, s, safe: _safe }: ActProps) {
   const op = fadeIn * fadeOut;
   if (op <= 0) return null;
 
-  // Slow Ken-Burns zoom
   const zoomT = clamp((t - T(5.4)) / T(2.0), 0, 1);
   const scale = 1 + 0.08 * zoomT;
 
+  // Image + caption composed inside the content rect. Reserve a
+  // caption band at the bottom so the kicker + quote never drift into
+  // IG's bottom chrome on either aspect. Image height is derived from
+  // the remaining space so the composition stays tall on 9:16 and
+  // more compressed on 4:5 without clipping.
+  const topPad = h(40);
+  const captionBandH = h(260);
+  const imgX = (W - w(680)) / 2;
+  const imgY = contentTop + topPad;
+  const imgH = contentBottom - captionBandH - imgY;
   const imgW = w(680);
-  const imgH = h(1020);
-  const imgX = (W - imgW) / 2;
-  const imgY = h(280);
 
   return (
     <div style={{ opacity: op }}>
@@ -414,7 +459,8 @@ function Feature({ props, T, s, safe: _safe }: ActProps) {
         )}
       </div>
 
-      {/* Caption below */}
+      {/* Caption below — anchored to the caption band that sits just
+       *  above the visible bottom edge. */}
       <div
         style={{
           position: 'absolute',
@@ -456,7 +502,7 @@ function Feature({ props, T, s, safe: _safe }: ActProps) {
 }
 
 // ── Act 4 — Signature sign-off ─────────────────────────────────────────
-function Signature({ props, T, s, safe }: ActProps) {
+function Signature({ props, T, s, safe, contentTop }: ActProps) {
   const { time: t } = useTimeline();
   const {
     closingKicker,
@@ -508,6 +554,13 @@ function Signature({ props, T, s, safe }: ActProps) {
   const ctaIn = interpolate([T(8.1), T(8.6)], [0, 1], Easing.easeOutCubic)(t);
   const underT = interpolate([T(8.5), T(9.1)], [0, 1], Easing.easeInOutCubic)(t);
 
+  // Signature stack anchored relative to the content rect top so the
+  // rule + kicker + logo land proportionally on both aspects.
+  const ruleTop = contentTop + h(60);
+  const kickerTop = contentTop + h(120);
+  const logoTop = contentTop + h(220);
+  const signatureTop = contentTop + h(580);
+
   return (
     <>
       {/* Paper backdrop */}
@@ -526,7 +579,7 @@ function Signature({ props, T, s, safe }: ActProps) {
           position: 'absolute',
           left: w(80),
           right: w(80),
-          top: h(300),
+          top: ruleTop,
           height: 1,
           background: colors.rule,
           opacity: fadeIn,
@@ -539,7 +592,7 @@ function Signature({ props, T, s, safe }: ActProps) {
           position: 'absolute',
           left: 0,
           right: 0,
-          top: h(360),
+          top: kickerTop,
           textAlign: 'center',
           ...closingKickerStyle,
           opacity: fadeIn,
@@ -554,7 +607,7 @@ function Signature({ props, T, s, safe }: ActProps) {
           position: 'absolute',
           left: 0,
           right: 0,
-          top: h(460),
+          top: logoTop,
           textAlign: 'center',
           opacity: fadeIn,
         }}
@@ -575,7 +628,7 @@ function Signature({ props, T, s, safe }: ActProps) {
           position: 'absolute',
           left: 0,
           right: 0,
-          top: h(820),
+          top: signatureTop,
           textAlign: 'center',
           ...signatureTextStyle,
           opacity: fadeIn,
@@ -584,14 +637,13 @@ function Signature({ props, T, s, safe }: ActProps) {
         — {signatureText} —
       </div>
 
-      {/* CTA — anchored above the bottom safe zone so the "read more"
-       *  button stays clear of the IG caption area. */}
+      {/* CTA — anchored to the visible bottom edge (content-rect §2). */}
       <div
         style={{
           position: 'absolute',
           left: 0,
           right: 0,
-          bottom: Math.max(h(260), safe.bottom + h(60)),
+          bottom: safe.bottom + h(60),
           textAlign: 'center',
           opacity: ctaIn,
         }}
@@ -642,6 +694,11 @@ export function EditorialScene({
   const s = makeScale(width, height);
   const { base: safe } = useSafeZone({ width, height });
 
+  const contentTop = safe.top;
+  const contentBottom = height - safe.bottom;
+
+  const actProps: ActProps = { props, T, s, safe, contentTop, contentBottom };
+
   return (
     <div
       style={{
@@ -651,10 +708,10 @@ export function EditorialScene({
         overflow: 'hidden',
       }}
     >
-      <Masthead props={props} T={T} s={s} safe={safe} />
-      <Grid props={props} T={T} s={s} safe={safe} />
-      <Feature props={props} T={T} s={s} safe={safe} />
-      <Signature props={props} T={T} s={s} safe={safe} />
+      <Masthead {...actProps} />
+      <Grid {...actProps} />
+      <Feature {...actProps} />
+      <Signature {...actProps} />
     </div>
   );
 }
