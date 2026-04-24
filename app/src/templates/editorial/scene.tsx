@@ -64,13 +64,20 @@ type ActProps = {
   /** Content-rect anchors in output pixels. See SAFE_ZONE_PATTERNS.md. */
   contentTop: number;
   contentBottom: number;
+  contentLeft: number;
+  contentRight: number;
+  contentCX: number;
 };
 
 // ── Act 1 — Masthead & headline ────────────────────────────────────────
-function Masthead({ props, T, s, contentTop }: ActProps) {
+function Masthead({ props, T, s, safe, contentTop }: ActProps) {
   const { time: t } = useTimeline();
   const { masthead, issueDate, headlineLine1, headlineLine2, byline, colors } = props;
   const { w, h, wh } = s;
+  // All horizontal anchors respect safe.left/right so nothing extends
+  // into the 9:16 like-stack column (safe.right = 120 base-px).
+  const sideInsetL = safe.left + w(80);
+  const sideInsetR = safe.right + w(80);
 
   const headlineLine1Style = useFieldFormat('headlineLine1', {
     fontFamily: 'var(--font-display)',
@@ -133,8 +140,8 @@ function Masthead({ props, T, s, contentTop }: ActProps) {
       <div
         style={{
           position: 'absolute',
-          left: w(80),
-          right: w(80),
+          left: sideInsetL,
+          right: sideInsetR,
           top: ruleTop,
           height: 1,
           background: colors.rule,
@@ -146,8 +153,8 @@ function Masthead({ props, T, s, contentTop }: ActProps) {
       <div
         style={{
           position: 'absolute',
-          left: w(80),
-          right: w(80),
+          left: sideInsetL,
+          right: sideInsetR,
           top: mastheadRowTop,
           display: 'flex',
           justifyContent: 'space-between',
@@ -162,8 +169,8 @@ function Masthead({ props, T, s, contentTop }: ActProps) {
       <div
         style={{
           position: 'absolute',
-          left: w(80),
-          right: w(80),
+          left: sideInsetL,
+          right: sideInsetR,
           top: bottomRuleTop,
           height: 1,
           background: colors.rule,
@@ -172,13 +179,13 @@ function Masthead({ props, T, s, contentTop }: ActProps) {
         }}
       />
 
-      {/* Headline stack — sits well below the masthead chrome; its
+      {/* Headline stack — centered vertically at ~38% of canvas; its
        *  h(720) base position lands inside safe on both aspects. */}
       <div
         style={{
           position: 'absolute',
-          left: w(80),
-          right: w(80),
+          left: sideInsetL,
+          right: sideInsetR,
           top: h(720),
           opacity: headlineOp,
           transform: `translateY(${headlineY}px)`,
@@ -200,42 +207,50 @@ function Masthead({ props, T, s, contentTop }: ActProps) {
 }
 
 // ── Act 2 — 2×2 product grid ───────────────────────────────────────────
-function Grid({ props, T, s, safe, contentTop, contentBottom }: ActProps) {
+function Grid({ props, T, s, safe, contentTop, contentBottom, contentLeft, contentRight, contentCX }: ActProps) {
   const { time: t } = useTimeline();
   const { products, colors } = props;
-  const { w, h, wh, W } = s;
+  const { w, h, wh } = s;
 
   const gridIn = interpolate([T(1.8), T(2.4)], [0, 1], Easing.easeOutExpo)(t);
   const gridOut = interpolate([T(5.2), T(5.6)], [1, 0], Easing.easeInCubic)(t);
   const op = gridIn * gridOut;
   if (op <= 0) return null;
 
-  // Grid block fitted to the content rect, with a top band for the
-  // running header and a bottom band for the category strip. Previously
-  // cellH was derived from cellW * 1.35 regardless of canvas height —
-  // which made the block 1181 base-px tall on both aspects, overflowing
-  // the 1030-tall safe window on 4:5.
+  // Grid block fitted to the content rect on all four edges. Previously
+  // cellH was derived from cellW * 1.35 regardless of canvas height
+  // (block 1181 base-px tall, overflowed the 1030-tall 4:5 safe window)
+  // AND `outerMargin = w(100)` was symmetric, ignoring safe.right on
+  // 9:16 (the right column bled 20 base-px into the IG like-stack).
+  // Both axes now respect the content rect.
+  const sideInsetL = safe.left + w(80);
+  const sideInsetR = safe.right + w(80);
   const headerBandH = h(120);   // running header + breathing room
   const footerBandH = h(120);   // rule + category strip + breathing room
   const blockTop = contentTop + headerBandH;
   const blockBottom = contentBottom - footerBandH;
   const blockHAvail = blockBottom - blockTop;
 
-  const outerMargin = w(100);
+  const sideMargin = w(80);
   const gutter = wh(20);
-  const cellW = (W - outerMargin * 2 - gutter) / 2;
+  const contentW = contentRight - contentLeft;
+  const blockWAvail = contentW - sideMargin * 2;
+  const cellW = (blockWAvail - gutter) / 2;
   const cellH = (blockHAvail - gutter) / 2;
+  const blockLeft = contentCX - (cellW * 2 + gutter) / 2;
   const blockY = blockTop;
 
   return (
     <>
       {/* Running header "THE EDIT · 04 · PIECES" — anchored inside
-       *  the content rect (previously at h(160), under IG chrome). */}
+       *  the content rect on both top edge and right edge (previously
+       *  at h(160), under IG chrome, AND right: w(80) bled 40 base-px
+       *  into the 9:16 like-stack). */}
       <div
         style={{
           position: 'absolute',
-          left: w(80),
-          right: w(80),
+          left: sideInsetL,
+          right: sideInsetR,
           top: contentTop + h(30),
           display: 'flex',
           justifyContent: 'space-between',
@@ -255,7 +270,7 @@ function Grid({ props, T, s, safe, contentTop, contentBottom }: ActProps) {
       {products.slice(0, 4).map((p, i) => {
         const row = Math.floor(i / 2);
         const col = i % 2;
-        const cellX = outerMargin + col * (cellW + gutter);
+        const cellX = blockLeft + col * (cellW + gutter);
         const cellY = blockY + row * (cellH + gutter);
 
         const start = T(1.8) + i * T(0.18);
@@ -353,12 +368,13 @@ function Grid({ props, T, s, safe, contentTop, contentBottom }: ActProps) {
       })}
 
       {/* Footer rule + category strip — anchored above the visible
-       *  bottom edge (content-rect pattern §2). */}
+       *  bottom edge (content-rect pattern §2) and respects safe.right
+       *  so the category labels don't run under the like-stack. */}
       <div
         style={{
           position: 'absolute',
-          left: w(80),
-          right: w(80),
+          left: sideInsetL,
+          right: sideInsetR,
           bottom: safe.bottom + h(30),
           opacity: op,
         }}
@@ -386,10 +402,10 @@ function Grid({ props, T, s, safe, contentTop, contentBottom }: ActProps) {
 }
 
 // ── Act 3 — Feature zoom (on product 1) ────────────────────────────────
-function Feature({ props, T, s, contentTop, contentBottom }: ActProps) {
+function Feature({ props, T, s, safe, contentTop, contentBottom, contentCX }: ActProps) {
   const { time: t } = useTimeline();
   const { products, featureCaption, colors } = props;
-  const { w, h, wh, W } = s;
+  const { w, h, wh } = s;
   const hero = products[0];
   if (!hero) return null;
 
@@ -401,17 +417,18 @@ function Feature({ props, T, s, contentTop, contentBottom }: ActProps) {
   const zoomT = clamp((t - T(5.4)) / T(2.0), 0, 1);
   const scale = 1 + 0.08 * zoomT;
 
-  // Image + caption composed inside the content rect. Reserve a
-  // caption band at the bottom so the kicker + quote never drift into
-  // IG's bottom chrome on either aspect. Image height is derived from
-  // the remaining space so the composition stays tall on 9:16 and
-  // more compressed on 4:5 without clipping.
+  // Image + caption composed inside the content rect. Image is
+  // centered on contentCX (not canvas center) so it sits dead-centre
+  // in the visible area, including on 9:16 where safe.right = 120
+  // pushes the content centre 60 base-px left of canvas centre.
   const topPad = h(40);
   const captionBandH = h(260);
-  const imgX = (W - w(680)) / 2;
+  const imgW = w(680);
+  const imgX = contentCX - imgW / 2;
   const imgY = contentTop + topPad;
   const imgH = contentBottom - captionBandH - imgY;
-  const imgW = w(680);
+  const sideInsetL = safe.left + w(120);
+  const sideInsetR = safe.right + w(120);
 
   return (
     <div style={{ opacity: op }}>
@@ -460,12 +477,12 @@ function Feature({ props, T, s, contentTop, contentBottom }: ActProps) {
       </div>
 
       {/* Caption below — anchored to the caption band that sits just
-       *  above the visible bottom edge. */}
+       *  above the visible bottom edge, and respects safe.left/right. */}
       <div
         style={{
           position: 'absolute',
-          left: w(120),
-          right: w(120),
+          left: sideInsetL,
+          right: sideInsetR,
           top: imgY + imgH + h(40),
           textAlign: 'center',
         }}
@@ -573,12 +590,12 @@ function Signature({ props, T, s, safe, contentTop }: ActProps) {
         }}
       />
 
-      {/* Top rule */}
+      {/* Top rule — respects safe.left/right. */}
       <div
         style={{
           position: 'absolute',
-          left: w(80),
-          right: w(80),
+          left: safe.left + w(80),
+          right: safe.right + w(80),
           top: ruleTop,
           height: 1,
           background: colors.rule,
@@ -696,8 +713,21 @@ export function EditorialScene({
 
   const contentTop = safe.top;
   const contentBottom = height - safe.bottom;
+  const contentLeft = safe.left;
+  const contentRight = width - safe.right;
+  const contentCX = (contentLeft + contentRight) / 2;
 
-  const actProps: ActProps = { props, T, s, safe, contentTop, contentBottom };
+  const actProps: ActProps = {
+    props,
+    T,
+    s,
+    safe,
+    contentTop,
+    contentBottom,
+    contentLeft,
+    contentRight,
+    contentCX,
+  };
 
   return (
     <div
