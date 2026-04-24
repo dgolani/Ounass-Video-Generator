@@ -43,8 +43,12 @@ export type CollabProps = {
   boutiqueName: string;
   logo?: string;
 
-  // Collaborator (right mark) — typography-only wordmark
+  // Collaborator (right mark). Prefers an uploaded SVG logo; falls back
+  // to rendering the collabName as a wordmark. Same BoutiqueLogo pattern
+  // as the left mark, so the "Aa" tint button works on the collab logo
+  // too — editable, per-project, overridable via the editor.
   collabName: string;
+  collabLogo?: string;
 
   /** Optional backdrop image — when set, REPLACES the paper gradient
    *  entirely in BOTH light and dark modes. Data URL. */
@@ -103,6 +107,7 @@ export const defaultProps: CollabProps = {
   boutiqueName: 'OUNASS',
   logo: undefined,
   collabName: 'Gucci',
+  collabLogo: undefined,
   backgroundImage: undefined,
 
   kicker: 'An Exclusive Collaboration',

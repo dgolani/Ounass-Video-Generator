@@ -124,6 +124,7 @@ export function TheCollabScene({
     boutiqueName,
     logo,
     collabName,
+    collabLogo,
     backgroundImage,
     kicker,
     editSmallLeft,
@@ -140,6 +141,7 @@ export function TheCollabScene({
   } = props;
 
   const logoColor = useFieldColor('logo', colors.ink);
+  const collabLogoColor = useFieldColor('collabLogo', colors.ink);
 
   // ── Per-field format overrides ─────────────────────────────────────
   const kickerStyle = useFieldFormat('kicker', {
@@ -149,15 +151,6 @@ export function TheCollabScene({
     letterSpacing: '0.4em',
     textTransform: 'uppercase',
     color: colors.accent,
-  });
-  const collabNameStyle = useFieldFormat('collabName', {
-    fontFamily: 'var(--font-display)',
-    fontWeight: 400,
-    fontSize: wh(96),
-    letterSpacing: '0.14em',
-    textTransform: 'uppercase',
-    color: colors.ink,
-    lineHeight: 1,
   });
   const editSmallStyle = useFieldFormat('editSmallLeft', {
     fontFamily: 'var(--font-body)',
@@ -308,8 +301,9 @@ export function TheCollabScene({
   const leftMarkW = is45 ? 320 : 300;
   const leftMarkH = is45 ? 68 : 64;
   const leftMarkGap = is45 ? 90 : 80; // each side's gap from centre
-  const collabFontSize = is45 ? 90 : 96;
-  const xStampSize = is45 ? 95 : 120;
+  // × glyph between the two marks (plain text, not a foil stamp). Sized
+  // so it reads as big-type punctuation without overpowering either logo.
+  const xStampSize = is45 ? 120 : 140;
 
   // Card dimensions (HTML base px)
   const cardW = is45 ? 240 : 264;
@@ -452,7 +446,10 @@ export function TheCollabScene({
           />
         </div>
 
-        {/* Right mark — collaborator display serif */}
+        {/* Right mark — collaborator logo (uploadable SVG) with text
+         *  fallback to collabName. Same BoutiqueLogo component as the
+         *  left mark, so both sides are visually matched and both tint
+         *  via the editor's Aa button. */}
         <div
           style={{
             position: 'relative',
@@ -463,73 +460,41 @@ export function TheCollabScene({
             transform: `translateX(${w(rightTx)}px)`,
           }}
         >
-          <span
-            style={{
-              ...collabNameStyle,
-              fontSize: wh(collabFontSize),
-            }}
-          >
-            {collabName}
-          </span>
+          <BoutiqueLogo
+            logo={collabLogo}
+            boutiqueName={collabName}
+            color={collabLogoColor}
+            width={w(leftMarkW)}
+            height={h(leftMarkH)}
+            fontSize={wh(is45 ? 64 : 60)}
+            fontWeight={400}
+            letterSpacing="0.14em"
+          />
         </div>
 
-        {/* × stamp — absolute, centred on the lockup */}
-        <div
+        {/* × between the two marks — plain text glyph, not a foil stamp.
+         *  Uses the accent colour so it still feels "branded" against
+         *  the ink wordmarks, and inherits the stamp's scale/rotation
+         *  animation so the entry beat stays intact. */}
+        <span
           aria-hidden
           style={{
             position: 'absolute',
             left: '50%',
             top: '50%',
-            width: wh(xStampSize),
-            height: wh(xStampSize),
             transform: `translate(-50%, -50%) scale(${stampScale}) rotate(${stampRot}deg)`,
             opacity: stampOp,
+            fontFamily: 'var(--font-display)',
+            fontWeight: 400,
+            fontSize: wh(xStampSize),
+            lineHeight: 1,
+            color: colors.accent,
             pointerEvents: 'none',
+            userSelect: 'none',
           }}
         >
-          <svg
-            viewBox="0 0 200 200"
-            xmlns="http://www.w3.org/2000/svg"
-            style={{ width: '100%', height: '100%', display: 'block' }}
-          >
-            <defs>
-              <radialGradient id="collab-foil-grad" cx="35%" cy="35%" r="80%">
-                <stop offset="0%" stopColor={lighten(colors.foil, 0.2)} />
-                <stop offset="55%" stopColor={colors.accent} />
-                <stop offset="100%" stopColor={darken(colors.accent, 0.45)} />
-              </radialGradient>
-            </defs>
-            <circle cx="100" cy="100" r="90" fill="url(#collab-foil-grad)" />
-            <circle
-              cx="100"
-              cy="100"
-              r="90"
-              fill="none"
-              stroke="rgba(255,255,255,0.3)"
-              strokeWidth={1.5}
-            />
-            <circle
-              cx="100"
-              cy="100"
-              r="76"
-              fill="none"
-              stroke="rgba(0,0,0,0.2)"
-              strokeWidth={1}
-            />
-            <text
-              x="100"
-              y="138"
-              textAnchor="middle"
-              fontFamily="var(--font-display)"
-              fontStyle="italic"
-              fontWeight={400}
-              fontSize={120}
-              fill={colors.background}
-            >
-              ×
-            </text>
-          </svg>
-        </div>
+          ×
+        </span>
       </div>
 
       {/* ── Hairline rule beneath lockup ────────────────────────────── */}

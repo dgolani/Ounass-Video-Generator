@@ -11,7 +11,17 @@ export const fields: FieldDescriptor[] = [
     svgOnly: true,
   },
   { kind: 'text', path: 'boutiqueName', label: 'Boutique name', sceneIds: ['lockup'] },
-  { kind: 'text', path: 'collabName', label: 'Collaborator name (right mark)', sceneIds: ['lockup'], role: 'display' },
+
+  { kind: 'section', label: 'Collaborator' },
+  {
+    kind: 'image',
+    path: 'collabLogo',
+    label: 'Collaborator logo',
+    aspectRatio: 16 / 5,
+    hint: 'SVG preferred — tintable via the Aa button. When absent, the collaborator name renders as a wordmark.',
+    svgOnly: true,
+  },
+  { kind: 'text', path: 'collabName', label: 'Collaborator name (fallback)', sceneIds: ['lockup'], role: 'display' },
 
   { kind: 'section', label: 'Background image' },
   {
