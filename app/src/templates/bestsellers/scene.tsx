@@ -68,6 +68,26 @@ export function BestsellersScene({
   const currency = useCurrencyForLocale();
   const { colors, products, boutiqueName, headerMeta, kicker, logo } = props;
 
+  // ── Content rect (composition-safe window in output pixels) ───────────
+  // When safe enforcement is OFF, margins are 0 so this collapses to the
+  // full canvas (no conditional branches needed). When ON, readability-
+  // critical content composes against this rect instead of raw canvas
+  // edges, so the scene reflows as one unit.
+  const contentTop = safe.top;
+  const contentBottom = height - safe.bottom;
+  const contentLeft = safe.left;
+  const contentRight = width - safe.right;
+  const contentW = contentRight - contentLeft;
+  const contentCY = (contentTop + contentBottom) / 2;
+
+  const HEADER_TOP_INSET = h(20);
+  const HEADER_H = h(128);
+  const KICKER_INSET_FROM_HEADER = h(66);
+  const MARKER_TOP_INSET = h(48);
+  const MARKER_RIGHT_INSET = w(48);
+  const DOTS_BOTTOM_INSET = h(220);
+  const CTA_BOTTOM_INSET = safe.bottom;
+
   // Per-field format overrides — marketer may have customised these via
   // the Format drawer. Hooks called unconditionally at the top.
   const headerMetaStyle = useFieldFormat('headerMeta', {
@@ -181,14 +201,14 @@ export function BestsellersScene({
       <div
         style={{
           position: 'absolute',
-          top: 0,
-          left: 0,
-          right: 0,
-          height: h(160),
+          top: contentTop + HEADER_TOP_INSET,
+          left: contentLeft,
+          width: contentW,
+          height: HEADER_H,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          padding: `0 ${w(64)}px`,
+          padding: `0 ${w(36)}px`,
           zIndex: 10,
         }}
       >
@@ -212,9 +232,9 @@ export function BestsellersScene({
       <div
         style={{
           position: 'absolute',
-          top: Math.max(h(220), safe.top),
-          left: 0,
-          right: 0,
+          top: contentTop + HEADER_TOP_INSET + HEADER_H + KICKER_INSET_FROM_HEADER,
+          left: contentLeft,
+          width: contentW,
           textAlign: 'center',
           zIndex: 10,
           ...kickerStyle,
@@ -234,9 +254,11 @@ export function BestsellersScene({
       <div
         style={{
           position: 'absolute',
-          top: h(170),
-          left: '50%',
-          transform: 'translateX(-50%)',
+          left: 0,
+          right: 0,
+          top: contentCY,
+          display: 'flex',
+          justifyContent: 'center',
           fontFamily: 'var(--font-display)',
           fontStyle: 'italic',
           fontWeight: 300,
@@ -248,6 +270,7 @@ export function BestsellersScene({
           zIndex: 2,
           userSelect: 'none',
           whiteSpace: 'nowrap',
+          transform: `translateY(-53%)`,
         }}
       >
         {activeRank}
@@ -257,10 +280,10 @@ export function BestsellersScene({
       <div
         style={{
           position: 'absolute',
-          top: h(330),
-          left: 0,
-          right: 0,
-          bottom: h(320),
+          top: contentTop + h(300),
+          left: contentLeft,
+          width: contentW,
+          bottom: height - (contentBottom - h(300)),
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
@@ -376,8 +399,8 @@ export function BestsellersScene({
       <div
         style={{
           position: 'absolute',
-          top: Math.max(h(48), safe.top),
-          right: Math.max(w(48), safe.right),
+          top: contentTop + MARKER_TOP_INSET,
+          right: safe.right + MARKER_RIGHT_INSET,
           fontFamily: 'var(--font-display)',
           fontStyle: 'italic',
           fontSize: wh(36),
@@ -395,9 +418,9 @@ export function BestsellersScene({
       <div
         style={{
           position: 'absolute',
-          bottom: Math.max(h(220), safe.bottom),
-          left: 0,
-          right: 0,
+          bottom: safe.bottom + DOTS_BOTTOM_INSET,
+          left: contentLeft,
+          width: contentW,
           display: 'flex',
           justifyContent: 'center',
           gap: w(12),
@@ -426,7 +449,7 @@ export function BestsellersScene({
       <div
         style={{
           position: 'absolute',
-          bottom: safe.bottom,
+          bottom: CTA_BOTTOM_INSET,
           left: 0,
           right: 0,
           height: h(360),
@@ -439,6 +462,9 @@ export function BestsellersScene({
           zIndex: 20,
           opacity: ctaOp,
           transform: `translateY(${h(ctaY)}px)`,
+          paddingLeft: safe.left,
+          paddingRight: safe.right,
+          boxSizing: 'border-box',
         }}
       >
         <div style={{ ...ctaKickerStyle }}>
