@@ -84,9 +84,13 @@ export function BestsellersScene({
 
   const HEADER_TOP_INSET = h(20);
   const HEADER_H = h(128);
-  const KICKER_INSET_FROM_HEADER = h(66);
-  const MARKER_TOP_INSET = h(48);
+  // N° marker sits in the top band, BELOW the header — previously at
+  // contentTop + h(48), it collided with headerMeta ("The Edit · Spring")
+  // because both landed in the top-right corner at similar y.
+  const MARKER_TOP = HEADER_TOP_INSET + HEADER_H + h(20);
   const MARKER_RIGHT_INSET = w(48);
+  // Kicker pushed down to clear the marker.
+  const KICKER_INSET_FROM_HEADER = h(110);
   const DOTS_BOTTOM_INSET = h(220);
   const CTA_BOTTOM_INSET = safe.bottom;
 
@@ -410,12 +414,14 @@ export function BestsellersScene({
         })}
       </div>
 
-      {/* N° 0X marker, top-right — anchored inside the top + right safe
-       *  zones so the IG like-stack doesn't cover it in 9:16. */}
+      {/* N° 0X marker — sits below the header row, top-right of the
+       *  product zone. Previously at contentTop + h(48) which put it
+       *  right on top of headerMeta "The Edit · Spring" at the same y.
+       *  Now clears both the header and the right like-stack. */}
       <div
         style={{
           position: 'absolute',
-          top: contentTop + MARKER_TOP_INSET,
+          top: contentTop + MARKER_TOP,
           right: safe.right + MARKER_RIGHT_INSET,
           fontFamily: 'var(--font-display)',
           fontStyle: 'italic',
