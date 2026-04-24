@@ -1,5 +1,6 @@
 import type { FieldFormatOverrides } from './fieldFormat';
 import type { Locale } from '../engine/locale';
+import type { ThemeMode } from '../engine/themeMode';
 
 export type Project = {
   id: string;
@@ -29,6 +30,10 @@ export type Project = {
    *  for producing the Arabic variant of a specific ad without flipping
    *  the entire brand. `undefined` = follow the brand default. */
   localeOverride?: Locale;
+  /** For templates with supportsThemes: true, this holds the marketer's
+   *  Light | Dark choice. Ignored for unthemed templates. `undefined`
+   *  means "use template default" (light). */
+  themeMode?: ThemeMode;
   createdAt: number;
   updatedAt: number;
 };

@@ -20,6 +20,7 @@ import type { ComponentType } from 'react';
 import { Stage } from '../../engine/Stage';
 import { useStageController } from '../../engine/useStageController';
 import { SafeZoneOverlay } from '../../engine/SafeZoneOverlay';
+import { ThemeModeContext, type ThemeMode } from '../../engine/themeMode';
 import { getTemplate, type SceneComponentProps } from '../../templates/registry';
 
 type AspectKey = '9:16' | '4:5';
@@ -51,6 +52,7 @@ export function VisualTest() {
   const timeSec = parseFloat(params.get('time') ?? '0');
   const overlay = params.get('overlay') === '1';
   const palette = params.get('palette') ?? 'default';
+  const mode: ThemeMode = params.get('mode') === 'dark' ? 'dark' : 'light';
 
   const { width, height } = ASPECTS[aspectKey] ?? ASPECTS['9:16'];
   const tpl = getTemplate(templateId);
@@ -106,12 +108,14 @@ export function VisualTest() {
         }}
       >
         <Stage width={width} height={height} controller={controller} chromeless>
-          <Scene
-            props={testProps as unknown as SceneComponentProps['props']}
-            timeScale={timeScale}
-            width={width}
-            height={height}
-          />
+          <ThemeModeContext.Provider value={mode}>
+            <Scene
+              props={testProps as unknown as SceneComponentProps['props']}
+              timeScale={timeScale}
+              width={width}
+              height={height}
+            />
+          </ThemeModeContext.Provider>
           {overlay ? <SafeZoneOverlay aspect={{ width, height }} /> : null}
         </Stage>
       </div>
@@ -127,7 +131,7 @@ export function VisualTest() {
           borderRadius: 4,
         }}
       >
-        {templateId} · {aspectKey} · t={timeSec}s · overlay={overlay ? 'ON' : 'off'} · palette={palette}
+        {templateId} · {aspectKey} · t={timeSec}s · overlay={overlay ? 'ON' : 'off'} · palette={palette} · mode={mode}
       </div>
     </div>
   );

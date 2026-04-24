@@ -38,3 +38,9 @@ export {
   useLocaleDirection,
   type Locale,
 } from './locale';
+export {
+  ThemeModeContext,
+  useThemeMode,
+  useThemedColors,
+  type ThemeMode,
+} from './themeMode';

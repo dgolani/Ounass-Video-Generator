@@ -14,6 +14,7 @@ import * as seasonal from './seasonal';
 import * as carousel from './carousel';
 import * as giftGuide from './gift-guide';
 import * as brandSpotlight from './brand-spotlight';
+import * as theStack from './the-stack';
 
 export type SceneComponentProps = {
   props: any;
@@ -75,6 +76,11 @@ const entries: Record<string, TemplateEntry> = {
     meta: brandSpotlight.meta as unknown as TemplateMeta<unknown>,
     fields: brandSpotlight.fields,
     Scene: brandSpotlight.BrandSpotlightScene as unknown as ComponentType<SceneComponentProps>,
+  },
+  [theStack.meta.id]: {
+    meta: theStack.meta as unknown as TemplateMeta<unknown>,
+    fields: theStack.fields,
+    Scene: theStack.TheStackScene as unknown as ComponentType<SceneComponentProps>,
   },
 };
 

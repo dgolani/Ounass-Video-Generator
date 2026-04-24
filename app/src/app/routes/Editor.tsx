@@ -7,7 +7,9 @@ import {
   SafeZoneOverlay,
   FieldFormatContext,
   LocaleContext,
+  ThemeModeContext,
   type Locale,
+  type ThemeMode,
 } from '../../engine';
 import { FormatDrawer } from '../components/FormatDrawer';
 import type { FieldRole } from '../../templates/fields';
@@ -77,6 +79,7 @@ const EMPTY_EDITABLE: EditableState = {
   musicEndVideoTime: 9,
   fieldFormatOverrides: {},
   localeOverride: undefined,
+  themeMode: undefined,
 };
 
 export function Editor() {
@@ -215,6 +218,15 @@ export function Editor() {
     [setEditable],
   );
 
+  /** Per-project theme mode. Only meaningful for templates that opt
+   *  into supportsThemes; the toggle in the top bar is hidden otherwise. */
+  const onThemeModeChange = useCallback(
+    (next: ThemeMode) => {
+      setEditable((prev) => ({ ...prev, themeMode: next }));
+    },
+    [setEditable],
+  );
+
   const template = project ? getTemplate(project.templateId) : null;
   const aspectIndex = editable.aspectIndex;
   const aspect = template?.meta.aspects[aspectIndex];
@@ -239,6 +251,12 @@ export function Editor() {
   const [brand] = useBrand();
   const effectiveLocale: Locale =
     editable.localeOverride ?? brand.locale ?? 'en';
+
+  /** Theme mode for this ad (light | dark). Only meaningful when the
+   *  template opts in via `meta.supportsThemes`; unthemed templates
+   *  still read this value but ignore it. Defaults to 'light'. */
+  const effectiveThemeMode: ThemeMode = editable.themeMode ?? 'light';
+  const supportsThemes = template?.meta.supportsThemes === true;
 
   /** Soft warning when the active locale disagrees with the majority
    *  script of the editable copy (e.g. Arabic-locale ad with mostly
@@ -543,6 +561,15 @@ export function Editor() {
           onChange={onLocaleOverrideChange}
         />
 
+        {/* Per-project theme toggle — only visible for templates that
+         *  opt in via meta.supportsThemes. Two-state segmented. */}
+        {supportsThemes && (
+          <ThemeSegmented
+            mode={effectiveThemeMode}
+            onChange={onThemeModeChange}
+          />
+        )}
+
         {/* Copy / locale mismatch warning — yellow chip that appears
          *  when script detection disagrees with the active locale. */}
         {copyWarning && (
@@ -651,15 +678,17 @@ export function Editor() {
              *  so gallery thumbnails render at template defaults. */}
             <FieldFormatContext.Provider value={fieldFormatOverrides}>
               <LocaleContext.Provider value={effectiveLocale}>
-                <Scene
-                  props={localProps}
-                  timeScale={timeScale}
-                  width={aspect.width}
-                  height={aspect.height}
-                />
-                {/* Editor-only guide; sibling of the Scene so it shares the
-                 *  stage transform and stays pixel-aligned at any zoom. */}
-                {showSafeZones && <SafeZoneOverlay aspect={aspect} />}
+                <ThemeModeContext.Provider value={effectiveThemeMode}>
+                  <Scene
+                    props={localProps}
+                    timeScale={timeScale}
+                    width={aspect.width}
+                    height={aspect.height}
+                  />
+                  {/* Editor-only guide; sibling of the Scene so it shares the
+                   *  stage transform and stays pixel-aligned at any zoom. */}
+                  {showSafeZones && <SafeZoneOverlay aspect={aspect} />}
+                </ThemeModeContext.Provider>
               </LocaleContext.Provider>
             </FieldFormatContext.Provider>
           </Stage>
@@ -1010,6 +1039,61 @@ function LocaleSegmented({
                 }}
               />
             )}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function ThemeSegmented({
+  mode,
+  onChange,
+}: {
+  mode: ThemeMode;
+  onChange: (next: ThemeMode) => void;
+}) {
+  const options: Array<{ value: ThemeMode; label: string }> = [
+    { value: 'light', label: 'Light' },
+    { value: 'dark', label: 'Dark' },
+  ];
+  return (
+    <div
+      role="tablist"
+      aria-label="Theme"
+      style={{
+        display: 'inline-flex',
+        background: 'var(--editor-panel-2)',
+        border: '1px solid var(--editor-border)',
+        borderRadius: 'var(--r-md)',
+        padding: 2,
+      }}
+      title="Switch between the template's light and dark palette"
+    >
+      {options.map((opt) => {
+        const active = mode === opt.value;
+        return (
+          <button
+            key={opt.value}
+            type="button"
+            role="tab"
+            aria-selected={active}
+            onClick={() => onChange(opt.value)}
+            style={{
+              background: active ? 'rgba(255,255,255,0.08)' : 'transparent',
+              color: active ? 'var(--editor-text)' : 'var(--editor-text-dim)',
+              border: 0,
+              padding: '4px 10px',
+              fontFamily: 'var(--sans)',
+              fontSize: 11,
+              fontWeight: active ? 700 : 500,
+              letterSpacing: '0.04em',
+              borderRadius: 3,
+              cursor: 'pointer',
+              transition: 'background 120ms, color 120ms',
+            }}
+          >
+            {opt.label}
           </button>
         );
       })}

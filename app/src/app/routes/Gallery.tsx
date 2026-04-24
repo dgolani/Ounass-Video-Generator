@@ -73,7 +73,11 @@ function TemplateCard({
         transition: 'border-color 120ms',
       }}
     >
-      <TemplatePreview template={template} playing={hovered} />
+      {template.meta.supportsThemes ? (
+        <ThemedDualPreview template={template} hovered={hovered} />
+      ) : (
+        <TemplatePreview template={template} playing={hovered} />
+      )}
 
       <div>
         <div
@@ -122,6 +126,105 @@ function TemplateCard({
       >
         Use template
       </Button>
+    </div>
+  );
+}
+
+/** Split preview for templates that opt into supportsThemes — renders
+ *  the scene TWICE, once in light mode (left half) and once in dark
+ *  mode (right half), with a thin copper divider between. Both halves
+ *  share the same hover-play behaviour so the two modes animate
+ *  together when the card is hovered. */
+function ThemedDualPreview({
+  template,
+  hovered,
+}: {
+  template: TemplateEntry;
+  hovered: boolean;
+}) {
+  const aspect = template.meta.aspects[0];
+  return (
+    <div
+      style={{
+        position: 'relative',
+        width: '100%',
+        aspectRatio: `${aspect.width} / ${aspect.height}`,
+        borderRadius: 'var(--r-md)',
+        overflow: 'hidden',
+      }}
+    >
+      {/* Left half — light mode. clip-path shows only the left 50%. */}
+      <div
+        style={{
+          position: 'absolute',
+          inset: 0,
+          clipPath: 'inset(0 50% 0 0)',
+        }}
+      >
+        <TemplatePreview template={template} playing={hovered} mode="light" />
+      </div>
+      {/* Right half — dark mode. clip-path shows only the right 50%. */}
+      <div
+        style={{
+          position: 'absolute',
+          inset: 0,
+          clipPath: 'inset(0 0 0 50%)',
+        }}
+      >
+        <TemplatePreview template={template} playing={hovered} mode="dark" />
+      </div>
+      {/* Hairline divider between the two halves. */}
+      <div
+        aria-hidden
+        style={{
+          position: 'absolute',
+          top: 0,
+          bottom: 0,
+          left: '50%',
+          width: 1,
+          background: 'rgba(196,147,115,0.55)',
+          pointerEvents: 'none',
+        }}
+      />
+      {/* Tiny labels so the split isn't ambiguous. */}
+      <div
+        style={{
+          position: 'absolute',
+          top: 8,
+          left: 8,
+          fontFamily: 'var(--sans)',
+          fontSize: 9,
+          fontWeight: 700,
+          letterSpacing: '0.14em',
+          color: 'rgba(18,18,18,0.55)',
+          textTransform: 'uppercase',
+          background: 'rgba(245,240,232,0.7)',
+          padding: '2px 6px',
+          borderRadius: 3,
+          pointerEvents: 'none',
+        }}
+      >
+        Light
+      </div>
+      <div
+        style={{
+          position: 'absolute',
+          top: 8,
+          right: 8,
+          fontFamily: 'var(--sans)',
+          fontSize: 9,
+          fontWeight: 700,
+          letterSpacing: '0.14em',
+          color: 'rgba(237,229,214,0.7)',
+          textTransform: 'uppercase',
+          background: 'rgba(15,14,12,0.7)',
+          padding: '2px 6px',
+          borderRadius: 3,
+          pointerEvents: 'none',
+        }}
+      >
+        Dark
+      </div>
     </div>
   );
 }

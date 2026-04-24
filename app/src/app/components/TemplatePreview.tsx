@@ -1,5 +1,5 @@
 import { useEffect, useMemo } from 'react';
-import { Stage, useStageController } from '../../engine';
+import { Stage, useStageController, ThemeModeContext, type ThemeMode } from '../../engine';
 import type { TemplateEntry } from '../../templates/registry';
 import { applyBrand, useBrand } from '../../store/brand';
 
@@ -21,6 +21,11 @@ type Props = {
    * so each project gets its own poster moment.
    */
   posterSeed?: string;
+  /** Force a specific theme mode when the template opts into supportsThemes.
+   *  Used by the gallery to render a light/dark split preview (one instance
+   *  per mode). When omitted, falls through to the ambient ThemeModeContext
+   *  (which defaults to 'light'). */
+  mode?: ThemeMode;
 };
 
 /** 0..1 from string; stable for the same seed (card identity). */
@@ -42,6 +47,19 @@ function posterTimeFromSeed(seed: string, durationSec: number): number {
   return inset + u * span;
 }
 
+/** Resolve a theme-aware background colour from sceneProps.colors. Handles
+ *  three shapes: `{ background }` (unthemed), `{ light: {background}, dark: {background} }`
+ *  (themed pair), and `undefined` (fallback to a dark neutral). */
+function resolveBackground(sceneProps: unknown, mode: ThemeMode): string {
+  const colors = (sceneProps as { colors?: unknown })?.colors;
+  if (!colors || typeof colors !== 'object') return '#0A0A0A';
+  if ('light' in colors && 'dark' in colors) {
+    const pair = colors as { light: { background?: string }; dark: { background?: string } };
+    return (mode === 'dark' ? pair.dark?.background : pair.light?.background) ?? '#0A0A0A';
+  }
+  return (colors as { background?: string }).background ?? '#0A0A0A';
+}
+
 /**
  * A live, paused-by-default mini-render of a template scene.
  *
@@ -56,6 +74,7 @@ export function TemplatePreview({
   playing,
   aspectIndex = 0,
   posterSeed,
+  mode,
 }: Props) {
   const aspect = template.meta.aspects[aspectIndex] ?? template.meta.aspects[0];
   const dur = duration ?? template.meta.defaultDuration;
@@ -77,8 +96,8 @@ export function TemplatePreview({
 
   const posterKey = useMemo(() => {
     const base = posterSeed ?? template.meta.id;
-    return `${base}-a${aspectIndex}-d${Math.round(dur * 100)}`;
-  }, [posterSeed, template.meta.id, aspectIndex, dur]);
+    return `${base}-a${aspectIndex}-d${Math.round(dur * 100)}-m${mode ?? 'x'}`;
+  }, [posterSeed, template.meta.id, aspectIndex, dur, mode]);
 
   const posterTime = useMemo(() => posterTimeFromSeed(posterKey, dur), [posterKey, dur]);
 
@@ -103,15 +122,16 @@ export function TemplatePreview({
     setTime(posterTime);
   }, [playing, posterTime, setPlaying, setTime]);
 
-  return (
+  const resolvedMode: ThemeMode = mode ?? 'light';
+  const bg = resolveBackground(sceneProps, resolvedMode);
+
+  const stage = (
     <div
       style={{
         position: 'relative',
         width: '100%',
         aspectRatio: `${aspect.width} / ${aspect.height}`,
-        background:
-          (sceneProps as { colors?: { background?: string } })?.colors?.background ??
-          '#0A0A0A',
+        background: bg,
         overflow: 'hidden',
         // Block pointer events so the parent card's onClick wins and the
         // scene's tap-ripple handlers don't fire inside a card.
@@ -122,10 +142,7 @@ export function TemplatePreview({
       <Stage
         width={aspect.width}
         height={aspect.height}
-        background={
-          (sceneProps as { colors?: { background?: string } })?.colors?.background ??
-          '#0A0A0A'
-        }
+        background={bg}
         controller={controller}
         chromeless
       >
@@ -138,4 +155,11 @@ export function TemplatePreview({
       </Stage>
     </div>
   );
+
+  // Only wrap in ThemeModeContext when an explicit mode is passed — otherwise
+  // the preview inherits whatever ThemeModeContext is in scope (default 'light').
+  if (mode) {
+    return <ThemeModeContext.Provider value={mode}>{stage}</ThemeModeContext.Provider>;
+  }
+  return stage;
 }

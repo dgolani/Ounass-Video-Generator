@@ -6,6 +6,7 @@
 import type { Project } from './types';
 import type { FieldFormatOverrides } from './fieldFormat';
 import type { Locale } from '../engine/locale';
+import type { ThemeMode } from '../engine/themeMode';
 
 export type EditableState = {
   props: unknown;
@@ -23,6 +24,10 @@ export type EditableState = {
   fieldFormatOverrides: FieldFormatOverrides;
   /** Per-project locale override. `undefined` = follow brand default. */
   localeOverride: Locale | undefined;
+  /** For templates with supportsThemes, the marketer's Light | Dark
+   *  choice. `undefined` = template default (light). Ignored for
+   *  unthemed templates. */
+  themeMode: ThemeMode | undefined;
 };
 
 export function projectToEditable(p: Project): EditableState {
@@ -38,6 +43,7 @@ export function projectToEditable(p: Project): EditableState {
     musicEndVideoTime: p.musicEndVideoTime,
     fieldFormatOverrides: p.fieldFormatOverrides ?? {},
     localeOverride: p.localeOverride,
+    themeMode: p.themeMode,
   };
 }
 
@@ -55,7 +61,8 @@ export function editablesEqual(a: EditableState, b: EditableState): boolean {
     a.musicTrimStartSec === b.musicTrimStartSec &&
     a.musicEndVideoTime === b.musicEndVideoTime &&
     a.fieldFormatOverrides === b.fieldFormatOverrides &&
-    a.localeOverride === b.localeOverride
+    a.localeOverride === b.localeOverride &&
+    a.themeMode === b.themeMode
   );
 }
 
@@ -73,5 +80,6 @@ export function editableToPatch(e: EditableState): Partial<Project> {
     musicEndVideoTime: e.musicEndVideoTime,
     fieldFormatOverrides: e.fieldFormatOverrides,
     localeOverride: e.localeOverride,
+    themeMode: e.themeMode,
   };
 }

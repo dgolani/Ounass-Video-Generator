@@ -24,4 +24,9 @@ export type TemplateMeta<P> = {
   aspects: AspectRatio[];
   scenes: SceneOutline[];
   defaultProps: P;
+  /** When true, this template ships BOTH a light and a dark palette
+   *  (schema.colors is shaped `{ light, dark }`) and the editor
+   *  surfaces a Light | Dark toggle that flips the active mode. The
+   *  project persists the user's choice in `project.themeMode`. */
+  supportsThemes?: boolean;
 };
