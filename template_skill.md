@@ -178,32 +178,55 @@ Typography is role-bound through CSS custom properties set on the Stage root. Te
 
 **Hard rule:** never write `'Fraunces'`, `'Nunito Sans'`, `'Portrait'`, or any literal family name in `scene.tsx`. Always `var(--font-*)`. Monospace is off-brand — avoid.
 
-### Safe-zone anchoring
+### Safe-zone anchoring — content-rect model
 
 Every ad lives inside platform chrome — Instagram caption, TikTok like-stack, Story progress bar. `useSafeZone` returns the keep-clear margins for the current aspect and a live enforcement flag. Elements anywhere near an edge must thread through it.
 
-At the scene root:
+> **Deep dive:** [`SAFE_ZONE_PATTERNS.md`](SAFE_ZONE_PATTERNS.md) is the canonical reference — decision tree for picking the right pattern per element, full-bleed vs padded-flex vs absolute-wrapper, how to handle floating positioned-in-space layers, and the five named gotchas. Read it before porting a new template or polishing an existing one.
+
+**Quick recipe** — at the scene root, derive the content rect once:
 
 ```tsx
 import { useSafeZone } from '../../engine';
 
 const { base: safe } = useSafeZone({ width, height });
-// pass `safe` into each Act component alongside `T` and `s`
-<Outro props={props} T={T} s={s} safe={safe} />
+
+const contentTop    = safe.top;
+const contentBottom = height - safe.bottom;
+const contentLeft   = safe.left;
+const contentRight  = width  - safe.right;
+const contentCX     = (contentLeft + contentRight) / 2;
+const contentCY     = (contentTop  + contentBottom) / 2;
+
+// pass into each Act alongside `T` and `s`
+<Outro props={props} T={T} s={s} safe={safe} contentCX={contentCX} contentCY={contentCY} />
 ```
 
-At the positioning site, use the **max-of-designer-intent-and-keep-clear** pattern — never raw `safe.bottom`:
+Then anchor elements to the content rect, not the canvas:
 
 ```tsx
-bottom: Math.max(h(320), safe.bottom + h(60))
-//          ^ designer intent   ^ safe floor + breathing room
-left:   Math.max(w(80),  safe.left)
-top:    Math.max(h(100), safe.top  + h(40))
+// Top-anchored readable chrome (logo, masthead):
+top: contentTop + h(20)          // 20 base-px inside the visible top edge
+
+// Bottom-anchored (CTA, footer):
+bottom: safe.bottom + h(60)
+
+// Side-anchored (side editorial pill):
+right: safe.right + w(48)
+
+// Centered on phone-visible center (giant refrain, hero element):
+top: contentCY; transform: translateY(-50%)
 ```
 
-Why `Math.max`: if the designer already placed the element inside the safe zone at some aspects, don't yank it further in; if a tighter aspect would push it under platform UI, pull it inward. This is Phase 3's safe-zone retrofit contract — copy it, don't improvise.
+Full-bleed background + internal content column? Use the **padded-flex** pattern — set `paddingTop/Right/Bottom/Left: safe.*` on the flex centre container so its content box becomes the safe rect (the flex center lands on content-rect center; children keep their intrinsic widths — no button text wrapping). See `SAFE_ZONE_PATTERNS.md` §4 Option A.
 
-Phases 3+ pre-resolved zones: `9:16 → { top: 250, bottom: 300, left: 0, right: 120 }`, `4:5 → { top: 120, bottom: 200, left: 0, right: 0 }`, `1:1 → { top: 100, bottom: 100, left: 0, right: 0 }`. Most templates only need `safe.bottom` (CTAs, footers) and occasionally `safe.top` (kickers, running headers).
+Positioned-in-space products? Wrap the whole layer in a single translate+scale transform — see §6.
+
+**Decay to OFF:** when enforcement is off, `useSafeZone` returns zero margins so the content rect collapses to the full canvas and every formula above degrades to the original design. Both states look deliberate; ON takes priority when compromise is needed.
+
+**Avoid:** the legacy `Math.max(h(X), safe.edge + h(Y))` pattern. It works per-element but **splits compositions** when safe flips ON (one element moves, its neighbours don't — cream gap opens, layout feels broken). If you see it in an existing template, that template is a candidate for a polish pass.
+
+Phases 3+ pre-resolved zones: `9:16 → { top: 250, bottom: 300, left: 0, right: 120 }`, `4:5 → { top: 120, bottom: 200, left: 0, right: 0 }`, `1:1 → { top: 100, bottom: 100, left: 0, right: 0 }`. Reference implementation: `app/src/templates/seasonal/scene.tsx`.
 
 ### Per-field format hooks
 
@@ -317,7 +340,7 @@ Before handing back, verify:
 3. Every string visible in the rendered scene is either from `props` or is a structural literal (e.g. `"—"`, `"· "`). No hidden hardcoded headline copy.
 4. Every path referenced in `fields.ts` resolves in `defaultProps` (no drift between the two).
 5. No literal font family name in `scene.tsx` — every `fontFamily` is `var(--font-display)` / `var(--font-body)` / `var(--font-numeric)`.
-6. Every bottom/top/side-anchored element near an edge uses `Math.max(h(X), safe.{edge} [+ h(Y)])` — no raw `h(X)` for CTAs, footers, kickers.
+6. Every bottom/top/side-anchored element near an edge anchors to the **content rect** (`contentTop + h(X)`, `safe.right + w(X)`, etc.) — see `SAFE_ZONE_PATTERNS.md`. No raw `h(X)` for CTAs, footers, kickers, and no leftover legacy `Math.max(h(X), safe.{edge} + h(Y))` either. Full-bleed flex-centered layouts use the padded-flex pattern (§4 Option A). Positioned-in-space layers (floating products) use the layer-transform pattern (§6).
 7. Every editable text field in `fields.ts` has a matching `useFieldFormat(path, base)` call in `scene.tsx`. Path spellings match exactly.
 8. Every price string renders via `composePrice(raw, useCurrencyForLocale())` — never `{product.price}` directly.
 9. `colors` is destructured BEFORE any `useFieldFormat` call in every Act component (brand-color reactivity).

@@ -280,18 +280,42 @@ Paths included on the left are removed from the right-hand `PropertiesPanel` via
 
 **Deferred follow-ups** (not in that merge): timeline **⌘-scroll zoom**, splitting the large dock file, consolidating **html-to-image** vs **modern-screenshot**, numeric clip inspector.
 
-### 5.9 Safe-zone anchoring (post-Phase 3)
-Every bottom/top/side-anchored element near a canvas edge threads through `useSafeZone(aspect)`. Pattern:
+### 5.9 Safe-zone anchoring (post-Phase 3; content-rect model added 2026-04-24)
+Every bottom/top/side-anchored element near a canvas edge threads through `useSafeZone(aspect)`.
+
+**Two patterns coexist** — the v1 per-element `Math.max` retrofit, and the v2 **content-rect** composition-preserving model. Prefer v2 for any new template or a full polish pass. See **[`SAFE_ZONE_PATTERNS.md`](SAFE_ZONE_PATTERNS.md)** for the full decision tree, element-by-element recipes, and gotchas — that's the canonical reference.
+
+**v1 (legacy, still in several templates):**
 
 ```tsx
-const { base: safe } = useSafeZone({ width, height });
-// pass safe into Act components alongside T, s
-
-// at the positioning site — never raw safe.{edge}:
 bottom: Math.max(h(320), safe.bottom + h(60))
 ```
 
-Why `Math.max`: keep designer intent when it's already inside the margin, pull inward otherwise. Margins are defined in `app/src/engine/safeZones.ts` with Brand-Kit override via `SafeZoneOverridesContext`. Enforcement follows `SafeZoneEnforcementContext` — editor toggle is the only place that sets it to `false`; exports, preview cards, and anything unwrapped default to `true`.
+Keeps designer intent when already inside the margin; pulls inward otherwise. Problem: when safe flips ON, one element shifts but its neighbours don't, so the composition splits apart (a cream gap opens above the shifted logo; products still sit where they were, now crammed against the bottom safe floor).
+
+**v2 (content-rect, composition-preserving):**
+
+```tsx
+// At scene root:
+const { base: safe } = useSafeZone({ width, height });
+const contentTop    = safe.top;
+const contentBottom = height - safe.bottom;
+const contentLeft   = safe.left;
+const contentRight  = width  - safe.right;
+const contentCX     = (contentLeft + contentRight) / 2;
+const contentCY     = (contentTop  + contentBottom) / 2;
+
+// At the positioning site:
+top:   contentTop + h(20)        // logo 20 base-px inside the visible top edge
+right: safe.right + w(48)        // side pill 48 base-px inside the visible right
+top:   contentCY                 // centered on the phone-visible center
+```
+
+When enforcement is OFF the rect collapses to the full canvas (margins are all 0) and every formula degrades to the original design. When ON the whole composition reflows coherently — no "jumping" elements. For positioned-in-space layers (floating products), wrap the whole layer in a single translate+scale transform — see `SAFE_ZONE_PATTERNS.md` §6.
+
+**Reference implementation:** `app/src/templates/seasonal/scene.tsx` — look for the `// ── Content rect ──` block at the top of `SeasonalScene`.
+
+Margins live in `app/src/engine/safeZones.ts`, with Brand-Kit override via `SafeZoneOverridesContext`. Enforcement follows `SafeZoneEnforcementContext` — editor toggle is the only place that sets it to `false`; exports, preview cards, and anything unwrapped default to `true`.
 
 ### 5.10 Per-field format hooks (post-Phase 5)
 Every editable text field must route its style through `useFieldFormat(path, baseStyle)` or the Format drawer's overrides silently no-op. The `path` string is the dotted field path from `fields.ts`; it doubles as the override key in the project's stored overrides map.
@@ -572,7 +596,7 @@ The Scene contract | `templates/registry.ts` (`SceneComponentProps`) + every tem
 The Stage `controller` API | `engine/Stage.tsx` + `engine/useStageController.ts` + `app/routes/Editor.tsx` + `lib/export.ts`
 EditableState / Editor history | `store/editableState.ts` + `store/types.ts` (`Project`) + `app/routes/Editor.tsx` + any child that called `save` for those fields (must use `setEditable` / `onTimelinePatch`)
 A token/color | `styles/tokens.css` (single source of truth — never hardcode)
-Safe-zone values or enforcement | `engine/safeZones.ts` + Brand Kit `store/brand.ts` + Editor provider wiring + every template that reads `safe.*`
+Safe-zone values or enforcement | `engine/safeZones.ts` + Brand Kit `store/brand.ts` + Editor provider wiring + every template that reads `safe.*` + `SAFE_ZONE_PATTERNS.md` (if defaults change enough to affect the pattern recommendations)
 A new text field in a template | `schema.ts` (type + default) + `fields.ts` (descriptor) + `scene.tsx` (`useFieldFormat` hook + spread into style) — all three or drawer overrides silently no-op on that field
 Font-family stack or locale routing | `styles/tokens.css` (--font-*) + `engine/locale.ts` + `engine/Stage.tsx` (RTL injection) + `app/src/assets/fonts/` (@font-face rules) — never hardcode a family in a scene
 Export-time DOM filtering | `lib/export.ts` (`filter` option) + any editor-only component that should be filtered (`data-export-ignore="true"` attribute)

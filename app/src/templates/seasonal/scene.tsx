@@ -2,6 +2,15 @@
 // sun-lit hold. Ported from the Claude-Design HTML prototype
 // `02-seasonal-campaign`. Three-word serif crossfade, ticker scrolls,
 // products stagger-in then drift, final frame blooms over dark ink.
+//
+// Safe-zone pattern — this scene uses the **content-rect** model
+// (see SAFE_ZONE_PATTERNS.md). Instead of anchoring elements to
+// canvas edges with `Math.max(h(X), safe.edge + h(Y))`, we derive a
+// content rect from the safe zone and compose against that rect.
+// When safe=OFF, the rect collapses to the full canvas and the scene
+// looks like the original design. When safe=ON, the rect shrinks into
+// the safe area and the whole composition reflows coherently — no
+// single element "jumps" while others stay put.
 
 import {
   Easing,
@@ -58,6 +67,37 @@ export function SeasonalScene({
   const s = makeScale(width, height);
   const { w, h, wh } = s;
   const { base: safe } = useSafeZone({ width, height });
+
+  // ── Content rect (the visible "safe window" in output-px) ────────────
+  // When safe enforcement is OFF, every margin is 0 → the rect collapses
+  // to the full canvas and every formula below degrades gracefully to
+  // the original design. When ON, every element reflows into the rect.
+  const contentTop = safe.top;
+  const contentBottom = height - safe.bottom;
+  const contentLeft = safe.left;
+  const contentRight = width - safe.right;
+  const contentW = contentRight - contentLeft;
+  const contentH = contentBottom - contentTop;
+  // contentCX omitted deliberately — the final frame uses padded-flex
+  // centring so it doesn't need a manual centre X; other templates
+  // porting this pattern should add `const contentCX = (contentLeft
+  // + contentRight) / 2;` when they absolute-position a centred
+  // element. See SAFE_ZONE_PATTERNS.md.
+  const contentCY = (contentTop + contentBottom) / 2;
+
+  // ── Products-layer transform ────────────────────────────────────────
+  // The floating products were authored at base-canvas (1080×1920) coords
+  // and scale via w()/h() to the output canvas. To keep every product
+  // inside the safe rect when ON — without reshuffling per-product x/y —
+  // we wrap the whole layer in a uniform scale-and-center transform that
+  // fits the base canvas into the content rect. On OFF the scale is 1
+  // and the translate is 0 (identity). On ON 9:16 the products shrink
+  // ~29 % to clear the top/bottom/right safe strips coherently.
+  const productLayerScale = Math.min(contentW / width, contentH / height);
+  const productLayerW = width * productLayerScale;
+  const productLayerH = height * productLayerScale;
+  const productLayerX = contentLeft + (contentW - productLayerW) / 2;
+  const productLayerY = contentTop + (contentH - productLayerH) / 2;
 
   // Destructure brand-driven props BEFORE the format hooks so the hook
   // bases reference live brand colors (accent / paper / etc.) instead
@@ -184,6 +224,14 @@ export function SeasonalScene({
     ? interpolate([0, 1], [0.8, 1], Easing.easeOutExpo)(finalP)
     : 0.8;
 
+  // Design insets for content-rect anchoring. Expressed at base-canvas
+  // scale so every aspect picks up the same proportional breathing room.
+  const LOGO_INSET_Y = h(20);       // logo 20 base-px below the safe top
+  const TICKER_GAP_Y = h(10);       // small visual gap under the logo bar
+  const LOGO_HEIGHT = h(90);
+  const TICKER_HEIGHT = h(44);
+  const SIDE_EDITORIAL_INSET = w(48);
+
   return (
     <div
       style={{
@@ -205,15 +253,17 @@ export function SeasonalScene({
         }}
       />
 
-      {/* Top brand line — pinned below the top safe zone so the IG progress
-       *  bar / username chip at the top of the screen doesn't cover it. */}
+      {/* Top brand line — anchored inside the content rect's top edge
+       *  so it stays 20-base-px below the platform chrome (or canvas
+       *  top when safe is OFF). Width is constrained to the content
+       *  rect so the logo centers on the visible area, not the canvas. */}
       <div
         style={{
           position: 'absolute',
-          top: safe.top,
-          left: 0,
-          right: 0,
-          height: h(90),
+          top: contentTop + LOGO_INSET_Y,
+          left: contentLeft,
+          width: contentW,
+          height: LOGO_HEIGHT,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
@@ -233,15 +283,15 @@ export function SeasonalScene({
         />
       </div>
 
-      {/* Ticker — sits immediately below the brand bar, so it also shifts
-       *  down by the safe top value to stay clear of platform chrome. */}
+      {/* Ticker — sits immediately below the brand bar inside the content
+       *  rect, so it also reflows with the safe zone. */}
       <div
         style={{
           position: 'absolute',
-          top: safe.top + h(90),
-          left: 0,
-          right: 0,
-          height: h(44),
+          top: contentTop + LOGO_INSET_Y + LOGO_HEIGHT + TICKER_GAP_Y,
+          left: contentLeft,
+          width: contentW,
+          height: TICKER_HEIGHT,
           display: 'flex',
           alignItems: 'center',
           overflow: 'hidden',
@@ -285,11 +335,18 @@ export function SeasonalScene({
         </div>
       </div>
 
-      {/* Giant serif refrain */}
+      {/* Giant serif refrain — vertically centered on the content rect
+       *  (so it reads dead-centre on the phone once platform chrome eats
+       *  the top+bottom strips), but left/right un-anchored so the word
+       *  can still bleed past the canvas edges for dramatic editorial
+       *  overflow. The bleed is intentional; only readability-critical
+       *  copy (logo / CTA / kicker) is pinned inside the safe zone. */}
       <div
         style={{
           position: 'absolute',
-          inset: 0,
+          left: 0,
+          right: 0,
+          top: contentCY,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
@@ -304,21 +361,30 @@ export function SeasonalScene({
             textAlign: 'center',
             ...refrainStyle,
             opacity: (refrainStyle.opacity ?? 1) * wordOp,
-            transform: `translateY(${h(wordDy)}px) scale(${wordScale}) rotate(${wordRot}deg)`,
+            transform: `translateY(-50%) translateY(${h(wordDy)}px) scale(${wordScale}) rotate(${wordRot}deg)`,
           }}
         >
           {words[activeWordIdx]}
         </div>
       </div>
 
-      {/* Floating products */}
+      {/* Floating products layer — compressed uniformly into the content
+       *  rect via a single translate+scale transform. Each product keeps
+       *  its designer-authored relative position; the whole layer just
+       *  shrinks to clear platform chrome. OFF → scale 1, translate 0
+       *  (identity, original composition). */}
       <div
         style={{
           position: 'absolute',
-          inset: 0,
+          left: 0,
+          top: 0,
+          width,
+          height,
           zIndex: 3,
           pointerEvents: 'none',
           opacity: time < T(FINAL_IN) ? 1 : 1 - finalOp,
+          transform: `translate(${productLayerX}px, ${productLayerY}px) scale(${productLayerScale})`,
+          transformOrigin: 'top left',
         }}
       >
         {products.map((p, i) => {
@@ -380,13 +446,15 @@ export function SeasonalScene({
         })}
       </div>
 
-      {/* Side editorial line (rotated 90°) — anchored inside the right
-       *  safe zone so the IG like/share column doesn't cover it. */}
+      {/* Side editorial line (rotated 90°) — right-anchored inside the
+       *  content rect (IG like/share column covers the outer 120px on
+       *  9:16 when ON), and vertically centered on the content rect so
+       *  it reads mid-frame on phone. */}
       <div
         style={{
           position: 'absolute',
-          right: Math.max(w(48), safe.right),
-          top: '50%',
+          right: safe.right + SIDE_EDITORIAL_INSET,
+          top: contentCY,
           transform: 'translateY(-50%) rotate(90deg)',
           transformOrigin: 'right center',
           fontFamily: 'var(--font-body)',
@@ -402,99 +470,110 @@ export function SeasonalScene({
         {sideEditorialLine}
       </div>
 
-      {/* Final frame — dark ink hold with glowing copper sun */}
+      {/* Final frame — full-bleed dark ink (so no cream leaks into the
+       *  safe-zone strips) but the inner flex column is centred on the
+       *  CONTENT rect rather than the canvas. We achieve this by
+       *  padding the flex container with the safe margins so the
+       *  flex-centered content box IS the safe rect. Keeps intrinsic
+       *  child widths (the CTA button doesn't stretch) while the
+       *  whole composition reads dead-centre on the phone. */}
       <div
         style={{
           position: 'absolute',
           inset: 0,
           zIndex: 20,
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
           background: colors.inkDeep,
           color: '#fff',
           opacity: finalOp,
           pointerEvents: finalOp > 0.5 ? 'auto' : 'none',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          paddingTop: safe.top,
+          paddingBottom: safe.bottom,
+          paddingLeft: safe.left,
+          paddingRight: safe.right,
+          boxSizing: 'border-box',
         }}
       >
         <div
-          style={{
-            width: wh(380),
-            height: wh(380),
-            borderRadius: '50%',
-            border: '1px solid rgba(255,255,255,0.25)',
-            display: 'grid',
-            placeItems: 'center',
-            position: 'relative',
-            marginBottom: h(70),
-            transform: `scale(${sunScale})`,
-          }}
-        >
-          <div
             style={{
-              position: 'absolute',
-              inset: wh(30),
+              width: wh(380),
+              height: wh(380),
               borderRadius: '50%',
-              background: `radial-gradient(circle, ${colors.accent} 0%, ${colors.accentDark} 100%)`,
-              boxShadow: `0 0 ${wh(120)}px rgba(184,114,83,0.5)`,
-            }}
-          />
-          <span
-            style={{
+              border: '1px solid rgba(255,255,255,0.25)',
+              display: 'grid',
+              placeItems: 'center',
               position: 'relative',
-              zIndex: 2,
-              fontFamily: 'var(--font-display)',
-              fontStyle: 'italic',
-              fontSize: wh(110),
-              color: colors.cream,
-              letterSpacing: '-0.02em',
+              marginBottom: h(70),
+              transform: `scale(${sunScale})`,
             }}
           >
-            {seasonChip}
-          </span>
-        </div>
-        <div
-          style={{
-            marginBottom: h(18),
-            ...finalKickerStyle,
-          }}
-        >
-          {finalKicker}
-        </div>
-        <div
-          style={{
-            marginBottom: h(14),
-            textAlign: 'center',
-            ...finalHeadlineStyle,
-          }}
-        >
-          {finalHeadline}
-        </div>
-        <div
-          style={{
-            marginBottom: h(48),
-            ...finalSublineStyle,
-          }}
-        >
-          {finalSubline}
-        </div>
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            alert('Tapping through…');
-          }}
-          style={{
-            padding: `${h(22)}px ${w(64)}px`,
-            background: colors.accent,
-            border: 0,
-            borderRadius: wh(4),
-            cursor: 'pointer',
-            ...ctaButtonStyle,
-          }}
-        >
-          {ctaButton}
-        </button>
+            <div
+              style={{
+                position: 'absolute',
+                inset: wh(30),
+                borderRadius: '50%',
+                background: `radial-gradient(circle, ${colors.accent} 0%, ${colors.accentDark} 100%)`,
+                boxShadow: `0 0 ${wh(120)}px rgba(184,114,83,0.5)`,
+              }}
+            />
+            <span
+              style={{
+                position: 'relative',
+                zIndex: 2,
+                fontFamily: 'var(--font-display)',
+                fontStyle: 'italic',
+                fontSize: wh(110),
+                color: colors.cream,
+                letterSpacing: '-0.02em',
+              }}
+            >
+              {seasonChip}
+            </span>
+          </div>
+          <div
+            style={{
+              marginBottom: h(18),
+              ...finalKickerStyle,
+            }}
+          >
+            {finalKicker}
+          </div>
+          <div
+            style={{
+              marginBottom: h(14),
+              textAlign: 'center',
+              ...finalHeadlineStyle,
+            }}
+          >
+            {finalHeadline}
+          </div>
+          <div
+            style={{
+              marginBottom: h(48),
+              ...finalSublineStyle,
+            }}
+          >
+            {finalSubline}
+          </div>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              alert('Tapping through…');
+            }}
+            style={{
+              padding: `${h(22)}px ${w(64)}px`,
+              background: colors.accent,
+              border: 0,
+              borderRadius: wh(4),
+              cursor: 'pointer',
+              ...ctaButtonStyle,
+            }}
+          >
+            {ctaButton}
+          </button>
       </div>
     </div>
   );

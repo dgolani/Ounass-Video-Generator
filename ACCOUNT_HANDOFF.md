@@ -42,6 +42,7 @@ These rules came from prior sessions' memory (account-scoped, not transferred). 
 3. **ROADMAP.md** — phased history with rationale. Reads as a project diary; most useful when you need to understand *why* a decision was made.
 4. **PHASE_7_BACKLOG.md** — canonical list of what's still open. Every item is labeled `#N` and closed-or-open. Never duplicate an existing item.
 5. **template_skill.md** — the template-author contract (role-bound typography, safe-zone anchoring, `useFieldFormat` wiring, `composePrice`, `data-export-ignore`). Read this whenever you're asked to add a new template or port one from an HTML preview.
+6. **SAFE_ZONE_PATTERNS.md** — the deep dive for composition-preserving safe-zone anchoring (content-rect model, element patterns, gotchas). Read alongside HANDOFF §5.9 and the safe-zone section of `template_skill.md` whenever you author OR polish a template.
 
 If the user drops you into a task before you've read 2–4, still read them. A five-minute read saves an hour of re-discovering conventions.
 
@@ -161,6 +162,7 @@ If in doubt about scope or architecture, **ask one targeted question** rather th
 | How do I add a new template? | `template_skill.md` + HANDOFF.md §6 |
 | What's the editor's undo scope? | HANDOFF.md §5.8 |
 | How does safe-zone enforcement work? | HANDOFF.md §5.9 + `app/src/engine/safeZones.ts` |
+| How do I make a template look right with AND without safe zones? | `SAFE_ZONE_PATTERNS.md` |
 | How does the Format drawer plumb overrides? | HANDOFF.md §5.10 + `app/src/engine/fieldFormatContext.ts` + `app/src/app/components/FormatDrawer.tsx` |
 | Why doesn't the overlay appear in exported MP4s? | HANDOFF.md §9 Gotcha #12 |
 | What's left before shipping? | `PHASE_7_BACKLOG.md` |
