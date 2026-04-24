@@ -135,7 +135,19 @@ export function useBrand(): [BrandKit, (next: BrandKit) => void] {
   return [brand, set];
 }
 
-/** Overlay brand kit values on top of a template's defaultProps. */
+/** Overlay brand kit values on top of a template's defaultProps.
+ *
+ *  ONLY boutiqueName and logo are overlaid. Colors are **not** — each
+ *  template keeps its editorial palette (Editorial = cream/ink/copper,
+ *  Bestsellers = bone/ink/copper, Countdown = bold accent, etc.) so
+ *  changing the brand kit never reshapes a designed template's look.
+ *  Per-project colour customisation happens in the editor's Properties
+ *  panel color pickers instead — that's where a marketer overrides a
+ *  specific project's palette when they need to.
+ *
+ *  Brand Kit still stores colors (FormatDrawer uses them as a swatch
+ *  palette for quick picks when editing a project's individual field
+ *  colors) — they're just not auto-propagated. */
 export function applyBrand<P extends Record<string, unknown>>(
   defaults: P,
   brand: BrandKit,
@@ -146,13 +158,6 @@ export function applyBrand<P extends Record<string, unknown>>(
   }
   if ('logo' in out && brand.logo) {
     out.logo = brand.logo;
-  }
-  if (
-    'colors' in out &&
-    out.colors &&
-    typeof out.colors === 'object'
-  ) {
-    out.colors = { ...(out.colors as object), ...brand.colors };
   }
   return out as P;
 }
