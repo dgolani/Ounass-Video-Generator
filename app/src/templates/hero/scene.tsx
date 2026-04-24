@@ -11,6 +11,13 @@ import { composePrice, useCurrencyForLocale } from '../../lib/price';
 import type { HeroProps } from './schema';
 import { BoutiqueLogo } from '../BoutiqueLogo';
 
+// Hero — single-product full-frame Ken-Burns with staged copy + CTA.
+// Composes against the safe rect at render time (see SAFE_ZONE_PATTERNS.md).
+// Top-anchored chrome (hairline, preTitle) sits inside the visible top
+// edge rather than the canvas top — prevents platform chrome from eating
+// them on 9:16 IG Story. Bottom-anchored chrome (product tag, CTA button)
+// sits above the visible bottom edge.
+
 const BASE_W = 1080;
 const BASE_H = 1920;
 
@@ -45,22 +52,24 @@ type ActProps = {
   props: HeroProps;
   T: (x: number) => number;
   s: Scale;
-  /** Resolved safe zone for the current aspect (output pixels). */
   safe: { top: number; bottom: number; left: number; right: number };
+  /** Content-rect anchors in output pixels. See SAFE_ZONE_PATTERNS.md. */
+  contentTop: number;
+  contentBottom: number;
 };
 
 // ── Background hero (persistent, Ken-Burns across the full duration) ──
-function HeroImage({ props, T, s, safe: _safe }: ActProps) {
+function HeroImage({ props, T, s }: ActProps) {
   const { time: t } = useTimeline();
   const { product, colors } = props;
   const { W, H } = s;
 
   const fadeIn = interpolate([T(0.0), T(1.2)], [0, 1], Easing.easeOutExpo)(t);
-  // Slow Ken-Burns: scale from 1.04 → 1.14 across the whole runtime
+  // Slow Ken-Burns: scale 1.04 → 1.14 across the whole runtime
   const fullDuration = T(8.0);
   const zoom = 1.04 + 0.10 * clamp(t / fullDuration, 0, 1);
 
-  // Dimming curve: bright during reveal, dim during copy/cta so text reads
+  // Dim curve: bright during reveal, dim during copy/cta so text reads
   const dim = interpolate(
     [T(0), T(2.0), T(5.0), T(8.0)],
     [1, 1, 0.55, 0.4],
@@ -113,7 +122,10 @@ function HeroImage({ props, T, s, safe: _safe }: ActProps) {
 }
 
 // ── Act 1 — Reveal (pre-title + thin rule) ─────────────────────────────
-function Reveal({ props, T, s, safe: _safe }: ActProps) {
+// Anchored to the visible top edge so platform chrome doesn't eat them
+// on 9:16 (previously pinned at h(160) / h(200), which sat inside the
+// 250-px safe-top strip — under IG's header band).
+function Reveal({ props, T, s, contentTop }: ActProps) {
   const { time: t } = useTimeline();
   const { preTitle, colors } = props;
   const { w, h, wh } = s;
@@ -133,13 +145,13 @@ function Reveal({ props, T, s, safe: _safe }: ActProps) {
 
   return (
     <>
-      {/* Top hairline */}
+      {/* Top hairline — 40 base-px inside the visible top edge. */}
       <div
         style={{
           position: 'absolute',
           left: w(80),
           right: w(80),
-          top: h(160),
+          top: contentTop + h(40),
           height: 1,
           background: colors.paper,
           opacity: ruleOp * 0.5,
@@ -147,12 +159,13 @@ function Reveal({ props, T, s, safe: _safe }: ActProps) {
           transformOrigin: 'center',
         }}
       />
+      {/* preTitle kicker — 80 base-px inside the visible top edge. */}
       <div
         style={{
           position: 'absolute',
           left: 0,
           right: 0,
-          top: h(200),
+          top: contentTop + h(80),
           textAlign: 'center',
           ...preTitleStyle,
           opacity: (preTitleStyle.opacity ?? 1) * kickerOp,
@@ -210,7 +223,9 @@ function Copy({ props, T, s, safe }: ActProps) {
 
   return (
     <div style={{ opacity: op }}>
-      {/* Two-line headline */}
+      {/* Two-line headline — positioned proportionally at 38% of canvas
+       *  height. On 9:16 that's well inside the safe zone; on 4:5 it
+       *  lands a touch higher but still inside. */}
       <div
         style={{
           position: 'absolute',
@@ -241,7 +256,7 @@ function Copy({ props, T, s, safe }: ActProps) {
         </div>
       </div>
 
-      {/* Subhead */}
+      {/* Subhead — 58% of canvas height, same safe-zone reasoning. */}
       <div
         style={{
           position: 'absolute',
@@ -257,13 +272,13 @@ function Copy({ props, T, s, safe }: ActProps) {
         {subhead}
       </div>
 
-      {/* Product tag overlay — bottom left, above the bottom safe zone
-       *  so the accent-bordered tag stays readable over the IG caption. */}
+      {/* Product tag — bottom-left, anchored to the visible bottom edge
+       *  (content-rect pattern §2 + §3). Stays above IG caption on 9:16. */}
       <div
         style={{
           position: 'absolute',
-          left: Math.max(w(80), safe.left),
-          bottom: Math.max(h(320), safe.bottom + h(60)),
+          left: safe.left + w(80),
+          bottom: safe.bottom + h(60),
           opacity: productIn,
           padding: `${wh(18)}px ${wh(24)}px`,
           background: 'rgba(10,8,6,0.6)',
@@ -312,7 +327,7 @@ function Copy({ props, T, s, safe }: ActProps) {
 }
 
 // ── Act 3 — CTA ────────────────────────────────────────────────────────
-function CTA({ props, T, s, safe }: ActProps) {
+function CTA({ props, T, s, safe, contentTop, contentBottom }: ActProps) {
   const { time: t } = useTimeline();
   const { boutiqueName, ctaText, ctaFooter, logo, colors } = props;
   const logoColor = useFieldColor('logo', colors.paper);
@@ -343,15 +358,20 @@ function CTA({ props, T, s, safe }: ActProps) {
   const ctaY = interpolate([T(5.8), T(6.4)], [wh(16), 0], Easing.easeOutCubic)(t);
   const underT = interpolate([T(6.3), T(7.0)], [0, 1], Easing.easeInOutCubic)(t);
 
+  // Logo lockup sits ~40 % into the visible area (designer intent: upper
+  // half of the phone frame, above the CTA). Derive from content rect so
+  // it lands proportionally on both 9:16 and 4:5.
+  const lockupTop = contentTop + (contentBottom - contentTop) * 0.3;
+
   return (
     <>
-      {/* Lockup */}
+      {/* Lockup — proportionally placed inside the content rect. */}
       <div
         style={{
           position: 'absolute',
           left: 0,
           right: 0,
-          top: h(520),
+          top: lockupTop,
           textAlign: 'center',
           opacity: fadeIn,
           transform: `translateY(${lockY}px)`,
@@ -368,14 +388,13 @@ function CTA({ props, T, s, safe }: ActProps) {
         />
       </div>
 
-      {/* CTA — above the bottom safe zone so the primary tap-through
-       *  button and its footer line stay clear of the IG caption. */}
+      {/* CTA — anchored to the visible bottom edge (content-rect pattern §2). */}
       <div
         style={{
           position: 'absolute',
           left: 0,
           right: 0,
-          bottom: Math.max(h(300), safe.bottom + h(60)),
+          bottom: safe.bottom + h(60),
           textAlign: 'center',
           opacity: ctaOp,
           transform: `translateY(${ctaY}px)`,
@@ -428,6 +447,13 @@ export function HeroScene({
   const s = makeScale(width, height);
   const { base: safe } = useSafeZone({ width, height });
 
+  // Content rect — the visible window in output pixels. Scenes always
+  // render with safe margins applied (see SAFE_ZONE_PATTERNS.md).
+  const contentTop = safe.top;
+  const contentBottom = height - safe.bottom;
+
+  const actProps: ActProps = { props, T, s, safe, contentTop, contentBottom };
+
   return (
     <div
       style={{
@@ -437,10 +463,10 @@ export function HeroScene({
         overflow: 'hidden',
       }}
     >
-      <HeroImage props={props} T={T} s={s} safe={safe} />
-      <Reveal props={props} T={T} s={s} safe={safe} />
-      <Copy props={props} T={T} s={s} safe={safe} />
-      <CTA props={props} T={T} s={s} safe={safe} />
+      <HeroImage {...actProps} />
+      <Reveal {...actProps} />
+      <Copy {...actProps} />
+      <CTA {...actProps} />
     </div>
   );
 }

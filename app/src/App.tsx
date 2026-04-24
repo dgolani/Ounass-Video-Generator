@@ -6,6 +6,7 @@ import { Dashboard } from './app/routes/Dashboard';
 import { Gallery } from './app/routes/Gallery';
 import { Editor } from './app/routes/Editor';
 import { BrandKitRoute } from './app/routes/BrandKit';
+import { VisualTest } from './app/routes/VisualTest';
 import { useBrand } from './store/brand';
 import { useApplyTypographyCSSVars } from './engine/typography';
 import { SafeZoneOverridesContext, LocaleContext } from './engine';
@@ -53,6 +54,7 @@ export default function App() {
         <BrandLocaleBridge>
           <Routes>
             <Route path="/" element={<Home />} />
+            <Route path="/visual-test/:templateId" element={<VisualTest />} />
             <Route element={<Shell />}>
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/templates" element={<Gallery />} />
