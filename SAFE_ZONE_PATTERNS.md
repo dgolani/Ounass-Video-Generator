@@ -204,6 +204,22 @@ Box shadows transform with `scale()`. A `boxShadow: '0 12px 40px rgba(...)'` at 
 
 Pre-cleanup templates use this pattern (Hero, Countdown, Brand Spotlight, Gift Guide, Carousel, Editorial, Lookbook). It still produces the correct output in the always-safe regime (because `safe.*` is always the real margin) but is unnecessarily complex. When polishing one of these templates, simplify to the content-rect pattern (§1–§3). No behaviour change; just cleaner code.
 
+### Gotcha F — symmetric horizontal anchors miss the asymmetric 9:16 right-chrome
+
+Safe zones on 9:16 are **asymmetric**: `{ top: 250, bottom: 300, left: 0, right: 120 }`. The right 120 base-px is the IG like/share/comment column. Templates written with `left: w(80), right: w(80)` look balanced in code but silently bleed 40 base-px into the like-stack on every element — rules, headers, category strips, product grids all get clipped.
+
+**Grep check at authoring time:**
+
+```bash
+grep -nE "right: w\([0-9]+\)" app/src/templates/<slug>/scene.tsx
+```
+
+Anything that matches should be rewritten to `right: safe.right + w(X)` (or equivalently `safe.right` as a base and add the designer inset on top). Same check applies to `left`, though `safe.left = 0` on both supported aspects today so the practical hit is zero — but it's still the right pattern for future-proofing (the left will become non-zero the first time we add an aspect that uses it).
+
+**Also centered elements.** If you have `imgX = (W - imgW) / 2` centering on canvas, change to `imgX = contentCX - imgW / 2` — canvas-center and content-center diverge by 60 base-px on 9:16.
+
+**Caught:** Editorial polish pass (commit `0715369`). Every element in every act — 7 distinct `left: w(80), right: w(80)` sites plus the Grid's `outerMargin = w(100)` — ignored `safe.right` and the right column of the 2×2 grid visibly clipped under the IG like-stack.
+
 ---
 
 ## Verification checklist

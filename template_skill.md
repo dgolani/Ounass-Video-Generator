@@ -362,6 +362,13 @@ Before handing back, verify:
 4. Every path referenced in `fields.ts` resolves in `defaultProps` (no drift between the two).
 5. No literal font family name in `scene.tsx` — every `fontFamily` is `var(--font-display)` / `var(--font-body)` / `var(--font-numeric)`.
 6. Every bottom/top/side-anchored element near an edge anchors to the **content rect** (`contentTop + h(X)`, `safe.right + w(X)`, etc.) — see `SAFE_ZONE_PATTERNS.md`. No raw `h(X)` for CTAs, footers, kickers, and no leftover legacy `Math.max(h(X), safe.{edge} + h(Y))` either. Full-bleed flex-centered layouts use the padded-flex pattern (§4 Option A). Positioned-in-space layers (floating products) use the layer-transform pattern (§6).
+
+   **Grep check before commit (catches the asymmetric-9:16 gotcha F):**
+   ```bash
+   grep -nE "right: w\(" app/src/templates/<slug>/scene.tsx   # should be empty
+   grep -nE "\(W - .* \) / 2" app/src/templates/<slug>/scene.tsx   # centered-on-canvas — change to contentCX
+   ```
+   Any hits ignore `safe.right` on 9:16 (120 base-px) and bleed into the IG like-stack.
 7. Every editable text field in `fields.ts` has a matching `useFieldFormat(path, base)` call in `scene.tsx`. Path spellings match exactly.
 8. Every price string renders via `composePrice(raw, useCurrencyForLocale())` — never `{product.price}` directly.
 9. `colors` is destructured BEFORE any `useFieldFormat` call in every Act component (brand-color reactivity).
