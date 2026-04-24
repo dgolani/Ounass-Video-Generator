@@ -10,7 +10,6 @@ export const meta: TemplateMeta<SeasonalProps> = {
   aspects: [
     { label: '9:16 (Story)', width: 1080, height: 1920 },
     { label: '4:5 (Feed)', width: 1080, height: 1350 },
-    { label: '1:1 (Square)', width: 1080, height: 1080 },
   ],
   scenes: [
     { id: 'word-1', label: 'Word 1', start: 0, end: 3.0 },

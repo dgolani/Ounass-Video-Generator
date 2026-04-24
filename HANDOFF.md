@@ -280,20 +280,12 @@ Paths included on the left are removed from the right-hand `PropertiesPanel` via
 
 **Deferred follow-ups** (not in that merge): timeline **⌘-scroll zoom**, splitting the large dock file, consolidating **html-to-image** vs **modern-screenshot**, numeric clip inspector.
 
-### 5.9 Safe-zone anchoring (post-Phase 3; content-rect model added 2026-04-24)
+### 5.9 Safe-zone anchoring (always-safe regime, post-2026-04-24)
 Every bottom/top/side-anchored element near a canvas edge threads through `useSafeZone(aspect)`.
 
-**Two patterns coexist** — the v1 per-element `Math.max` retrofit, and the v2 **content-rect** composition-preserving model. Prefer v2 for any new template or a full polish pass. See **[`SAFE_ZONE_PATTERNS.md`](SAFE_ZONE_PATTERNS.md)** for the full decision tree, element-by-element recipes, and gotchas — that's the canonical reference.
+**Safe margins are always applied** — there is no "enforcement off" render state. The editor's "Safe zones" toggle controls only the dim-overlay visibility (so the marketer can preview without the viewfinder hint); the composition is identical either way, and exports match what the editor shows.
 
-**v1 (legacy, still in several templates):**
-
-```tsx
-bottom: Math.max(h(320), safe.bottom + h(60))
-```
-
-Keeps designer intent when already inside the margin; pulls inward otherwise. Problem: when safe flips ON, one element shifts but its neighbours don't, so the composition splits apart (a cream gap opens above the shifted logo; products still sit where they were, now crammed against the bottom safe floor).
-
-**v2 (content-rect, composition-preserving):**
+See **[`SAFE_ZONE_PATTERNS.md`](SAFE_ZONE_PATTERNS.md)** for the canonical decision tree, element-by-element recipes, and gotchas. Quick recipe:
 
 ```tsx
 // At scene root:
@@ -311,11 +303,15 @@ right: safe.right + w(48)        // side pill 48 base-px inside the visible righ
 top:   contentCY                 // centered on the phone-visible center
 ```
 
-When enforcement is OFF the rect collapses to the full canvas (margins are all 0) and every formula degrades to the original design. When ON the whole composition reflows coherently — no "jumping" elements. For positioned-in-space layers (floating products), wrap the whole layer in a single translate+scale transform — see `SAFE_ZONE_PATTERNS.md` §6.
+For positioned-in-space layers (floating products), wrap the whole layer in a single translate+scale transform — see `SAFE_ZONE_PATTERNS.md` §6. For full-bleed-background + centered-content stacks, use the padded-flex pattern — see §4 Option A.
 
-**Reference implementation:** `app/src/templates/seasonal/scene.tsx` — look for the `// ── Content rect ──` block at the top of `SeasonalScene`.
+**Supported aspects:** 9:16 (Story) and 4:5 (Feed) only. 1:1 was removed in the cleanup — marketing doesn't ship square placements. If it ever returns, add it to `AspectKey` + `DEFAULT_SAFE_ZONES` + each template's `meta.aspects[]`.
 
-Margins live in `app/src/engine/safeZones.ts`, with Brand-Kit override via `SafeZoneOverridesContext`. Enforcement follows `SafeZoneEnforcementContext` — editor toggle is the only place that sets it to `false`; exports, preview cards, and anything unwrapped default to `true`.
+**Reference implementations:** `app/src/templates/seasonal/scene.tsx` and `app/src/templates/bestsellers/scene.tsx` — look for the `// ── Content rect ──` block at the top of each.
+
+Margins live in `app/src/engine/safeZones.ts`, with Brand-Kit override via `SafeZoneOverridesContext`. No enforcement context — `useSafeZone` always returns the real margins.
+
+**Legacy pattern still in some templates:** `Math.max(h(X), safe.edge + h(Y))`. It produces correct output in the always-safe regime (since `safe.*` is always non-zero for supported aspects) but is more complex than the content-rect pattern. Simplify when you polish one of those templates; no behaviour change.
 
 ### 5.10 Per-field format hooks (post-Phase 5)
 Every editable text field must route its style through `useFieldFormat(path, baseStyle)` or the Format drawer's overrides silently no-op. The `path` string is the dotted field path from `fields.ts`; it doubles as the override key in the project's stored overrides map.
@@ -387,7 +383,6 @@ The Stage prepends Noto Kufi Arabic to the display / body stacks when locale is 
      aspects: [
        { label: '9:16 (Story)', width: 1080, height: 1920 },
        { label: '4:5 (Feed)',   width: 1080, height: 1350 },
-       { label: '1:1 (Square)', width: 1080, height: 1080 },
      ],
      scenes: [{ id: '...', label: '...', start: 0, end: 2 }, ...],
      defaultProps,
@@ -398,7 +393,7 @@ The Stage prepends Noto Kufi Arabic to the display / body stacks when locale is 
 6. **`index.ts`** — `export { FooScene } from './scene'; export { meta } from './meta'; export { fields } from './fields'; export { defaultProps, type FooProps } from './schema';`
 7. **Register in `src/templates/registry.ts`** (3-line addition).
 8. `npx tsc -b --noEmit` → must pass.
-9. Open `/templates` → click your new card → land in editor. Edit a text field; canvas should update. Try the 3 aspects.
+9. Open `/templates` → click your new card → land in editor. Edit a text field; canvas should update. Try both aspects (9:16, 4:5).
 10. **Update ROADMAP.md** Phase 3 Pass 2 section ("Templates currently registered: …") if you want a record.
 
 ---
@@ -563,7 +558,6 @@ Full rationale: see [ROADMAP.md](ROADMAP.md) and the project memory file at `~/.
 
 ### Currently open (see `PHASE_7_BACKLOG.md` for the canonical list)
 
-- **#5** Aspect × safe-zone matrix QA — 9 templates × 3 aspects × safe ON/OFF. Genuinely eyes-on; deferred until marketers report a specific off-looking cell.
 - **#8** Product-list formatting rollout — editor now supports wildcard subfield formatting (`products.*.<field>`) and one global product-zone image scale control; remaining work is scene-level adoption across all product templates so every template consumes those wildcard keys consistently.
 - **#12** Per-project safe-zone override — Brand Kit has per-boutique override; not yet per-project.
 - **#13** Per-project typography override — same shape as #12.
@@ -628,7 +622,7 @@ In the running preview:
    - Adjust project duration (video clip **right** trim on `EditorTimelineDock`) → timeline scene layout scales + canvas timing scales (`timeScale`)
    - Click ↶/↷ → undo/redo works
 5. Brand Kit `/brand` — boutique name + 4 colors + logo dropzone all editable; "Saved" flashes
-6. Export (use a 5s × 1:1 project for speed):
+6. Export (use a 5s × 4:5 project for speed — 1:1 is no longer a supported aspect):
    - Modal opens
    - Start → progresses through Loading / Embedding fonts / Rendering / Encoding
    - Finishes with "Ready to download" + filename + MB

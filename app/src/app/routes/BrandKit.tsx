@@ -204,7 +204,6 @@ function Segmented<T extends string>({
 const ASPECT_TABS: Array<{ key: AspectKey; label: string; hint: string }> = [
   { key: '9:16', label: '9:16', hint: 'Stories / Reels' },
   { key: '4:5', label: '4:5', hint: 'Feed' },
-  { key: '1:1', label: '1:1', hint: 'Square' },
   { key: '9:16-no-chrome', label: '9:16 · No chrome', hint: 'WhatsApp / DOOH / email' },
 ];
 

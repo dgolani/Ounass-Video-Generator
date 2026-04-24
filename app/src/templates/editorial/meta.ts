@@ -10,7 +10,6 @@ export const meta: TemplateMeta<EditorialProps> = {
   aspects: [
     { label: '9:16 (Story)', width: 1080, height: 1920 },
     { label: '4:5 (Feed)', width: 1080, height: 1350 },
-    { label: '1:1 (Square)', width: 1080, height: 1080 },
   ],
   scenes: [
     { id: 'masthead', label: 'Masthead', start: 0.0, end: 2.0 },

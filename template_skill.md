@@ -22,7 +22,7 @@ When an external design tool asks clarifying questions before producing HTML pre
 | Question | Answer | Why |
 |---|---|---|
 | **What should I deliver?** | Five self-contained HTML previews, one per archetype. Inline CSS + vanilla JS/SVG, no build step. 1080×1920 canvas each. **Don't scaffold the React/Vite app — it already exists.** | Scaffolding the app wastes a day. Single-canvas showcases hide per-template detail. Five standalone HTMLs port 1:1. |
-| **Aspect ratio for previews?** | 9:16 only (1080×1920). | The real `scene.tsx` handles 9:16 / 4:5 / 1:1 via `w/h/wh` scale helpers at port time. Generating variants during preview is wasted effort. |
+| **Aspect ratio for previews?** | 9:16 only (1080×1920). | The real `scene.tsx` handles 9:16 and 4:5 via `w/h/wh` scale helpers at port time. Generating variants during preview is wasted effort. |
 | **Which archetypes?** | Five that **don't overlap** with the four in production (Lookbook, Editorial, Countdown, Hero). Good starter set: Bestsellers Countdown (ranked 5→1), Seasonal Campaign (occasion-driven), Category Carousel (depth in one category), Style the Look (outfit builder), Gift Guide (curated picks with gift framing). Skip Hero Drop, Lookbook, Flash Sale w/ ticking clock, Sale/Price Drop, New Arrivals Grid — all duplicate or drift-close to existing templates. | Archetype coverage, not archetype count, is the goal. Each new template should cover a mechanic the library doesn't already have. |
 | **How should I use the product illustrations?** | Use them **as-is** — they ARE the production product imagery. Don't treat them as silhouettes or editorial abstractions. | `photos.*` JPEGs are what the real `defaultProps` references. Previews must be visually faithful so porting is 1:1, not a re-design. |
 | **Brand name to show?** | **OUNASS**, using the attached SVG as the wordmark. | `DEFAULT_BRAND.boutiqueName = 'Ounass'` and the SVG is pre-wired as the brand-kit default. Generic "BOUTIQUE" drifts from what marketers will see on first open. |
@@ -81,7 +81,7 @@ Every template is a directory at `app/src/templates/<slug>/` with exactly five f
 - `name`: human label shown in the gallery (e.g. `"Bestsellers — Top 5"`).
 - `description`: one-sentence pitch for the gallery card.
 - `defaultDuration`: 7–12 seconds for most templates; up to 15 if the ad carries 6+ products.
-- `aspects`: **always three** — `9:16 (Story) 1080×1920` (primary), `4:5 (Feed) 1080×1350`, `1:1 (Square) 1080×1080`.
+- `aspects`: **exactly two** — `9:16 (Story) 1080×1920` (primary) and `4:5 (Feed) 1080×1350`. 1:1 is not supported; if marketing ever needs it back, add it here + in `engine/safeZones.ts`.
 - `scenes`: a list of `{ id, label, start, end }` — the act outline shown in the timeline strip. Start/end in seconds, can overlap slightly for crossfades.
 - `defaultProps`: re-export from `schema.ts`.
 
@@ -187,9 +187,9 @@ Typography is role-bound through CSS custom properties set on the Stage root. Te
 
 **Hard rule:** never write `'Fraunces'`, `'Nunito Sans'`, `'Portrait'`, or any literal family name in `scene.tsx`. Always `var(--font-*)`. Monospace is off-brand — avoid.
 
-### Safe-zone anchoring — content-rect model
+### Safe-zone anchoring — always-safe, content-rect model
 
-Every ad lives inside platform chrome — Instagram caption, TikTok like-stack, Story progress bar. `useSafeZone` returns the keep-clear margins for the current aspect and a live enforcement flag. Elements anywhere near an edge must thread through it.
+Every ad lives inside platform chrome — Instagram caption, TikTok like-stack, Story progress bar. Scenes always render with safe margins applied; the editor's "Safe zones" toggle only shows/hides the dim overlay, it does not change the composition. Exports match what the editor shows.
 
 > **Deep dive:** [`SAFE_ZONE_PATTERNS.md`](SAFE_ZONE_PATTERNS.md) is the canonical reference — decision tree for picking the right pattern per element, full-bleed vs padded-flex vs absolute-wrapper, how to handle floating positioned-in-space layers, and the five named gotchas. Read it before porting a new template or polishing an existing one.
 
@@ -231,11 +231,9 @@ Full-bleed background + internal content column? Use the **padded-flex** pattern
 
 Positioned-in-space products? Wrap the whole layer in a single translate+scale transform — see §6.
 
-**Decay to OFF:** when enforcement is off, `useSafeZone` returns zero margins so the content rect collapses to the full canvas and every formula above degrades to the original design. Both states look deliberate; ON takes priority when compromise is needed.
+**Legacy pattern still in some templates:** `Math.max(h(X), safe.edge + h(Y))`. It produces correct output in the always-safe regime but is more complex than the content-rect pattern. Simplify when you polish one of those templates; no behaviour change.
 
-**Avoid:** the legacy `Math.max(h(X), safe.edge + h(Y))` pattern. It works per-element but **splits compositions** when safe flips ON (one element moves, its neighbours don't — cream gap opens, layout feels broken). If you see it in an existing template, that template is a candidate for a polish pass.
-
-Phases 3+ pre-resolved zones: `9:16 → { top: 250, bottom: 300, left: 0, right: 120 }`, `4:5 → { top: 120, bottom: 200, left: 0, right: 0 }`, `1:1 → { top: 100, bottom: 100, left: 0, right: 0 }`. Reference implementation: `app/src/templates/seasonal/scene.tsx`.
+**Supported aspects:** only 9:16 and 4:5. 1:1 was removed — marketing doesn't ship square placements. Pre-resolved zones: `9:16 → { top: 250, bottom: 300, left: 0, right: 120 }`, `4:5 → { top: 120, bottom: 200, left: 0, right: 0 }`. Reference implementations: `app/src/templates/seasonal/scene.tsx`, `app/src/templates/bestsellers/scene.tsx`.
 
 ### Per-field format hooks
 
@@ -329,7 +327,7 @@ A 1080 canvas previews at ~400px on a phone — a 0.37× scale. Enforce these mi
 
 ### Aspect safety
 
-All three aspects share the 1080 width but crop vertically. Keep critical copy and faces within `y ∈ [h(100), h(1820)]` on the base canvas. The 1:1 variant is the tightest — double-check there.
+Both supported aspects share the 1080 width but crop vertically. Keep critical copy and faces within the safe rect for each aspect (see `SAFE_ZONE_PATTERNS.md` for margins). 4:5 is the tighter of the two — double-check there.
 
 ### Interactivity
 
@@ -369,7 +367,7 @@ Before handing back, verify:
 9. `colors` is destructured BEFORE any `useFieldFormat` call in every Act component (brand-color reactivity).
 10. `npx tsc --noEmit` clean.
 11. `npm run build` clean.
-12. Spot-check the 4:5 and 1:1 aspects in the editor — no overflow, no below-floor text. Toggle safe zones ON + OFF; content should reflow, no clipping.
+12. Spot-check 4:5 in the editor — no overflow, no below-floor text. (1:1 is not supported; 9:16 is the primary target.) The "Safe zones" toggle only affects the dim overlay — composition should be identical either way.
 13. Spot-check Arabic locale — switch the editor to AR and confirm the scene renders RTL without layout breaks.
 14. One commit per template when multiple are being added in a batch, so review stays tractable.
 

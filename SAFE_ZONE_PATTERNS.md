@@ -1,74 +1,69 @@
-# Safe-Zone Patterns — composition-preserving templates
+# Safe-Zone Patterns — always-safe templates
 
 **Audience:** anyone authoring or polishing a Cutroom template. Read this alongside `template_skill.md` *Conventions → Safe-zone anchoring* and `HANDOFF.md §5.9`.
 
-**Why this doc exists:** the first pass of safe-zone retrofit (Phase 3) shipped a per-element `Math.max(h(X), safe.edge + h(Y))` pattern. That keeps any single element clear of platform chrome, but the other elements stay at their original positions — so when the user flips "safe zones" ON, the composition **splits apart**: the logo jumps down while the products hold still, a gap appears, the design reads "broken". The patterns below fix that.
+**Why this doc exists:** every Cutroom ad lives inside platform chrome (Instagram caption, TikTok like-stack, Story progress bar), so scenes must keep readability-critical content inside a per-aspect "safe rect". The patterns below describe how to anchor that content cleanly using the engine's `useSafeZone` helper.
 
-The goal is that **both ON and OFF look deliberately composed** — not that ON is "the design plus some shifts". ON is the priority (it's what ships on phone), but OFF should still feel intentional as a designer-preview state.
+## The always-safe regime (post-2026-04-24)
+
+Cutroom only ships ads to **9:16 (Story)** and **4:5 (Feed)**. 1:1 is no longer supported. Safe margins are **always applied** at render time — there is no "enforcement off" render state. The editor's **Safe zones toggle** controls only the dim-overlay visibility (so the marketer can preview the canvas without the viewfinder hint); the composition is identical either way, and exports always match what the editor shows.
+
+Practical consequence: **authors only reason about one state per aspect.** Design for the safe rect. Decorative non-readability elements can bleed past it (see pattern §5). The verification matrix is **2 aspects × 1 state = 2 shots per keyframe**, not 6.
 
 ---
 
-## The core idea — compose against a content rect, not the canvas
+## The core idea — compose against a content rect
 
-Every aspect has a **content rect** in output pixels:
+Every aspect has a **content rect** in output pixels, derived once at the scene root:
 
+```tsx
+const { base: safe } = useSafeZone({ width, height });
+
+const contentTop    = safe.top;
+const contentBottom = height - safe.bottom;
+const contentLeft   = safe.left;
+const contentRight  = width  - safe.right;
+const contentW      = contentRight - contentLeft;
+const contentH      = contentBottom - contentTop;
+const contentCX     = (contentLeft + contentRight) / 2;
+const contentCY     = (contentTop  + contentBottom) / 2;
 ```
-contentTop    = safe.top
-contentBottom = height - safe.bottom
-contentLeft   = safe.left
-contentRight  = width  - safe.right
-contentW      = contentRight - contentLeft
-contentH      = contentBottom - contentTop
-contentCX     = (contentLeft + contentRight) / 2
-contentCY     = (contentTop  + contentBottom) / 2
-```
 
-When safe enforcement is **OFF**, `useSafeZone` returns all-zero margins so the rect collapses to the full canvas and every formula degrades gracefully to the original design. When **ON**, the rect shrinks into the safe area and every element composed against it reflows coherently — no single element "jumps" while others stay put.
-
-**Compute these once at the scene root** and thread them through Act components alongside `T`, `s`, and `safe`.
+Thread these into Act components alongside `T`, `s`, and `safe`. For both supported aspects the safe margins are non-zero, so the rect is always inset from the canvas.
 
 ---
 
 ## Element patterns — pick the right one per role
 
-### 1. Top-anchored readable chrome (logo, masthead, running kicker)
-
-Use a **designer-inset below the content top**, not a `Math.max` floor against the canvas top.
+### §1. Top-anchored readable chrome (logo, masthead, running kicker)
 
 ```tsx
-// OLD (Phase 3 retrofit — don't use for new code):
-top: Math.max(h(30), safe.top + h(40))
-
-// NEW (content-rect anchored):
 top: contentTop + h(20)
 ```
 
-- Safe OFF → `top = h(20)` — logo 20 base-px below the canvas edge. Tight design, same as before.
-- Safe ON 9:16 → `top = 250 + h(20) = 270` — logo 20 base-px below the safe top. Still tight, just inside the chrome band.
+The element sits a fixed designer-inset below the visible top edge. 20 base-px is the common value; tune as the design demands.
 
-The element's *relative* position to its nearest edge is preserved in both states. No jump.
-
-### 2. Bottom-anchored readable chrome (CTA, footer)
+### §2. Bottom-anchored readable chrome (CTA, footer)
 
 ```tsx
-bottom: safe.bottom + h(60)  // OR h(height - contentBottom) + h(60)
+bottom: safe.bottom + h(60)
 ```
 
-Same principle. The CTA sits a fixed design-inset above the visible bottom edge, whatever that edge happens to be.
+Same shape, anchored from the bottom.
 
-### 3. Side-anchored readable chrome (side editorial pill, corner badge)
+### §3. Side-anchored readable chrome (side editorial pill, corner badge)
 
 ```tsx
 right: safe.right + w(48)
 ```
 
-Again, fixed inset from the visible-rect edge.
+Fixed inset from the visible right edge. Mirror-flip `left`/`right` for RTL if the element is directional (usually not necessary — the Stage's `dir="rtl"` injection handles most cases).
 
-### 4. Centered hero content (final-frame stack, inline logo row)
+### §4. Centered hero content (final-frame stack, inline logo row)
 
 Two options, pick based on whether children need their intrinsic widths preserved.
 
-**Option A — full-bleed background + flex-center + padded safe margins.** Best when the children naturally size themselves (buttons, intrinsic-width text) and you want the background to fill edge-to-edge (so no cream-strip leak onto the safe zone).
+**Option A — full-bleed background + flex-center + padded safe margins.** Best when children naturally size themselves (buttons, intrinsic-width text) and you want the background to fill edge-to-edge (no background strips leaking into the safe zone).
 
 ```tsx
 <div
@@ -80,7 +75,6 @@ Two options, pick based on whether children need their intrinsic widths preserve
     flexDirection: 'column',
     alignItems: 'center',
     justifyContent: 'center',
-    // pad by safe so the flex content box IS the safe rect:
     paddingTop: safe.top,
     paddingBottom: safe.bottom,
     paddingLeft: safe.left,
@@ -92,9 +86,9 @@ Two options, pick based on whether children need their intrinsic widths preserve
 </div>
 ```
 
-Safe OFF → padding is all 0, flex-centers on canvas center. Safe ON → padding = safe margins, flex-centers on content-rect center. No absolute-positioning wrapper, no width constraint issues, no button wrap.
+The flex content box becomes the safe rect; flex-centered children land on `contentCX / contentCY` without any manual math. Used in Seasonal's final frame.
 
-**Option B — absolutely-positioned wrapper at `(contentCX, contentCY)` with `translate(-50%, -50%)`.** Use when the element is a single known-width item (a giant sun disc, a hero image). Not for flex columns with mixed-width children — the wrapper's auto-width tracks the widest child, and it WILL bite you with unexpected flex stretching.
+**Option B — absolutely-positioned wrapper at `(contentCX, contentCY)` with `translate(-50%, -50%)`.** Use for a single known-width element (a hero image, a sun disc). Not for flex columns with mixed-width children — the wrapper's auto-width tracks the widest child, and CTA buttons will visibly stretch to match the kicker's letter-spacing width.
 
 ```tsx
 <div
@@ -103,22 +97,22 @@ Safe OFF → padding is all 0, flex-centers on canvas center. Safe ON → paddin
     left: contentCX,
     top: contentCY,
     transform: 'translate(-50%, -50%)',
-    width: w(420),    // <- always set an explicit width for single-element center
+    width: w(420),      // always set an explicit width for Option B
     height: wh(420),
   }}
 />
 ```
 
-### 5. Full-width overflow elements (giant word refrain, dramatic bleed type)
+### §5. Full-width overflow elements (giant word refrain, dramatic bleed type)
 
-These should **center vertically on contentCY** but **not** be horizontally constrained — the overflow is the point.
+These **center vertically on `contentCY`** but are **not** horizontally constrained — the overflow is the design.
 
 ```tsx
 <div
   style={{
     position: 'absolute',
     left: 0, right: 0,             // full canvas width for bleed
-    top: contentCY,                // vertically anchored on content center
+    top: contentCY,
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
@@ -136,11 +130,9 @@ These should **center vertically on contentCY** but **not** be horizontally cons
 </div>
 ```
 
-Safe OFF → `top: 0.5 * height` effectively, word centered on canvas. Safe ON → `top: contentCY` which is above canvas center by `(safe.top - safe.bottom)/2`. On a phone where the bottom chrome eats the bottom strip, this shift lands the word dead-centre in what the user actually sees.
+Decorative typography can bleed past the canvas L/R edges — platform chrome only crops the top/bottom strips, and readability-critical copy is already pinned inside via §1–§3.
 
-The artistic overflow past the canvas L/R edges is preserved in both states — decorative bleed is fine; platform chrome isn't cropping readability-critical copy.
-
-### 6. Positioned-in-space layers (floating products, scattered ornaments)
+### §6. Positioned-in-space layers (floating products, scattered ornaments)
 
 Products authored with absolute `(p.x, p.y)` in base-1080×1920 coords can't be re-anchored per-element; the designer authored them as a relative cluster. Wrap the **whole layer** in a single translate+scale transform that maps the base canvas onto the content rect, centered and uniformly scaled:
 
@@ -164,99 +156,76 @@ const productLayerY     = contentTop  + (contentH - productLayerH) / 2;
 </div>
 ```
 
-- Safe OFF → scale is 1, translate is 0 — identity, original design untouched.
-- Safe ON 9:16 → scale ~0.71, products compress ~29% to clear the 250 top / 300 bottom / 120 right strips. They stay fully visible; relative arrangement preserved.
-
-This shrinks products in the ON state. Trade-off: acceptable, because the alternative is clipping by IG's like-stack which is worse. If you want to keep product sizes constant in both states, you must redesign the layout so base positions live inside the safe rect natively — but that makes the OFF view feel cramped.
+On 9:16 the products shrink ~29% to clear the 250 top / 300 bottom / 120 right safe strips. Relative arrangement preserved. On 4:5 the shrink is milder.
 
 ---
 
-## The six-question decision tree
+## The decision tree
 
-For every element in a scene, answer these in order:
+For every element in a scene, answer in order:
 
-1. **Is it readability-critical?** (logo, kicker, headline, subline, CTA, price, badge, editorial line.) If yes → must stay inside the content rect. Skip to 2. If no (pure decoration, gradient wash, background image) → anchor freely, use `inset: 0` and move on.
+1. **Is it readability-critical?** (logo, kicker, headline, subline, CTA, price, badge, editorial line.) If yes → must stay inside the content rect. Skip to 2. If no (background wash, gradient, decorative image) → anchor freely, use `inset: 0`, move on.
 
-2. **What kind of anchor does it want?**
-   - Top edge → §1 pattern
-   - Bottom edge → §2 pattern
-   - Left/right edge → §3 pattern
-   - Centered → §4 pattern (pick A or B by child-width needs)
-   - Positioned in space by (x, y) coords → §6 pattern (wrap the whole layer)
+2. **What anchor does it want?**
+   - Top edge → §1
+   - Bottom edge → §2
+   - Left/right edge → §3
+   - Centered on content → §4 (pick A or B by child-width needs)
+   - Decorative bleed past edges → §5
+   - Positioned in space by (x, y) coords → §6 (wrap the whole layer)
 
-3. **Does it need to bleed past canvas edges for dramatic effect?** If yes → §5 pattern (center on contentCY, full canvas width).
+3. **Is it in a flex column with mixed-width children (kicker + headline + CTA)?** Use §4 Option A. Never Option B — the auto-width wrapper will stretch the button.
 
-4. **Is the element in a flex column with mixed-width children (kicker + headline + CTA)?** If yes → use §4 Option A (padded flex), never §4 Option B (absolute wrapper). Option B's auto-width will stretch the button to match the widest sibling.
-
-5. **Will it live next to a full-bleed background?** If yes → keep `inset: 0` on the background, apply the centering pattern to the content column only. Do not shrink the background to the content rect — you'll leave ugly cream strips showing through.
-
-6. **Does the animation modify `opacity`?** Multiply: `opacity: (baseStyle.opacity ?? 1) * animT`. The safe-zone pattern doesn't change this rule from `template_skill.md`, just reinforcing it — any format-drawer opacity override still wins.
-
----
-
-## What to do with existing templates
-
-Each template will get a composition-aware pass. The Seasonal Campaign polish (commit after 2026-04-24) is the reference implementation and the easiest to study — see `app/src/templates/seasonal/scene.tsx`. Look at the `// ── Content rect (…) ────` and `// ── Products-layer transform ─` blocks at the top of `SeasonalScene`, then trace how `contentTop`, `contentCY`, etc. are used throughout.
-
-Working order (easy → hard):
-
-1. **Hero** — single-product, single-focus. Just retarget the outro CTA + watermark to the content rect. 15 min.
-2. **Countdown** — no products, just copy + one accent image. Retarget kicker, headline, countdown digits, CTA to content rect. 30 min.
-3. **Brand Spotlight** — single brand hero + companion strip. Most elements already anchor sensibly; apply content-rect centering to the strip. 45 min.
-4. **Gift Guide** — ~4-6 gift cards in a flex row. Products wrap-layer like §6; kicker/footer anchored top/bottom. 45 min.
-5. **Bestsellers — Top 5** — 5 ranked cards with a big numeric slam. Products wrap-layer; numeric slam uses §5 bleed pattern; CTA uses §2. 1 hour.
-6. **Category Carousel** — scrolling carousel (trickiest — the carousel track is positioned in-space). Use §6 on the carousel wrapper; anchor kicker/CTA separately. 1 hour.
-7. **Seasonal** — ✅ done (reference implementation).
-8. **Editorial** — fixed 4-product grid + signature block. Products wrap-layer like §6; signature is §4 Option A (flex column). 45 min.
-9. **Lookbook** — 5-act narrative with per-act layouts. Biggest surface; port each Act one at a time. 2+ hours.
-
-After each port, spot-check in the Claude Preview MCP using a `/visual-test/<slug>` route (or the editor + safe toggle) against all **3 aspects × ON/OFF × 3 keyframes**. 18 screenshots is cheap insurance.
+4. **Does animation modify `opacity`?** Multiply: `opacity: (baseStyle.opacity ?? 1) * animT`. A hard override clobbers marketer-dimming; a hard spread disables intro animations.
 
 ---
 
 ## Gotchas worth naming
 
-### Gotcha A — flex column + absolutely-positioned wrapper + mixed-width children ⇒ button stretches
+### Gotcha A — flex column + absolute wrapper + mixed-width children ⇒ button stretches
 
-Triggered by §4 Option B when children have different intrinsic widths. The outer wrapper auto-sizes to `max-content` = the widest child's width. Flex column with `align-items: center` then **horizontally centers narrower children inside the wider wrapper**, which is fine. But if any child (e.g. a button) has `align-self: stretch` implicitly, it fills the wrapper width and the button text wraps.
+Triggered by §4 Option B when children have different intrinsic widths. Outer wrapper auto-sizes to the widest child's width. The button then visibly stretches to the full wrapper width and its text wraps to two lines.
 
-**Fix:** use §4 Option A (padded full-bleed flex) instead. Or set an explicit `width: fit-content` + `max-width` on the wrapper. Or set `align-self: center` on each child. The padded-flex approach is the one we use in Seasonal — fewer foot-guns.
+**Fix:** use §4 Option A (padded full-bleed flex). Or set `width: fit-content` explicitly on the wrapper with `align-self: center` on each child.
 
-### Gotcha B — `getComputedStyle().bottom` still a lie
+### Gotcha B — shrinking a full-bleed background into the content rect leaves strips
 
-Carried forward from `HANDOFF.md §9 Gotcha #13`. Don't reverse-infer which elements are bottom-anchored from computed `bottom`. Browsers will compute a pixel value for `bottom` even when only `top` was set. Check `el.style.bottom !== ''` (the inline-style string) if you need to classify elements programmatically.
+You might be tempted to make the whole scene fit inside the content rect. Don't — it leaves visible strips in the safe zone where platform chrome sits, and it looks weird in the editor. Keep backgrounds on `inset: 0`; only the readable content column anchors against the content rect.
 
-### Gotcha C — shrinking a full-bleed background to the content rect leaves strips
+### Gotcha C — `boxSizing: border-box` is required for the padded-flex pattern
 
-You might be tempted to make the whole scene fit inside the content rect. Don't. The result is cream/ink strips visible in the safe zone (the area platform chrome would cover) and it looks weird in the editor. Keep the background on `inset: 0`; only the readable content column composes against the content rect.
+`content-box` (CSS default) adds the padding to the outer width, making the container *larger* than the canvas and pushing the centering origin off-screen. Always set `boxSizing: 'border-box'` when using §4 Option A.
 
 ### Gotcha D — scaling a product layer changes its drop shadow
 
-Box shadows transform with `scale()`. A `boxShadow: '0 12px 40px rgba(...)'` at scale 0.71 becomes ~8.5px y-offset / 28px blur — softer. Usually fine; flag it if the design relies on a crisp shadow for legibility.
+Box shadows transform with `scale()`. A `boxShadow: '0 12px 40px rgba(...)'` at scale 0.71 becomes ~8.5px y-offset / 28px blur — softer. Usually fine; flag if the design relies on a crisp shadow for legibility.
 
-### Gotcha E — CSS `padding` on a flex-center container does change the centering origin
+### Gotcha E — vestigial `Math.max(h(X), safe.edge + h(Y))` patterns
 
-That IS the mechanism in §4 Option A. Double-check `boxSizing: 'border-box'` is set — default is `content-box`, which sizes the flex box to `content + padding`, making the container larger than the canvas and pushing the centering origin off-screen.
-
----
-
-## Reference — the Seasonal polish before/after at 9:16 safe=ON (t=5)
-
-**Before** (v1 `Math.max` retrofit): logo snapped to `safe.top = 250` while products stayed at their base `h(p.y)` positions. A 250-pixel cream void opened above the ticker; products sat at the same Y as in the OFF state, near the 1620 safe-bottom floor with zero headroom. The "in bloom" refrain was centered on canvas Y = 960, 25 px below the phone-visible center.
-
-**After** (v2 content-rect): logo sits at `contentTop + h(20)` (in both states, just `h(20)` from whatever the top edge happens to be). Products compress into the content rect via a single `translate + scale` on the layer wrapper. "in bloom" centers on `contentCY` (= 935, the phone-visible center on 9:16 ON) without losing its dramatic horizontal bleed.
-
-OFF state is pixel-close to the original design (identity transform on the products layer; 20 px cosmetic top inset on the logo that was 0 before — minor, arguably an improvement).
+Pre-cleanup templates use this pattern (Hero, Countdown, Brand Spotlight, Gift Guide, Carousel, Editorial, Lookbook). It still produces the correct output in the always-safe regime (because `safe.*` is always the real margin) but is unnecessarily complex. When polishing one of these templates, simplify to the content-rect pattern (§1–§3). No behaviour change; just cleaner code.
 
 ---
 
-## Maintaining this doc
+## Verification checklist
+
+For every template polish pass, check 2 aspects × 2–3 keyframes in the Claude Preview MCP. Confirm:
+
+- Logo, kicker, CTA, headline/subline, side pills all inside the content rect.
+- Decorative typography bleeding past the canvas is intentional.
+- Positioned-in-space layers (products) clear of the safe strips.
+- The editor "Safe zones" toggle only shows/hides the dim overlay — composition is identical either way.
+- `npx tsc -b --noEmit` clean.
+- `npm run build` clean.
+
+---
+
+## Maintenance
 
 Update when:
 
 - A new pattern earns its spot (e.g. RTL-specific mirror anchoring, masking techniques that interact with safe zones).
 - A template port surfaces a gotcha not listed above — add it to §"Gotchas worth naming".
-- The default `DEFAULT_SAFE_ZONES` values in `engine/safeZones.ts` change (Brand Kit Phase 4 now allows per-boutique overrides; per-project overrides are PHASE_7_BACKLOG #12).
-- A template graduates from the "work queue" above (update the list + link to the polish commit).
+- `DEFAULT_SAFE_ZONES` values in `engine/safeZones.ts` change (Brand Kit Phase 4 allows per-boutique overrides; per-project overrides are PHASE_7_BACKLOG #12).
+- A new aspect returns (e.g. 1:1 for a future placement) — add it to `AspectKey` + `DEFAULT_SAFE_ZONES` + each template's `meta.aspects[]`.
 
-Cross-references to keep in sync: `HANDOFF.md §5.9`, `template_skill.md` *Conventions → Safe-zone anchoring*. Both should link back to this file as the deep dive.
+Cross-references to keep in sync: `HANDOFF.md §5.9`, `template_skill.md` *Conventions → Safe-zone anchoring*. Both link back to this file as the deep dive.

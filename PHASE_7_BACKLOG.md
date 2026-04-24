@@ -33,11 +33,12 @@ Last updated: Phase 7c — full text-field wiring + a11y/UX niceties.
       positioned `<div>` at `top: h(640)`; the CTA's `safe.bottom`
       shift only tightens the gap from 572 → 472px at 9:16, which is
       visually fine, not broken.
-- [ ] **#5. Aspect-specific quirks.** Audit 9 templates × 3 aspects ×
-      safe-zone ON/OFF for cramping or unused space. Iterative visual
-      work — genuinely needs eyes on each cell of the matrix; can't be
-      closed by code-read alone. Deferred until a marketer reports
-      a specific aspect/safe combination that feels off.
+- [x] **#5. Aspect-specific quirks.** _Scope collapsed by the 2026-04-24
+      always-safe cleanup._ 1:1 aspect was dropped; safe-zone OFF is no
+      longer a composition state (toggle only hides the dim overlay,
+      render is identical). Matrix reduces to 9 templates × 2 aspects ×
+      1 state = a per-template spot-check, folded into each template's
+      polish commit rather than a standalone audit.
 
 ---
 
@@ -165,10 +166,9 @@ Landed across 7a / 7b / 7c:
 - #18 (no-chrome export preset)
 - #19 (drawer keyboard nav)
 
-Still open: #5, #8, #12, #13, #17.
+Still open: #8, #12, #13, #17. (#5 closed by the always-safe cleanup.)
 
-The **still-open items** fall into two buckets:
-1. **Needs eyes-on** (#5) — aspect × safe-zone matrix audit, genuinely
-   iterative.
-2. **Explicitly deferred / nice-to-have** (#8, #12, #13, #17) — out of
-   scope for this pass; pull forward if marketers request.
+The **still-open items** are all **explicitly deferred / nice-to-have** —
+#8 (wildcard product formatting rollout across remaining templates),
+#12 / #13 (per-project safe-zone and typography overrides), #17 (custom
+font uploader). Pull forward when a marketer requests.

@@ -5,7 +5,6 @@ import {
   Stage,
   useStageController,
   SafeZoneOverlay,
-  SafeZoneEnforcementContext,
   FieldFormatContext,
   LocaleContext,
   type Locale,
@@ -641,34 +640,28 @@ export function Editor() {
             onChromelessCanvasActivate={() => setCinemaMode(true)}
             onChromelessLetterboxPointerDown={() => setCinemaMode((c) => !c)}
           >
-            {/* Scene renders inside the enforcement context — when the
-             *  safe-zone toggle is OFF, useSafeZone returns a zero zone
-             *  and every Math.max(h(x), safe.*) collapses back to its
-             *  designer-intent position (unshifted). Flipping the toggle
-             *  reflows the stage instantly. Preview cards and exports
-             *  don't override the context default (true), so they always
-             *  render enforced regardless of what the editor toggle is.
+            {/* Scenes always render with safe margins applied (the "safe zones"
+             *  toggle in the top bar only controls the dim-overlay visibility
+             *  below — the composition doesn't change). Exports and gallery
+             *  preview cards render the same safe-aware scene.
              *
-             *  The FieldFormatContext.Provider carries per-field overrides
-             *  from this project's EditableState down to every useFieldFormat
-             *  call inside the scene. Preview cards don't provide overrides
-             *  (empty map default), so their thumbnails render at template
-             *  defaults — exactly like the gallery. */}
-            <SafeZoneEnforcementContext.Provider value={showSafeZones}>
-              <FieldFormatContext.Provider value={fieldFormatOverrides}>
-                <LocaleContext.Provider value={effectiveLocale}>
-                  <Scene
-                    props={localProps}
-                    timeScale={timeScale}
-                    width={aspect.width}
-                    height={aspect.height}
-                  />
-                  {/* Editor-only guide; sibling of the Scene so it shares the
-                   *  stage transform and stays pixel-aligned at any zoom. */}
-                  {showSafeZones && <SafeZoneOverlay aspect={aspect} />}
-                </LocaleContext.Provider>
-              </FieldFormatContext.Provider>
-            </SafeZoneEnforcementContext.Provider>
+             *  FieldFormatContext carries per-field overrides from this
+             *  project's EditableState down to every useFieldFormat call.
+             *  Preview cards don't provide overrides (empty map default),
+             *  so gallery thumbnails render at template defaults. */}
+            <FieldFormatContext.Provider value={fieldFormatOverrides}>
+              <LocaleContext.Provider value={effectiveLocale}>
+                <Scene
+                  props={localProps}
+                  timeScale={timeScale}
+                  width={aspect.width}
+                  height={aspect.height}
+                />
+                {/* Editor-only guide; sibling of the Scene so it shares the
+                 *  stage transform and stays pixel-aligned at any zoom. */}
+                {showSafeZones && <SafeZoneOverlay aspect={aspect} />}
+              </LocaleContext.Provider>
+            </FieldFormatContext.Provider>
           </Stage>
         </div>
         <div
