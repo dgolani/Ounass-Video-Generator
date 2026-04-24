@@ -83,6 +83,8 @@ Every template is a directory at `app/src/templates/<slug>/` with exactly five f
 - `defaultDuration`: 7–12 seconds for most templates; up to 15 if the ad carries 6+ products.
 - `aspects`: **exactly two** — `9:16 (Story) 1080×1920` (primary) and `4:5 (Feed) 1080×1350`. 1:1 is not supported; if marketing ever needs it back, add it here + in `engine/safeZones.ts`.
 - `scenes`: a list of `{ id, label, start, end }` — the act outline shown in the timeline strip. Start/end in seconds, can overlap slightly for crossfades.
+- `category`: **required**. One of `'single' | 'edit' | 'moment' | 'lockup'`. This is the gallery filter bucket. Pick the closest fit; if none fits, raise it before scaffolding a fifth bucket (see HANDOFF §5.16).
+- `supportsThemes`: **optional**. Set to `true` if the template ships BOTH a light and a dark palette. Triggers the stage-floating theme pill in the editor and the dual LIGHT/DARK split on the gallery card. See *Conventions → Theme support* below.
 - `defaultProps`: re-export from `schema.ts`.
 
 ### 4. `scene.tsx` — the renderer
@@ -127,6 +129,21 @@ function makeScale(W: number, H: number): Scale {
 - `wh(px)` — anything that must shrink with the tighter dimension: font sizes, border radii, stroke widths, letter-spacing in px, shadows.
 
 Never write a raw pixel literal in a style object. Every `16px`, `280px`, `1080px` you're tempted to type goes through one of the three helpers.
+
+**4:5 gotcha — Claude-Design HTML prototypes.** When you port a prototype, the original HTML expresses 4:5 values against a **1350-px-tall stage**, not the 1920 base. A literal copy-paste of `top: 150px` from the prototype's `[data-aspect="4:5"]` block into `top: h(150)` will compress the whole composition into the top half of the 4:5 canvas (because `h()` scales by `H/BASE_H = 0.703` on a 1350 canvas, not `1.0`). The logo ends up **above** the safe-top line, the CTA lands mid-canvas, and the bottom half is dead space.
+
+**Rule:** every 4:5 y-value (and y-dim height, and any `wh()`-wrapped font-size where you want absolute-size consistency across aspects) must be pre-multiplied by `1920 / 1350 ≈ 1.4222` before it flows into `h()` / `wh()`. 9:16 values stay as-is. X-dimension values (widths, left/right insets, `safeCX`) stay identical across aspects — both are 1080 wide.
+
+```ts
+const Y45 = 1920 / 1350;   // ≈ 1.4222
+const logoTop   = is45 ? 150  * Y45 : 290;   // 150 → 213 on 4:5
+const ctaTop    = is45 ? 970  * Y45 : 1470;  // 970 → 1380 on 4:5
+const plateH    = is45 ? 125  * Y45 : 170;   // 125 → 178 on 4:5
+// fontSize that should hit 48px absolute on both aspects:
+const brandSize = is45 ? 48   * Y45 : 62;    // wh(68) on 4:5 = 48 output
+```
+
+HANDOFF §9 Gotcha #14 has the full diagnosis. The Stack (`app/src/templates/the-stack/scene.tsx`) is the reference implementation.
 
 ### Timing — everything through `T`
 
@@ -335,6 +352,48 @@ Both supported aspects share the 1080 width but crop vertically. Keep critical c
 - Any interactive child (CTA button, chip) MUST call `e.stopPropagation()` in its handler so it wins over the ripple.
 - Never attach global keyboard listeners from inside a scene. Multiple scenes can mount at once (gallery preview cards) — the engine disables keyboard for those via `useStageController({ keyboard: false })`.
 
+### Theme support — `{ light, dark }` palette pair (optional)
+
+Some templates ship two coherent palettes (light paper / dark paper) and the editor exposes a Light↔Dark toggle. Opt in per template:
+
+1. **`schema.ts`** — `colors: { light: Palette; dark: Palette }` on the props type. Both palettes populated in `defaultProps`. On dark, `background` is a dark tone, `ink` is a light tone so it contrasts with the dark paper, and `ctaBg`/`ctaText` often invert (cream pill with dark text).
+2. **`meta.ts`** — `supportsThemes: true`.
+3. **`scene.tsx`** — first line inside the component:
+   ```ts
+   const colors = useThemedColors(props.colors);
+   ```
+   `colors` is then a single `Palette` — thread it everywhere exactly like a non-themed scene. No other scene-level changes.
+4. **`fields.ts`** — expose both palettes under separate sections:
+   ```ts
+   { kind: 'section', label: 'Light palette' },
+   { kind: 'color', path: 'colors.light.background', label: 'Paper' },
+   // ... all light keys
+   { kind: 'section', label: 'Dark palette' },
+   { kind: 'color', path: 'colors.dark.background', label: 'Paper (dark)' },
+   // ... all dark keys
+   ```
+
+Gallery automatically renders a dual LIGHT/DARK split preview on the card; editor automatically shows the stage-floating theme pill. Verify dark mode visually at 3+ keyframes on both 9:16 and 4:5 before shipping — dark bugs often hide (invisible text on dark bg) when you only test light.
+
+**Reference:** `app/src/templates/the-stack/` is canonical. The Pairing / New In / The Collab / The Rail follow the same pattern.
+
+### Background-image override (optional but standard)
+
+When a template ships a `backgroundImage?: string` field (image drop zone under a "Background image" section), the scene MUST render it as a full-bleed `<img>` that **replaces** the paper gradient entirely — don't layer on top of the gradient. On themed templates, the same image replaces the backdrop in both light AND dark modes (marketers often want a single hero crop to override the whole look).
+
+Pattern:
+
+```tsx
+{backgroundImage ? (
+  <img src={backgroundImage} alt="" style={{ position:'absolute', inset:0, width:'100%', height:'100%', objectFit:'cover', zIndex:0 }} />
+) : (
+  <>
+    <div style={{ position:'absolute', inset:0, background: paperGradient, zIndex:0 }} />
+    {/* optional grain layer */}
+  </>
+)}
+```
+
 ## Registry step (don't forget)
 
 Add an import + entry to `app/src/templates/registry.ts`:
@@ -376,25 +435,37 @@ Before handing back, verify:
 11. `npm run build` clean.
 12. Spot-check 4:5 in the editor — no overflow, no below-floor text. (1:1 is not supported; 9:16 is the primary target.) The "Safe zones" toggle only affects the dim overlay — composition should be identical either way.
 13. Spot-check Arabic locale — switch the editor to AR and confirm the scene renders RTL without layout breaks.
-14. One commit per template when multiple are being added in a batch, so review stays tractable.
+14. `meta.category` is set to the right bucket (`single` / `edit` / `moment` / `lockup`). The gallery chip filter routes off this; an unset field is a type error.
+15. **If `supportsThemes: true`:** verify the template at 3+ keyframes in 4 modes (9:16 light, 9:16 dark, 4:5 light, 4:5 dark). Common dark-mode bugs: invisible ink (forgot to flip ink for dark paper), CTA pill not inverting (black-on-black pill), bronze stamps that relied on light background contrast.
+16. **If you ported a Claude-Design HTML prototype:** confirm every 4:5 y-value was multiplied by `1920/1350 ≈ 1.422` before flowing into `h()`. Gotcha #14 is the reference; The Stack's scene.tsx has the `Y45` constant as the model.
+17. One commit per template when multiple are being added in a batch, so review stays tractable.
 
 ## Tone + archetype guidance
 
 Brand voice is luxury Middle East boutique — hushed, editorial, confident. Avoid shouty e-com tropes (`"BUY NOW!!!"`, exclamation points, neon palettes). Price strings are AED by default. When a brief is underspecified, lean toward restraint: slower pacing, fewer elements per frame, more negative space.
 
-Before scaffolding a new archetype, check whether it already exists. Current coverage (9 templates):
+Before scaffolding a new archetype, check whether it already exists. Current coverage (14 templates, grouped by gallery category):
 
-Phase 1 (originals):
+**Edit (7)** — multi-product:
 - **Lookbook** — multi-act editorial narrative, 5 products, slow reveal.
 - **Editorial** — volume / issue framing, masthead typography, monochrome.
-- **Countdown** — time-driven urgency, ticking clock, dramatic CTA slam.
-- **Hero** — single-product arrival / drop reveal.
-
-Phase 2 expansion (code-port of the five archetypes from the design-preview pre-answers above):
 - **Bestsellers — Top 5** — ranked 05 → 01 with numeric slam.
-- **Seasonal Campaign** — occasion-driven, warmth over urgency.
 - **Category Carousel** — depth in one category, slow lingering reveal.
-- **Brand Spotlight** — single-brand hero + companion strip.
 - **Gift Guide** — curated picks with gift framing.
+- **New In — Dated Arrivals** (themed) — 4-card filmstrip + 2×2 recap grid.
+- **The Rail — Editor Pick** (themed) — horizontal hanger dolly, focus-pull hero lift.
+
+**Single piece (2)** — one subject:
+- **Hero** — single-product arrival / drop reveal.
+- **Brand Spotlight** — single-brand hero + companion strip.
+
+**Moment (2)** — time-bound:
+- **Countdown** — time-driven urgency, ticking clock, dramatic CTA slam.
+- **Seasonal Campaign** — occasion-driven, warmth over urgency.
+
+**Lockup (3)** — brand / pairing (all themed):
+- **The Stack — Four Houses** (themed) — 4 bronze bullion plates drop with gravity, foil seal.
+- **The Pairing — Styled Duo** (themed) — two products converge, `+ → =`, pair lockup.
+- **The Collab — Two Houses** (themed) — `BOUTIQUE × COLLAB` lockup with uploadable SVG marks.
 
 If the brief overlaps with any of the nine, either (a) suggest the user extend the existing template via its fields, or (b) clearly differentiate — e.g. a new "Price Drop" template is **price-driven**, distinct from Countdown's **time-driven** urgency.

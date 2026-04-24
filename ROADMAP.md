@@ -155,6 +155,40 @@ Frame-by-frame DOM rasterization → ffmpeg.wasm → H.264 MP4 download. Client-
 ### Phase 5 — Polish
 Keyboard shortcuts (space, arrows, cmd-z). Shareable preview URLs (read-only). Onboarding empty states. Error states for failed renders. Dashboard polish. Tier-2 "Advanced" disclosure surfaces per-act timing/easing.
 
+### Phase 6 — Themed template era + gallery categorization ✅ (complete 2026-04-25)
+
+Goal: ship five Claude-Design handoff templates (The Stack, The Pairing, New In, The Collab, The Rail) as a themed-template family, and keep the gallery navigable as the library crosses 10+ templates.
+
+**Infrastructure landed:**
+- `engine/themeMode.ts` — `ThemeModeContext` + `useThemedColors()` helper that transparently unwraps a `{ light, dark }` palette pair. Templates opt in via `TemplateMeta.supportsThemes: true`.
+- `Project.themeMode` persisted on `EditableState`; surfaces in every downstream consumer (export, gallery preview, visual-test harness).
+- **Sleek theme toggle** — glass-morphed pill floating top-right of the editor Stage (sun / moon icons, copper marker slides between them, `data-export-ignore` so MP4 pipeline drops it). Replaced the earlier segmented control that lived in the top toolbar.
+- **Gallery dual-preview** — for templates with `supportsThemes`, the card renders the scene twice (left half light, right half dark) with a copper hairline divider and tiny `LIGHT` / `DARK` corner labels.
+- **VisualTest harness** — gains `?mode=light|dark` param for per-keyframe QA across themes.
+- **Gotcha G (4:5 y-value compression)** — documented in HANDOFF §9 and `template_skill.md`. All 4:5 y-values in newly-ported templates must be pre-multiplied by `1920/1350 ≈ 1.422` so `h()` (which scales by `H/BASE_H=1920`) resolves to the correct output position on a 1350-tall canvas. Fix shipped in commit `7fa6d2a`.
+
+**Templates shipped (5):**
+- **The Stack** (`the-stack`, 10.5s) — 4 bronze bullion plates drop with gravity, compress on each landing, lock with a bronze-foil seal. Lockup category.
+- **The Pairing** (`the-pairing`, 11s) — two pieces slide in from opposite sides, prices add, `+` morphs to `=`, lockup converges into an outfit. Lockup category.
+- **New In** (`new-in`, 12s) — 4-card filmstrip with JUST-IN chip + meter → 2×2 recap grid. Edit category.
+- **The Collab** (`the-collab`, 11s) — `BOUTIQUE × COLLAB` lockup (both marks are uploadable SVG slots, `×` is plain text) + 3-piece capsule row. Lockup category.
+- **The Rail** (`the-rail`, 12s) — horizontal dolly of 8 hanger cards, focus-pull fades non-hero to 28%/sat 40%, hero card lifts. Edit category.
+
+All five ship with `{ light, dark }` palettes, optional `backgroundImage` that fully replaces the paper gradient, and `BoutiqueLogo + useFieldColor` for the logo tint override.
+
+**Gallery categorization** — `TemplateMeta.category: TemplateCategory` (required). Four buckets:
+- **Edit (7)** — bestsellers, lookbook, editorial, carousel, gift-guide, new-in, the-rail
+- **Single piece (2)** — hero, brand-spotlight
+- **Moment (2)** — countdown, seasonal
+- **Lockup (3)** — the-stack, the-pairing, the-collab
+
+Chip row with per-bucket count sits above the grid; active chip uses the copper accent (consistent with the Safe label + theme pill marker). "All" is the default; re-selecting it restores the full 14-card grid.
+
+**Exit criteria met:**
+- 14 templates registered, all typecheck clean.
+- Every themed template verified at 4+ keyframes across 9:16 light / 9:16 dark / 4:5 light / 4:5 dark.
+- Gallery chip filter + dual-theme preview thumbnails working for all 5 themed cards.
+
 ### Phase 5b — Audio & layered timeline (in progress, 2026-04-18)
 
 **Visual target:** Consumer-style editors (Instagram Reels / CapCut pattern): **video as a layer** (filmstrip / thumbnails + optional trim handles), **music as a layer** below, **fixed vertical playhead** with tracks scrolling horizontally, clear empty state (“Add audio”). A reference screenshot was shared in-session (2026-04-18); optionally commit a copy under `docs/references/` for permanent design anchor.

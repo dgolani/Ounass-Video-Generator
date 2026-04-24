@@ -365,6 +365,35 @@ Templates reference typography roles, never families:
 
 The Stage prepends Noto Kufi Arabic to the display / body stacks when locale is Arabic, via `unicode-range`-gated `@font-face`. Hardcoding `'Fraunces'`, `'Nunito Sans'`, `'Portrait'`, or any literal family name in a scene breaks both Brand-Kit typography swaps AND Arabic glyph routing. Grep check: `grep -E "fontFamily: ['\"](?!var\()" app/src/templates/*/scene.tsx` should return nothing.
 
+### 5.15 Theme support — light / dark palette pair (post-Phase 6)
+
+Some templates ship **both** a light and a dark palette — `schema.colors` is shaped `{ light: Palette, dark: Palette }` instead of a single object. The active palette is selected per-project at render time; both palettes are visible side-by-side on the gallery card so marketers can pick the mode visually before entering the editor.
+
+**Opt a template in:**
+
+1. In `schema.ts`: `colors: { light, dark }` on the props type + both palettes populated in `defaultProps`.
+2. In `meta.ts`: `supportsThemes: true`.
+3. In `scene.tsx`: at the top of the component, `const colors = useThemedColors(props.colors)` — this returns either the light or dark half based on the current `ThemeModeContext`. Thread `colors` everywhere as before; no other scene changes.
+4. In `fields.ts`: expose both palettes under separate `section` headers (e.g. "Light palette" / "Dark palette") with paths `colors.light.*` and `colors.dark.*`.
+
+**Editor behaviour:**
+
+- A sleek glass pill (sun / moon icons) floats top-right of the Stage whenever `supportsThemes === true`. Copper marker slides between positions on change.
+- Active mode lives on `EditableState.themeMode` and persists to `Project.themeMode`. Undo/redo is unified with every other edit.
+- Toggle carries `data-export-ignore="true"` so the MP4 pipeline's html-to-image filter drops it from every frame — no need to hide it manually before export.
+
+**Gallery thumbnail:**
+
+`Gallery.tsx` routes `supportsThemes` templates through `ThemedDualPreview` — renders the scene twice (once per mode) with `clip-path` splitting left/right and a copper hairline divider. No data swap; both sides share the same hover-play behaviour.
+
+**Reference implementation:** `app/src/templates/the-stack/` is the canonical example. The Pairing / New In / The Collab / The Rail follow the same pattern.
+
+### 5.16 Template categorization — gallery filter buckets (post-Phase 6)
+
+`TemplateMeta.category: TemplateCategory` is a required field. Four buckets: `single` (hero, brand-spotlight), `edit` (bestsellers, lookbook, editorial, carousel, gift-guide, new-in, the-rail), `moment` (countdown, seasonal), `lockup` (the-stack, the-pairing, the-collab). `Gallery.tsx` renders a chip row above the grid with live counts per bucket; "All" is always first and is the default selection.
+
+When adding a new template, pick the closest bucket. If none fits, file for discussion before adding a 5th — the chip row is deliberately kept to one line on laptop widths.
+
 **MAINTENANCE — update §5 when you:** introduce a new convention, deprecate an existing one, change the template anatomy, or add/remove a FieldDescriptor kind.
 
 ---
@@ -509,6 +538,23 @@ const kickerStyle = useFieldFormat('kicker', {
 **Fix:** Detect bottom-anchoring via inline style instead — `el.style.bottom !== '' && el.style.top === ''`. Or measure distance from canvas bottom via `canvasHeight - el.offsetTop - el.offsetHeight`.
 **Caught:** Phase 7c export-diagnostic work. Documented here so anyone writing future DOM scans doesn't re-burn the hour.
 
+### Gotcha #14 — 4:5 y-values from Claude-Design HTML prototypes compress toward the top
+
+**Symptom:** You port a Claude-Design HTML template. On 9:16 it looks right; on 4:5 the whole composition collapses into the top two-thirds of the canvas, the logo ends up **above** the safe-top line, the CTA lands mid-canvas, and the bottom half is dead space.
+**Cause:** The prototype's `[data-aspect="4:5"]` media query expresses y-values against a **1350-px-tall stage**. Our `h()` helper scales by `H / BASE_H` with `BASE_H = 1920`, so a raw copy-paste of `top: 150px` on a 1350-canvas renders at `150 × (1350/1920) = 105px` — 15px *above* the `safe.top = 120` line.
+**Fix:** Every aspect-specific y-value for 4:5 must be pre-multiplied by `1920 / 1350 ≈ 1.4222` before it flows into `h()`. 9:16 values stay as-is (BASE_H matches the 9:16 canvas height). Same conversion applies to heights (h-dim) and to `wh()`-wrapped font sizes if you want absolute output size consistency across aspects.
+X-dimension values (widths, left/right insets, `safeCX`) stay identical across aspects — both are 1080 wide.
+
+```ts
+// In scene.tsx, inside the component:
+const Y45 = 1920 / 1350; // ≈ 1.4222
+const logoTop = is45 ? 150 * Y45 : 290;  // 150 → 213 on 4:5
+const ctaTop  = is45 ? 970 * Y45 : 1470; // 970 → 1380 on 4:5
+```
+
+**Reference fix:** commit `7fa6d2a` (The Stack) — converted the bad literals inline. Every themed template ported in Phase 6 bakes the `Y45` constant in from the start.
+**Caught:** Phase 6, on The Stack's 4:5 QA after user flagged "content going out of safe zone — templates you received were fine."
+
 **MAINTENANCE — add to §9 when you:** burn 30+ minutes debugging anything that wasn't obvious from the code. The next person should not re-burn that time.
 
 ---
@@ -550,11 +596,13 @@ Full rationale: see [ROADMAP.md](ROADMAP.md) and the project memory file at `~/.
 | 5 — Per-field format drawer | ✅ | `Aa` button on every `text` field in the properties panel → right-side drawer → `useFieldFormat` resolves overrides. |
 | 6 — Locale + RTL + Arabic | ✅ | Segmented EN / AR locale toggle, per-project override, `dir="rtl"` auto on the Stage, Noto Kufi prepended to font stacks when locale is Arabic. |
 | 7 (a / b / c) — Polish | ✅ | Brand-color reactivity in `useFieldFormat` bases, family samples in drawer, currency composition (`composePrice`), RTL pill mirror, export no-chrome toggle, drawer default-swatch preview, drawer keyboard nav, `data-export-ignore` filter so the overlay cannot bake into MP4s. |
+| 8 — Themed template era | ✅ | `supportsThemes` + `useThemedColors` + `{ light, dark }` palette pair + stage-floating theme pill + gallery dual-preview. Five themed templates ported (The Stack, The Pairing, New In, The Collab, The Rail). `TemplateMeta.category` required field + gallery chip filters (All / Edit / Single piece / Moment / Lockup). Gotcha #14 documented (4:5 y-scaling). |
 
-### Templates shipped (9)
+### Templates shipped (14)
 
 - **Originals (Phase 3):** Lookbook, Editorial, Countdown, Hero.
-- **Phase 2 expansion:** Bestsellers (Top 5), Seasonal Campaign, Category Carousel, Brand Spotlight, Gift Guide.
+- **Phase 2 expansion (non-themed):** Bestsellers (Top 5), Seasonal Campaign, Category Carousel, Brand Spotlight, Gift Guide.
+- **Phase 6 themed family (supportsThemes = true):** The Stack — Four Houses, The Pairing — Styled Duo, New In — Dated Arrivals, The Collab — Two Houses, The Rail — Editor Pick.
 
 ### Currently open (see `PHASE_7_BACKLOG.md` for the canonical list)
 
@@ -590,7 +638,9 @@ If you change… | …also touch
 ---|---
 A FieldDescriptor kind | `templates/fields.ts` + `app/components/PropertiesPanel.tsx` (renderer) + every template's `fields.ts` that uses it
 The Project type | `store/types.ts` + `store/projects.ts` + every consumer of `useProject`
-The TemplateMeta type | `templates/types.ts` + every template's `meta.ts` + `templates/registry.ts`
+The TemplateMeta type | `templates/types.ts` + every template's `meta.ts` + `templates/registry.ts`. Adding a new required field (like `category` / `supportsThemes` shipped in Phase 6) means every meta.ts must be touched — the type forces it.
+Theme support on a template | `schema.ts` (`colors: { light, dark }`) + `meta.ts` (`supportsThemes: true`) + `scene.tsx` (`useThemedColors(props.colors)` at top) + `fields.ts` (separate Light / Dark palette sections with `colors.light.*` / `colors.dark.*` paths). All four or the gallery dual-preview will render one half blank.
+A new gallery category | `templates/types.ts` (`TemplateCategory` union) + `app/routes/Gallery.tsx` (`CHIPS` array) + tag at least one template's `meta.ts` (otherwise the chip filters to the empty state)
 The Scene contract | `templates/registry.ts` (`SceneComponentProps`) + every template's `scene.tsx` + `app/routes/Editor.tsx` (where it's invoked)
 The Stage `controller` API | `engine/Stage.tsx` + `engine/useStageController.ts` + `app/routes/Editor.tsx` + `lib/export.ts`
 EditableState / Editor history | `store/editableState.ts` + `store/types.ts` (`Project`) + `app/routes/Editor.tsx` + any child that called `save` for those fields (must use `setEditable` / `onTimelinePatch`)
