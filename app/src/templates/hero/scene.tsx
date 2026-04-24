@@ -209,10 +209,14 @@ function Copy({ props, T, s, safe }: ActProps) {
     color: colors.paper,
   });
 
-  if (t < T(2.0) || t > T(5.2)) return null;
+  if (t < T(2.0) || t > T(5.0)) return null;
 
   const fadeIn = interpolate([T(2.0), T(2.6)], [0, 1], Easing.easeOutExpo)(t);
-  const fadeOut = interpolate([T(4.8), T(5.2)], [1, 0], Easing.easeInCubic)(t);
+  // Copy must be fully gone by T(5.0), when CTA starts fading in — otherwise
+  // the logo lockup (around y=520..800 base) and the headline (around
+  // y=730..970 base at 38% of canvas) mash together during the crossfade
+  // and read as visual noise. Clean handoff > cinematic crossfade here.
+  const fadeOut = interpolate([T(4.7), T(5.0)], [1, 0], Easing.easeInCubic)(t);
   const line1Y = interpolate([T(2.0), T(2.6)], [wh(24), 0], Easing.easeOutCubic)(t);
   const line2In = interpolate([T(2.3), T(2.9)], [0, 1], Easing.easeOutExpo)(t);
   const line2Y = interpolate([T(2.3), T(2.9)], [wh(24), 0], Easing.easeOutCubic)(t);
@@ -327,7 +331,7 @@ function Copy({ props, T, s, safe }: ActProps) {
 }
 
 // ── Act 3 — CTA ────────────────────────────────────────────────────────
-function CTA({ props, T, s, safe, contentTop, contentBottom }: ActProps) {
+function CTA({ props, T, s, safe }: ActProps) {
   const { time: t } = useTimeline();
   const { boutiqueName, ctaText, ctaFooter, logo, colors } = props;
   const logoColor = useFieldColor('logo', colors.paper);
@@ -358,20 +362,19 @@ function CTA({ props, T, s, safe, contentTop, contentBottom }: ActProps) {
   const ctaY = interpolate([T(5.8), T(6.4)], [wh(16), 0], Easing.easeOutCubic)(t);
   const underT = interpolate([T(6.3), T(7.0)], [0, 1], Easing.easeInOutCubic)(t);
 
-  // Logo lockup sits ~40 % into the visible area (designer intent: upper
-  // half of the phone frame, above the CTA). Derive from content rect so
-  // it lands proportionally on both 9:16 and 4:5.
-  const lockupTop = contentTop + (contentBottom - contentTop) * 0.3;
-
   return (
     <>
-      {/* Lockup — proportionally placed inside the content rect. */}
+      {/* Lockup — designer-tuned base-canvas position. Placed ABOVE the
+       *  headline's centerline (0.38*H = 730 base-px on 9:16) so the
+       *  200 ms Copy→CTA crossfade at t=5.0-5.2 doesn't mash the logo
+       *  lettering into the headline. Don't push this lower without
+       *  re-checking that crossfade moment. */}
       <div
         style={{
           position: 'absolute',
           left: 0,
           right: 0,
-          top: lockupTop,
+          top: h(520),
           textAlign: 'center',
           opacity: fadeIn,
           transform: `translateY(${lockY}px)`,
