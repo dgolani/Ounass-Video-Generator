@@ -69,10 +69,13 @@ Last updated: Phase 7c — full text-field wiring + a11y/UX niceties.
       per-field drawer surface for it. `product.name` / `product.category`
       fall under #8 (per-product sub-field formatting) — excluded by
       scope.
-- [ ] **#8. Per-product sub-field formatting.** Fields inside
-      `productList` (per-row name / price / brandline) still don't
-      have format buttons. Indexed paths change on reorder. Needs
-      a stable per-row id as the override key.
+- [ ] **#8. Product-list wildcard formatting + scale rollout.**
+      Editor now has global product controls (`products.*.<field>` format
+      buttons and one product-zone image-scale slider that writes
+      `imageScale` to all rows), but scene-level adoption is still
+      template-by-template. `bestsellers` is wired; remaining product
+      templates need wildcard `useFieldFormat` hooks and container-level
+      image-scale consumption.
 - [x] **#9. Brand-accent reactivity in `useFieldFormat` bases.**
       _Done in Phase 7a._ Seasonal, Gift Guide, and Brand Spotlight
       now destructure `colors` before the hook calls and pass the

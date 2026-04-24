@@ -11,6 +11,7 @@ import {
   interpolate,
   useTimeline,
   useSafeZone,
+  useFieldColor,
   useFieldFormat,
 } from '../../engine';
 import { composePrice, useCurrencyForLocale } from '../../lib/price';
@@ -78,6 +79,7 @@ export function BrandSpotlightScene({
     ctaButton,
     logo,
   } = props;
+  const logoColor = useFieldColor('logo', '#fff');
 
   const featuredBrandStyle = useFieldFormat('featuredBrand', {
     fontFamily: 'var(--font-display)',
@@ -224,7 +226,7 @@ export function BrandSpotlightScene({
           <BoutiqueLogo
             logo={logo}
             boutiqueName={boutiqueName}
-            color="#fff"
+            color={logoColor}
             width={w(260)}
             height={h(48)}
             fontSize={wh(22)}

@@ -183,16 +183,36 @@ export function PropertiesPanel({
 
         if (field.kind === 'image') {
           const url = typeof current === 'string' ? current : '';
+          const showFormatBtn = !!onOpenFormatField && (field.path === 'logo' || field.svgOnly === true);
+          const hasOverride = overriddenPaths?.has(field.path) ?? false;
           return (
             <div key={i} style={{ marginTop: 16 }}>
               <Field label={field.label} hint={field.hint}>
-                <ImageDropZone
-                  url={url}
-                  onImage={(dataURL) => set(dataURL)}
-                  onClear={() => set('')}
-                  aspectRatio={field.aspectRatio ?? 1}
-                  size="large"
-                />
+                <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <ImageDropZone
+                      url={url}
+                      onImage={(dataURL) => set(dataURL)}
+                      onClear={() => set('')}
+                      aspectRatio={field.aspectRatio ?? 1}
+                      size="large"
+                      svgOnly={field.svgOnly}
+                    />
+                  </div>
+                  {showFormatBtn && (
+                    <FormatButton
+                      hasOverride={hasOverride}
+                      label={`${field.label} color`}
+                      onClick={() =>
+                        onOpenFormatField?.(
+                          field.path,
+                          `${field.label} color`,
+                          'body',
+                        )
+                      }
+                    />
+                  )}
+                </div>
               </Field>
             </div>
           );
@@ -209,6 +229,8 @@ export function PropertiesPanel({
               onChange={set}
               activeSceneId={activeSceneId}
               compact={compact}
+              overriddenPaths={overriddenPaths}
+              onOpenFormatField={onOpenFormatField}
             />
           );
         }
@@ -227,12 +249,20 @@ function ProductListField({
   onChange,
   activeSceneId,
   compact,
+  overriddenPaths,
+  onOpenFormatField,
 }: {
   field: Extract<FieldDescriptor, { kind: 'productList' }>;
   products: ProductShape[];
   onChange: (next: ProductShape[]) => void;
   activeSceneId?: string | null;
   compact?: boolean;
+  overriddenPaths?: Set<string>;
+  onOpenFormatField?: (
+    path: string,
+    label: string,
+    role: FieldRole,
+  ) => void;
 }) {
   const min = field.minProducts ?? 1;
   const max = field.maxProducts ?? 20;
@@ -240,6 +270,10 @@ function ProductListField({
 
   const atMax = products.length >= max;
   const atMin = products.length <= min;
+  const globalImageScaleRaw = Number(products[0]?.imageScale ?? 1);
+  const globalImageScale = Number.isFinite(globalImageScaleRaw)
+    ? Math.min(1.5, Math.max(0.6, globalImageScaleRaw))
+    : 1;
 
   const updateAt = (idx: number, next: ProductShape) => {
     const copy = [...products];
@@ -265,11 +299,64 @@ function ProductListField({
     const newProduct: ProductShape = { ...template, id: uid() };
     onChange([...products, newProduct]);
   };
+  const setAllImageScale = (nextScale: number) => {
+    onChange(
+      products.map((p) => ({
+        ...p,
+        imageScale: nextScale,
+      })),
+    );
+  };
 
   const listSceneHi = sceneIdsActive(field.sceneIds, activeSceneId);
 
   return (
     <div style={{ marginTop: compact ? 12 : 16 }}>
+      <Field label="Product image scale" hint="Applies to all products in this template">
+        <div
+          style={{
+            padding: '8px 10px',
+            borderRadius: 'var(--r-md)',
+            border: '1px solid var(--editor-border)',
+            background: 'var(--editor-panel)',
+          }}
+        >
+          <input
+            type="range"
+            min={0.6}
+            max={1.5}
+            step={0.02}
+            value={globalImageScale}
+            onChange={(e) => setAllImageScale(Number(e.target.value))}
+            style={{ width: '100%' }}
+          />
+        </div>
+      </Field>
+
+      {onOpenFormatField && field.productFields.length > 0 && (
+        <div style={{ marginTop: 8, marginBottom: 10 }}>
+          <Field label="Product text formatting" hint="Formatting here applies to all products">
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+              {field.productFields.map((pf) => {
+                const formatPath = `${field.path}.*.${pf.path}`;
+                const hasOverride = overriddenPaths?.has(formatPath) ?? false;
+                const role: FieldRole = pf.role ?? 'body';
+                return (
+                  <FormatButton
+                    key={formatPath}
+                    hasOverride={hasOverride}
+                    label={`${pf.label} (all products)`}
+                    onClick={() =>
+                      onOpenFormatField(formatPath, `${pf.label} (all products)`, role)
+                    }
+                  />
+                );
+              })}
+            </div>
+          </Field>
+        </div>
+      )}
+
       <Stack gap={10}>
         {products.map((product, idx) => {
           const rowSceneId = field.productRowSceneIds?.[idx];
@@ -421,7 +508,10 @@ function ProductRow({
                 (listSceneHi && !subHasOwnScenes),
             );
             return (
-              <div key={pf.path} className={sceneInputHaloClass(inputActive)}>
+              <div
+                key={pf.path}
+                className={sceneInputHaloClass(inputActive)}
+              >
                 <TextField
                   value={String(product[pf.path] ?? '')}
                   onChange={(e) =>

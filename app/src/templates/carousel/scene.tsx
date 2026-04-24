@@ -10,6 +10,7 @@ import {
   interpolate,
   useTimeline,
   useSafeZone,
+  useFieldColor,
   useFieldFormat,
 } from '../../engine';
 import { composePrice, useCurrencyForLocale } from '../../lib/price';
@@ -110,6 +111,7 @@ export function CarouselScene({
     ctaButton,
     logo,
   } = props;
+  const logoColor = useFieldColor('logo', '#fff');
 
   const N = items.length;
   const carouselEnd = T(CAROUSEL_END);
@@ -193,7 +195,7 @@ export function CarouselScene({
         <BoutiqueLogo
           logo={logo}
           boutiqueName={boutiqueName}
-          color="#fff"
+          color={logoColor}
           width={w(320)}
           height={h(60)}
           fontSize={wh(28)}

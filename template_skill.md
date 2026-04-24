@@ -52,7 +52,7 @@ Copy the act-structure, scaling, and timing patterns from the existing templates
 - `app/src/engine/math.ts` — `animate`, `interpolate`, `Easing`, `clamp`.
 - `app/src/engine/timeline.tsx` — `useTimeline()` returns `{ time, duration, compositionStartSec }`.
 - `app/src/engine/safeZones.ts` — `useSafeZone(aspect)` returns the resolved keep-clear margins for the current aspect + enforcement state. Every bottom-/top-anchored element near an edge must thread through this. Phase 3+.
-- `app/src/engine/fieldFormatContext.ts` — `useFieldFormat(path, baseStyle)` resolves per-field family/weight/italic/color/letter-spacing overrides the marketer sets in the drawer. Phase 5+. Every editable text field should call this hook or drawer edits will silently no-op on that field.
+- `app/src/engine/fieldFormatContext.ts` — `useFieldFormat(path, baseStyle)` resolves per-field family/weight/italic/color/letter-spacing overrides the marketer sets in the drawer. `useFieldColor(path, baseColor)` is the color-only variant (used for logo tint overrides). Phase 5+. Every editable text field should call `useFieldFormat` or drawer edits will silently no-op on that field.
 - `app/src/engine/locale.ts` — `useLocale()` + `isRTL(locale)`. The Stage auto-injects `dir="rtl"` on the canvas root and prepends Noto Kufi Arabic to the font stacks when locale is Arabic, so most scenes don't need locale directly; reach for it only when you're mirroring directional chrome (e.g. a corner-pinned pill). Phase 6+.
 - `app/src/lib/price.ts` — `composePrice(raw, currency)` + `useCurrencyForLocale()`. Non-destructively swaps known currency trails (AED / SAR / BHD / USD / EUR / GBP + Arabic abbreviations) so prices render correctly in both EN and AR. Use this for every price string you render.
 
@@ -167,6 +167,15 @@ import { BoutiqueLogo } from '../BoutiqueLogo';
 
 For dark backgrounds pass `color={colors.paper}`; for paper backgrounds pass `color={colors.ink}` or the darkest palette colour in scope.
 
+If the template should respect the editor's logo color control, resolve the tint through the format map:
+
+```tsx
+import { useFieldColor } from '../../engine';
+const logoColor = useFieldColor('logo', colors.ink);
+// ...
+<BoutiqueLogo logo={logo} boutiqueName={boutiqueName} color={logoColor} ... />
+```
+
 ### Typography palette — always via CSS variables, never hardcoded
 
 Typography is role-bound through CSS custom properties set on the Stage root. Templates reference the role, not the family — that way a Brand Kit change swaps the whole library without touching scene code, and the Arabic fallback (Noto Kufi) can cleanly prepend to the stack when locale flips to AR.
@@ -273,6 +282,16 @@ Two gotchas that have bitten every template port:
 
 The `path` string you pass is the dotted field path as it appears in `fields.ts` (e.g. `'kicker'`, `'ctaText'`, `'headlineLine1'`). It doubles as the override key in the project's stored overrides map — keep it stable.
 
+For `productList` subfields, use wildcard keys so one override applies to every row:
+
+```tsx
+const brandlineStyle = useFieldFormat('products.*.brandline', { ... });
+const nameStyle = useFieldFormat('products.*.name', { ... });
+const priceStyle = useFieldFormat('products.*.price', { ... });
+```
+
+The editor now surfaces these as global product controls (not per-row formatting buttons).
+
 ### Price composition
 
 Every price string in a template must render through `composePrice` + `useCurrencyForLocale` so the currency suffix follows the active locale (AED in EN, د.إ. in AR) without the marketer having to edit per-locale.
@@ -287,6 +306,10 @@ const currency = useCurrencyForLocale();
   {composePrice(product.price, currency)}
 </span>
 ```
+
+### Product image scale (global product-zone control)
+
+`productList` sections expose one image-scale slider that writes `imageScale` to all product rows. If your scene supports this control, apply it to the animated card/container transform (not only the inner `<img>`) so translate/rotate/scale choreography remains coherent.
 
 `composePrice` strips any known currency trail from the raw prop (`'1,890 AED'`, `'1,890 SAR'`, `'1,890 USD'`, Arabic abbreviations, etc.) before re-appending the active-locale currency — so a boutique switching from AED to SAR in Brand Kit doesn't need to re-author every price.
 

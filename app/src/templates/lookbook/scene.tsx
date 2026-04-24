@@ -4,6 +4,7 @@ import {
   animate,
   clamp,
   interpolate,
+  useFieldColor,
   useFieldFormat,
   useSafeZone,
   useTimeline,
@@ -585,6 +586,7 @@ function Act4Outro({ props, T, s, safe }: ActProps) {
     ctaFooter,
     logo,
   } = props;
+  const logoColor = useFieldColor('logo', colors.paper);
   const { w, h, wh, W, H } = s;
 
   const outroKickerStyle = useFieldFormat('outroKicker', {
@@ -722,7 +724,7 @@ function Act4Outro({ props, T, s, safe }: ActProps) {
         <BoutiqueLogo
           logo={logo}
           boutiqueName={boutiqueName}
-          color={colors.paper}
+          color={logoColor}
           width={w(720)}
           height={h(360)}
           fontSize={wh(180)}

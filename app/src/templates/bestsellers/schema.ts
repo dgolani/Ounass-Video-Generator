@@ -7,6 +7,8 @@ import { photos } from '../../assets/placeholders';
 export type BestsellersProduct = {
   id: string;
   src: string;
+  /** Optional visual crop zoom for editor image-scale control. */
+  imageScale?: number;
   /** Rank number (shown top-right + as the giant background numeral). */
   rank: number;
   /** Designer / brand name (italic serif line). */
@@ -52,11 +54,11 @@ export const defaultProps: BestsellersProps = {
   kicker: 'Bestsellers — Top 5',
 
   products: [
-    { id: 'p5', rank: 5, src: photos.knitwear,   brandline: 'Brunello Cucinelli', name: 'Ribbed Cashmere Knit',   price: '4,850 AED' },
-    { id: 'p4', rank: 4, src: photos.sunglasses, brandline: 'Celine',             name: 'Oversized Round Frames', price: '1,890 AED' },
-    { id: 'p3', rank: 3, src: photos.outerwear,  brandline: 'Max Mara',           name: 'Belted Wool Trench',     price: '12,400 AED' },
-    { id: 'p2', rank: 2, src: photos.handbag,    brandline: 'Saint Laurent',      name: 'Manhattan Leather Tote', price: '9,750 AED' },
-    { id: 'p1', rank: 1, src: photos.dress,      brandline: 'The Row',            name: 'Silk Column Gown',       price: '18,200 AED' },
+    { id: 'p5', rank: 5, src: photos.knitwear, imageScale: 1, brandline: 'Brunello Cucinelli', name: 'Ribbed Cashmere Knit',   price: '4,850 AED' },
+    { id: 'p4', rank: 4, src: photos.sunglasses, imageScale: 1, brandline: 'Celine',             name: 'Oversized Round Frames', price: '1,890 AED' },
+    { id: 'p3', rank: 3, src: photos.outerwear, imageScale: 1, brandline: 'Max Mara',           name: 'Belted Wool Trench',     price: '12,400 AED' },
+    { id: 'p2', rank: 2, src: photos.handbag, imageScale: 1, brandline: 'Saint Laurent',      name: 'Manhattan Leather Tote', price: '9,750 AED' },
+    { id: 'p1', rank: 1, src: photos.dress, imageScale: 1, brandline: 'The Row',            name: 'Silk Column Gown',       price: '18,200 AED' },
   ],
 
   ctaKicker: 'The Edit · 2026',

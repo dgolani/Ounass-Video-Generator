@@ -9,7 +9,7 @@
 ## 0. TL;DR (45 seconds)
 
 - **Product:** **Ounass Cutroom** — *Cut. Brand. Ship.* Marketers pick a template → edit in-browser → preview live → export an MP4. **Free-tier hostable** (Vercel static + client-side render).
-- **Status:** Phases **0–7c** complete. Foundation → editor → customization → multi-template → MP4 export → audio/layered timeline → **typography tokens → vendored fonts → safe zones → Brand Kit editor → per-field format drawer → locale/RTL/Arabic → polish pass (brand-color reactivity, RTL mirror, export no-chrome toggle, drawer keyboard nav, data-export-ignore filter).** 9 templates ship today: Lookbook, Editorial, Countdown, Hero (originals) + Bestsellers, Seasonal, Carousel, Brand Spotlight, Gift Guide (Phase 2 expansion). Still open: #5 aspect matrix QA, #8 per-product sub-field formatting, #12/#13 per-project safe-zone + typography overrides, #17 custom font uploader (see `PHASE_7_BACKLOG.md`).
+- **Status:** Phases **0–7c** complete. Foundation → editor → customization → multi-template → MP4 export → audio/layered timeline → **typography tokens → vendored fonts → safe zones → Brand Kit editor → per-field format drawer → locale/RTL/Arabic → polish pass (brand-color reactivity, RTL mirror, export no-chrome toggle, drawer keyboard nav, data-export-ignore filter).** 9 templates ship today: Lookbook, Editorial, Countdown, Hero (originals) + Bestsellers, Seasonal, Carousel, Brand Spotlight, Gift Guide (Phase 2 expansion). Follow-up open: #5 aspect matrix QA, #8 rollout of wildcard product-subfield formatting across all product templates (editor support is now global; template scene adoption remains), #12/#13 per-project safe-zone + typography overrides, #17 custom font uploader (see `PHASE_7_BACKLOG.md`).
 - **Stack:** Vite 6 + React 19 + TypeScript, single-page app, localStorage for state, ffmpeg.wasm for encoding, vendored local fonts (Portrait, Noto Serif Display, Noto Kufi Arabic).
 - **Live demo:** `cd app && npm run dev` → http://localhost:5173. Or via Claude Preview MCP: configured in `.claude/launch.json` as `vag-dev`.
 - **Last session ended:** Phase 7c polish committed + pushed (`3d3e9bf` on `origin/main`). The editor's safe-zone overlay can no longer leak into exported MP4s (`data-export-ignore` filter in `lib/export.ts`). `template_skill.md` updated to reflect the current template contract (role-bound typography, `useSafeZone`, `useFieldFormat`, `composePrice`).
@@ -337,6 +337,11 @@ Two gotchas that have bitten every template port (also see Gotcha #11 below):
 1. **Destructure `colors` BEFORE the hook calls.** Otherwise brand-color edits don't re-trigger the hook and un-overridden fields freeze on the first palette they saw.
 2. **Multiply animation opacity with override opacity.** `opacity: (kickerStyle.opacity ?? 1) * animT` — a hard override clobbers marketer-dimming; a hard spread disables intro animations.
 
+Additional conventions now in the editor:
+- **Logo tint override:** Logo image fields (`path === 'logo'` / `svgOnly`) expose an `Aa` button. Scenes should resolve logo tint with `useFieldColor('logo', <baseColor>)` and feed that into `<BoutiqueLogo color={...} />`.
+- **Product-list wildcard formatting:** Product subfields are edited once for all rows via wildcard paths like `products.*.name`, `products.*.brandline`, `products.*.price`. Scene code should mirror those exact keys in `useFieldFormat(...)` so one override applies to every product card.
+- **Global product-zone scale control:** The Properties panel now exposes one product image-scale slider per `productList` and writes `imageScale` to all rows. Templates that want this UX should apply the scale to the animated product container (not only the inner `<img>`) to keep motion coherent.
+
 ### 5.11 Locale + RTL (post-Phase 6)
 `useLocale()` returns the current locale (`'en'` | `'ar'`). The Stage auto-injects `dir="rtl"` on the canvas root and prepends Noto Kufi Arabic to `var(--font-display)` / `var(--font-body)` when locale is Arabic. Scenes rarely touch locale directly — only when they need to mirror directional chrome (e.g. a corner pill). Project locale overrides brand-kit locale; both compose.
 
@@ -559,7 +564,7 @@ Full rationale: see [ROADMAP.md](ROADMAP.md) and the project memory file at `~/.
 ### Currently open (see `PHASE_7_BACKLOG.md` for the canonical list)
 
 - **#5** Aspect × safe-zone matrix QA — 9 templates × 3 aspects × safe ON/OFF. Genuinely eyes-on; deferred until marketers report a specific off-looking cell.
-- **#8** Per-product sub-field formatting — fields inside `productList` (per-row name / price / brandline) don't yet have format buttons. Needs a stable per-row id as override key.
+- **#8** Product-list formatting rollout — editor now supports wildcard subfield formatting (`products.*.<field>`) and one global product-zone image scale control; remaining work is scene-level adoption across all product templates so every template consumes those wildcard keys consistently.
 - **#12** Per-project safe-zone override — Brand Kit has per-boutique override; not yet per-project.
 - **#13** Per-project typography override — same shape as #12.
 - **#17** Custom font uploader — dropped at Phase 1.5; comes back if a boutique licenses a second paid family.

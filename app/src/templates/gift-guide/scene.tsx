@@ -9,6 +9,7 @@ import {
   interpolate,
   useTimeline,
   useSafeZone,
+  useFieldColor,
   useFieldFormat,
 } from '../../engine';
 import type { GiftGuideProps } from './schema';
@@ -90,6 +91,7 @@ export function GiftGuideScene({
     ctaButton,
     logo,
   } = props;
+  const logoColor = useFieldColor('logo', colors.ink);
 
   const kickerStyle = useFieldFormat('kicker', {
     fontFamily: 'var(--font-body)',
@@ -217,7 +219,7 @@ export function GiftGuideScene({
           <BoutiqueLogo
             logo={logo}
             boutiqueName={boutiqueName}
-            color={colors.ink}
+            color={logoColor}
             width={w(320)}
             height={h(60)}
             fontSize={wh(28)}

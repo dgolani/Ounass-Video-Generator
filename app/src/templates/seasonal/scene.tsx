@@ -18,6 +18,7 @@ import {
   interpolate,
   useTimeline,
   useSafeZone,
+  useFieldColor,
   useFieldFormat,
 } from '../../engine';
 import type { SeasonalProps } from './schema';
@@ -120,6 +121,7 @@ export function SeasonalScene({
     ctaButton,
     logo,
   } = props;
+  const logoColor = useFieldColor('logo', colors.ink);
 
   // Per-field format overrides — hook bases use dynamic brand values
   // so an un-overridden field updates when the brand kit changes.
@@ -274,7 +276,7 @@ export function SeasonalScene({
         <BoutiqueLogo
           logo={logo}
           boutiqueName={boutiqueName}
-          color={colors.ink}
+          color={logoColor}
           width={w(320)}
           height={h(60)}
           fontSize={wh(28)}

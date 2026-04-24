@@ -141,3 +141,10 @@ export function useFieldFormat(
     ],
   );
 }
+
+/** Lightweight helper for non-text fields (e.g. SVG logo tint): only
+ *  applies a color override when set for `path`, otherwise returns base. */
+export function useFieldColor(path: string, baseColor: string): string {
+  const overrides = useContext(FieldFormatContext);
+  return overrides[path]?.color ?? baseColor;
+}

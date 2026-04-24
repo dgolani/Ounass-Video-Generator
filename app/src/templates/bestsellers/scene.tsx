@@ -12,6 +12,7 @@ import {
   interpolate,
   useTimeline,
   useSafeZone,
+  useFieldColor,
   useFieldFormat,
 } from '../../engine';
 import { composePrice, useCurrencyForLocale } from '../../lib/price';
@@ -67,6 +68,7 @@ export function BestsellersScene({
   const { base: safe } = useSafeZone({ width, height });
   const currency = useCurrencyForLocale();
   const { colors, products, boutiqueName, headerMeta, kicker, logo } = props;
+  const logoColor = useFieldColor('logo', colors.ink);
 
   // ── Content rect (composition-safe window in output pixels) ───────────
   // When safe enforcement is OFF, margins are 0 so this collapses to the
@@ -130,6 +132,29 @@ export function BestsellersScene({
     letterSpacing: '0.35em',
     textTransform: 'uppercase',
     color: '#fff',
+  });
+  const productBrandlineStyle = useFieldFormat('products.*.brandline', {
+    fontFamily: 'var(--font-display)',
+    fontStyle: 'italic',
+    fontWeight: 400,
+    fontSize: wh(30),
+    letterSpacing: '0.15em',
+    textTransform: 'uppercase',
+    color: colors.ink,
+  });
+  const productNameStyle = useFieldFormat('products.*.name', {
+    fontFamily: 'var(--font-body)',
+    fontSize: wh(22),
+    fontWeight: 600,
+    color: 'rgba(0,0,0,0.60)',
+    letterSpacing: '0.05em',
+  });
+  const productPriceStyle = useFieldFormat('products.*.price', {
+    fontFamily: 'var(--font-numeric)',
+    fontSize: wh(26),
+    fontWeight: 700,
+    letterSpacing: '0.08em',
+    color: colors.accent,
   });
 
   // Only 5 product slots are supported. If more are provided, extra are ignored;
@@ -215,7 +240,7 @@ export function BestsellersScene({
         <BoutiqueLogo
           logo={logo}
           boutiqueName={boutiqueName}
-          color={colors.ink}
+          color={logoColor}
           width={w(340)}
           height={h(80)}
           fontSize={wh(28)}
@@ -314,6 +339,11 @@ export function BestsellersScene({
             const p = (localT - 0.25) / 0.6;
             ty = Math.sin(p * Math.PI) * -8;
           }
+          const imageScaleRaw = Number(product.imageScale ?? 1);
+          const imageScale = Number.isFinite(imageScaleRaw)
+            ? Math.min(1.5, Math.max(0.6, imageScaleRaw))
+            : 1;
+          const cardScale = scale * imageScale;
           return (
             <div
               key={product.id}
@@ -325,7 +355,7 @@ export function BestsellersScene({
                 boxShadow: `0 ${h(20)}px ${h(60)}px rgba(0,0,0,0.18), 0 ${h(4)}px ${h(12)}px rgba(0,0,0,0.08)`,
                 overflow: 'hidden',
                 opacity,
-                transform: `translate(${w(tx)}px, ${h(ty)}px) rotate(${rot}deg) scale(${scale})`,
+                transform: `translate(${w(tx)}px, ${h(ty)}px) rotate(${rot}deg) scale(${cardScale})`,
               }}
             >
               <img
@@ -353,24 +383,14 @@ export function BestsellersScene({
                 <div>
                   <div
                     style={{
-                      fontFamily: 'var(--font-display)',
-                      fontStyle: 'italic',
-                      fontWeight: 400,
-                      fontSize: wh(30),
-                      letterSpacing: '0.15em',
-                      textTransform: 'uppercase',
-                      color: colors.ink,
+                      ...productBrandlineStyle,
                     }}
                   >
                     {product.brandline}
                   </div>
                   <div
                     style={{
-                      fontFamily: 'var(--font-body)',
-                      fontSize: wh(22),
-                      fontWeight: 600,
-                      color: 'rgba(0,0,0,0.60)',
-                      letterSpacing: '0.05em',
+                      ...productNameStyle,
                       marginTop: h(8),
                     }}
                   >
@@ -379,11 +399,7 @@ export function BestsellersScene({
                 </div>
                 <div
                   style={{
-                    fontFamily: 'var(--font-numeric)',
-                    fontSize: wh(26),
-                    fontWeight: 700,
-                    letterSpacing: '0.08em',
-                    color: colors.accent,
+                    ...productPriceStyle,
                   }}
                 >
                   {composePrice(product.price, currency)}

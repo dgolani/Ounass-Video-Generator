@@ -27,6 +27,7 @@ export { SafeZoneOverlay } from './SafeZoneOverlay';
 export {
   FieldFormatContext,
   applyFieldFormat,
+  useFieldColor,
   useFieldFormat,
   type FieldBaseStyle,
   type ResolvedFieldStyle,

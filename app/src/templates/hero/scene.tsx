@@ -4,6 +4,7 @@ import {
   interpolate,
   useTimeline,
   useSafeZone,
+  useFieldColor,
   useFieldFormat,
 } from '../../engine';
 import { composePrice, useCurrencyForLocale } from '../../lib/price';
@@ -314,6 +315,7 @@ function Copy({ props, T, s, safe }: ActProps) {
 function CTA({ props, T, s, safe }: ActProps) {
   const { time: t } = useTimeline();
   const { boutiqueName, ctaText, ctaFooter, logo, colors } = props;
+  const logoColor = useFieldColor('logo', colors.paper);
   const { w, h, wh } = s;
 
   const ctaTextStyle = useFieldFormat('ctaText', {
@@ -358,7 +360,7 @@ function CTA({ props, T, s, safe }: ActProps) {
         <BoutiqueLogo
           logo={logo}
           boutiqueName={boutiqueName}
-          color={colors.paper}
+          color={logoColor}
           width={w(680)}
           height={h(280)}
           fontSize={wh(160)}

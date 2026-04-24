@@ -4,6 +4,7 @@ import {
   interpolate,
   useTimeline,
   useSafeZone,
+  useFieldColor,
   useFieldFormat,
 } from '../../engine';
 import type { EditorialProps } from './schema';
@@ -466,6 +467,7 @@ function Signature({ props, T, s, safe }: ActProps) {
     logo,
     colors,
   } = props;
+  const logoColor = useFieldColor('logo', colors.ink);
   const { w, h, wh } = s;
 
   const ctaTextStyle = useFieldFormat('ctaText', {
@@ -560,7 +562,7 @@ function Signature({ props, T, s, safe }: ActProps) {
         <BoutiqueLogo
           logo={logo}
           boutiqueName={boutiqueName}
-          color={colors.ink}
+          color={logoColor}
           width={w(700)}
           height={h(280)}
           fontSize={wh(180)}
