@@ -895,7 +895,3 @@ function lighten(hex: string, amt: number): string {
   const b = clampChannel((n & 255) + 255 * amt);
   return `rgb(${r}, ${g}, ${b})`;
 }
-
-function darken(hex: string, amt: number): string {
-  return lighten(hex, -amt);
-}
