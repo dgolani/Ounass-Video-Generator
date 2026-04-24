@@ -62,40 +62,14 @@ export function CarouselScene({
   const { base: safe } = useSafeZone({ width, height });
   const currency = useCurrencyForLocale();
 
-  // Per-field format overrides.
-  const titleKickerStyle = useFieldFormat('titleKicker', {
-    fontFamily: 'var(--font-body)',
-    fontSize: wh(24),
-    fontWeight: 700,
-    letterSpacing: '0.45em',
-    textTransform: 'uppercase',
-    color: 'rgba(255,255,255,0.55)',
-  });
-  const titleLineStyle = useFieldFormat('titleLine1', {
-    fontFamily: 'var(--font-display)',
-    fontStyle: 'italic',
-    fontSize: wh(150),
-    fontWeight: 300,
-    lineHeight: 0.95,
-    letterSpacing: '-0.03em',
-    color: '#fff',
-  });
-  const finalHeadlineStyle = useFieldFormat('finalHeadline', {
-    fontFamily: 'var(--font-display)',
-    fontStyle: 'italic',
-    fontSize: wh(120),
-    lineHeight: 1,
-    color: '#fff',
-    letterSpacing: '-0.02em',
-  });
-  const ctaButtonStyle = useFieldFormat('ctaButton', {
-    fontFamily: 'var(--font-body)',
-    fontSize: wh(26),
-    fontWeight: 800,
-    letterSpacing: '0.35em',
-    textTransform: 'uppercase',
-    color: '#fff',
-  });
+  // Content-rect anchors (always-safe regime). See SAFE_ZONE_PATTERNS.md.
+  // Only the ones actually read; the final-CTA centring uses padded-flex
+  // on safe.* directly so no contentCX needed.
+  const contentTop = safe.top;
+  const contentLeft = safe.left;
+  const contentRight = width - safe.right;
+
+  // Colours first so per-field format hooks can close over live brand values.
   const {
     colors,
     items,
@@ -111,7 +85,47 @@ export function CarouselScene({
     ctaButton,
     logo,
   } = props;
-  const logoColor = useFieldColor('logo', '#fff');
+  // Scene is dark-themed: `colors.card` is the light surface tone used
+  // for both the item cards AND any light text over the dark scene bg.
+  // If the boutique edits `colors.card` per-project, scene chrome adapts.
+  const lightText = colors.card;
+
+  // Per-field format overrides.
+  const titleKickerStyle = useFieldFormat('titleKicker', {
+    fontFamily: 'var(--font-body)',
+    fontSize: wh(24),
+    fontWeight: 700,
+    letterSpacing: '0.45em',
+    textTransform: 'uppercase',
+    color: lightText,
+    opacity: 0.55,
+  });
+  const titleLineStyle = useFieldFormat('titleLine1', {
+    fontFamily: 'var(--font-display)',
+    fontStyle: 'italic',
+    fontSize: wh(150),
+    fontWeight: 300,
+    lineHeight: 0.95,
+    letterSpacing: '-0.03em',
+    color: lightText,
+  });
+  const finalHeadlineStyle = useFieldFormat('finalHeadline', {
+    fontFamily: 'var(--font-display)',
+    fontStyle: 'italic',
+    fontSize: wh(120),
+    lineHeight: 1,
+    color: lightText,
+    letterSpacing: '-0.02em',
+  });
+  const ctaButtonStyle = useFieldFormat('ctaButton', {
+    fontFamily: 'var(--font-body)',
+    fontSize: wh(26),
+    fontWeight: 800,
+    letterSpacing: '0.35em',
+    textTransform: 'uppercase',
+    color: lightText,
+  });
+  const logoColor = useFieldColor('logo', lightText);
 
   const N = items.length;
   const carouselEnd = T(CAROUSEL_END);
@@ -125,13 +139,11 @@ export function CarouselScene({
   // Active index + fractional position inside the step
   let idx = 0;
   let eased = 0;
-  let currentIdx = 1;
   if (time < carouselEnd) {
     const prog = time / perStep;
     idx = Math.floor(prog);
     const frac = clamp(prog - idx, 0, 1);
     eased = frac < 0.5 ? 2 * frac * frac : 1 - Math.pow(-2 * frac + 2, 2) / 2;
-    currentIdx = Math.min(idx + 1, N);
   }
 
   // Build lane placements for each card — offset can be fractional
@@ -159,7 +171,7 @@ export function CarouselScene({
         position: 'absolute',
         inset: 0,
         background: colors.background,
-        color: '#fff',
+        color: lightText,
         overflow: 'hidden',
       }}
     >
@@ -173,21 +185,21 @@ export function CarouselScene({
         }}
       />
 
-      {/* Top bar — logo + category label. Pinned below the top safe zone
-       *  and its padding pulled in from the right safe zone so the
-       *  category label clears the IG like-stack column. */}
+      {/* Top bar — logo + category label. Anchored inside the content
+       *  rect so both edges respect safe.right on 9:16. */}
       <div
         style={{
           position: 'absolute',
-          top: safe.top,
-          left: 0,
-          right: 0,
+          top: contentTop,
+          left: contentLeft,
+          right: width - contentRight,
           height: h(120),
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          paddingLeft: Math.max(w(64), safe.left),
-          paddingRight: Math.max(w(64), safe.right),
+          paddingLeft: w(64),
+          paddingRight: w(64),
+          boxSizing: 'border-box',
           zIndex: 10,
           opacity: 1 - finalOp,
         }}
@@ -216,19 +228,19 @@ export function CarouselScene({
         </div>
       </div>
 
-      {/* Title block — below top bar, always above top safe zone + some
-       *  design breathing room. */}
+      {/* Title block — below the top bar, inside the content rect. */}
       <div
         style={{
           position: 'absolute',
-          top: Math.max(h(200), safe.top + h(80)),
-          left: 0,
-          right: 0,
+          top: contentTop + h(150),
+          left: contentLeft,
+          right: width - contentRight,
           textAlign: 'center',
           zIndex: 9,
-          color: '#fff',
+          color: lightText,
           opacity: 1 - finalOp,
           padding: `0 ${w(40)}px`,
+          boxSizing: 'border-box',
         }}
       >
         <div style={{ marginBottom: h(22), ...titleKickerStyle }}>
@@ -318,7 +330,8 @@ export function CarouselScene({
                       fontFamily: 'var(--font-body)',
                       fontSize: wh(20),
                       fontWeight: 600,
-                      color: 'rgba(0,0,0,0.60)',
+                      color: colors.ink,
+                      opacity: 0.6,
                       marginTop: h(4),
                       letterSpacing: '0.04em',
                     }}
@@ -344,33 +357,14 @@ export function CarouselScene({
         </div>
       </div>
 
-      {/* Counter chip — lifted to sit above the bottom safe zone so the
-       *  IG caption / TikTok tray doesn't hide the 01/06 progress tick. */}
-      <div
-        style={{
-          position: 'absolute',
-          left: 0,
-          right: 0,
-          bottom: Math.max(h(180), safe.bottom + h(40)),
-          textAlign: 'center',
-          zIndex: 9,
-          fontFamily: 'var(--font-body)',
-          fontSize: wh(22),
-          fontWeight: 700,
-          letterSpacing: '0.45em',
-          color: 'rgba(255,255,255,0.55)',
-          textTransform: 'uppercase',
-          opacity: 1 - finalOp,
-        }}
-      >
-        <span style={{ color: colors.accent }}>
-          {String(currentIdx).padStart(2, '0')}
-        </span>
-        {' / '}
-        {String(N).padStart(2, '0')}
-      </div>
+      {/* The "01 / 06" counter chip that lived here was removed
+       *  2026-04-25 — the 3D carousel's motion already conveys
+       *  position without a numeric badge, and removing it cleans up
+       *  the lower third so the card captions + prices read better. */}
 
-      {/* Final CTA — rotating dashed ring + stat stamp + CTA button */}
+      {/* Final CTA — rotating dashed ring + stat stamp + CTA button.
+       *  Padded-flex pattern (§4 Option A) so the stack centres on the
+       *  content rect (not canvas centre, which would list right on 9:16). */}
       <div
         style={{
           position: 'absolute',
@@ -381,6 +375,11 @@ export function CarouselScene({
           alignItems: 'center',
           justifyContent: 'center',
           gap: h(32),
+          paddingTop: safe.top,
+          paddingBottom: safe.bottom,
+          paddingLeft: safe.left,
+          paddingRight: safe.right,
+          boxSizing: 'border-box',
           opacity: finalOp,
           pointerEvents: finalOp > 0.5 ? 'auto' : 'none',
         }}
@@ -433,7 +432,8 @@ export function CarouselScene({
             fontSize: wh(26),
             fontWeight: 700,
             letterSpacing: '0.5em',
-            color: 'rgba(255,255,255,0.6)',
+            color: lightText,
+            opacity: 0.6,
             textTransform: 'uppercase',
           }}
         >
@@ -453,7 +453,8 @@ export function CarouselScene({
             fontFamily: 'var(--font-body)',
             fontSize: wh(24),
             letterSpacing: '0.25em',
-            color: 'rgba(255,255,255,0.55)',
+            color: lightText,
+            opacity: 0.55,
             textTransform: 'uppercase',
           }}
         >
