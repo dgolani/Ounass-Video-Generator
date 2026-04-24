@@ -3,6 +3,7 @@ import type { TemplateMeta } from '../types';
 
 export const meta: TemplateMeta<CountdownProps> = {
   id: 'countdown',
+  category: 'moment',
   name: 'Sale Countdown — Blowout',
   description:
     'Bold promo ad: kicker → slammed headline → body + terms → CTA. No product list — copy, one accent image, logo.',

@@ -3,6 +3,7 @@ import type { TemplateMeta } from '../types';
 
 export const meta: TemplateMeta<BestsellersProps> = {
   id: 'bestsellers',
+  category: 'edit',
   name: 'Bestsellers — Top 5 Countdown',
   description:
     'Ranked 5 → 1 editorial card exchange over a giant italic rank numeral. 14s total with a CTA hold.',

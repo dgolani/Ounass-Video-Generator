@@ -3,6 +3,7 @@ import type { TemplateMeta } from '../types';
 
 export const meta: TemplateMeta<CollabProps> = {
   id: 'the-collab',
+  category: 'lockup',
   name: 'The Collab — Two Houses',
   description:
     'Co-signed partnership: two wordmarks drift in from opposite sides, a bronze-foil × stamps between them, three pieces fan in below, then CTA.',

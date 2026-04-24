@@ -3,6 +3,7 @@ import type { TemplateMeta } from '../types';
 
 export const meta: TemplateMeta<GiftGuideProps> = {
   id: 'gift-guide',
+  category: 'edit',
   name: 'Gift Guide — Wrapped Reveal',
   description:
     'Black gift box opens, reveals four curated picks, sparkles pop, copper ribbon ties the frame before the CTA lands.',

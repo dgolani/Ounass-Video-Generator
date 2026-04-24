@@ -3,6 +3,7 @@ import type { TemplateMeta } from '../types';
 
 export const meta: TemplateMeta<LookbookProps> = {
   id: 'lookbook',
+  category: 'edit',
   name: 'Lookbook — Quiet Power',
   description:
     'Four-act luxury vertical ad: title whisper, column reveal of five pieces, filmstrip with product details, boutique outro with CTA.',

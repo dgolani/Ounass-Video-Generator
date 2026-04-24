@@ -3,6 +3,7 @@ import type { TemplateMeta } from '../types';
 
 export const meta: TemplateMeta<NewInProps> = {
   id: 'new-in',
+  category: 'edit',
   name: 'New In — Dated Arrivals',
   description:
     'Dated arrivals ticker: four just-landed pieces advance as an editorial filmstrip with an index meter, then resolve to a 2x2 recap grid and CTA.',

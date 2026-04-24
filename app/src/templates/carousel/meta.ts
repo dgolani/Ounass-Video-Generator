@@ -3,6 +3,7 @@ import type { TemplateMeta } from '../types';
 
 export const meta: TemplateMeta<CarouselProps> = {
   id: 'carousel',
+  category: 'edit',
   name: 'Category Carousel — 3D Edit',
   description:
     '3D-lane carousel through a category edit, each piece settling into focus before the copper-stamped CTA bloom.',

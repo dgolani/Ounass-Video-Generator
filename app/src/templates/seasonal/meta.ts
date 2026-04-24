@@ -3,6 +3,7 @@ import type { TemplateMeta } from '../types';
 
 export const meta: TemplateMeta<SeasonalProps> = {
   id: 'seasonal',
+  category: 'moment',
   name: 'Seasonal Campaign — SS Editorial',
   description:
     'Three-word typographic refrain with floating product vignettes, closing on a sun-lit dark hold frame.',

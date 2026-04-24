@@ -3,6 +3,7 @@ import type { TemplateMeta } from '../types';
 
 export const meta: TemplateMeta<RailProps> = {
   id: 'the-rail',
+  category: 'edit',
   name: 'The Rail — Editor Pick',
   description:
     'A horizontal dolly of eight hangers slides across frame; one ignites with a bronze glow, the rail stops centered, non-heroes fade, and the hero rises as "THE EDIT" — pulled for you.',

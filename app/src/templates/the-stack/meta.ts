@@ -3,6 +3,7 @@ import type { TemplateMeta } from '../types';
 
 export const meta: TemplateMeta<StackProps> = {
   id: 'the-stack',
+  category: 'lockup',
   name: 'The Stack — Four Houses',
   description:
     'Four luxury houses drop as metallic bullion plates, stacking with gravity; the stack compresses on each landing and locks with a bronze-foil seal stamp.',

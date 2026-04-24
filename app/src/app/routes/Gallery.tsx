@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../../ui/primitives';
 import { PageHeader } from '../Shell';
@@ -6,10 +6,27 @@ import { listTemplates, type TemplateEntry } from '../../templates/registry';
 import { createProject } from '../../store/projects';
 import { applyBrand, readBrand } from '../../store/brand';
 import { TemplatePreview } from '../components/TemplatePreview';
+import type { TemplateCategory } from '../../templates/types';
+
+/** Category chips shown at the top of the gallery. Order matches the
+ *  rough frequency we expect marketers to need — Edit is the biggest
+ *  bucket (7 templates) so it anchors the row; Moment/Lockup/Single
+ *  follow. "All" is always first. Keeping the category set small (4
+ *  buckets) keeps the chip row single-line on laptop widths. */
+type ChipKey = 'all' | TemplateCategory;
+
+const CHIPS: Array<{ key: ChipKey; label: string; hint: string }> = [
+  { key: 'all',    label: 'All',          hint: 'Every template' },
+  { key: 'edit',   label: 'Edit',         hint: 'Multi-product edits — carousels, lookbooks, rails' },
+  { key: 'single', label: 'Single piece', hint: 'One hero product or designer feature' },
+  { key: 'moment', label: 'Moment',       hint: 'Time-bound campaigns — countdown, seasonal' },
+  { key: 'lockup', label: 'Lockup',       hint: 'Brand / product lockups — pairings, collabs, stacks' },
+];
 
 export function Gallery() {
   const templates = listTemplates();
   const nav = useNavigate();
+  const [activeCategory, setActiveCategory] = useState<ChipKey>('all');
 
   const onPick = (id: string, name: string) => {
     const tpl = templates.find((t) => t.meta.id === id);
@@ -26,25 +43,111 @@ export function Gallery() {
     nav(`/editor/${project.id}`);
   };
 
+  // Per-chip counts — shown as a tiny trailing number on each pill so
+  // marketers can see at a glance how many templates hide behind each
+  // filter. Recomputed only when the template list changes (effectively
+  // once per session since templates are static).
+  const counts = useMemo(() => {
+    const c: Record<ChipKey, number> = { all: templates.length, single: 0, edit: 0, moment: 0, lockup: 0 };
+    for (const t of templates) c[t.meta.category] += 1;
+    return c;
+  }, [templates]);
+
+  const visible = useMemo(() => {
+    if (activeCategory === 'all') return templates;
+    return templates.filter((t) => t.meta.category === activeCategory);
+  }, [templates, activeCategory]);
+
   return (
     <div>
       <PageHeader kicker="Start from" title="Templates" />
 
+      {/* Category filter row — sticky-feeling pill strip under the
+       *  header. Clicking a chip narrows the grid; the active chip uses
+       *  the copper accent so it reads as a selected tab. */}
       <div
+        role="tablist"
+        aria-label="Template categories"
         style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))',
-          gap: 24,
+          display: 'flex',
+          flexWrap: 'wrap',
+          gap: 8,
+          marginBottom: 24,
         }}
       >
-        {templates.map((t) => (
-          <TemplateCard
-            key={t.meta.id}
-            template={t}
-            onPick={() => onPick(t.meta.id, t.meta.name.split('—')[0].trim())}
-          />
-        ))}
+        {CHIPS.map((chip) => {
+          const active = activeCategory === chip.key;
+          const count = counts[chip.key];
+          return (
+            <button
+              key={chip.key}
+              role="tab"
+              aria-selected={active}
+              onClick={() => setActiveCategory(chip.key)}
+              title={chip.hint}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 8,
+                padding: '8px 14px',
+                fontFamily: 'var(--sans)',
+                fontSize: 12,
+                fontWeight: active ? 700 : 500,
+                letterSpacing: '0.08em',
+                textTransform: 'uppercase',
+                color: active ? '#1A1208' : 'var(--editor-text)',
+                background: active ? 'var(--editor-accent)' : 'var(--editor-panel)',
+                border: `1px solid ${active ? 'var(--editor-accent)' : 'var(--editor-border)'}`,
+                borderRadius: 999,
+                cursor: 'pointer',
+                transition: 'background 140ms, color 140ms, border-color 140ms',
+              }}
+            >
+              <span>{chip.label}</span>
+              <span
+                style={{
+                  fontSize: 10,
+                  fontWeight: 600,
+                  opacity: 0.7,
+                  letterSpacing: '0.06em',
+                }}
+              >
+                {count}
+              </span>
+            </button>
+          );
+        })}
       </div>
+
+      {visible.length === 0 ? (
+        <div
+          style={{
+            padding: 48,
+            textAlign: 'center',
+            fontFamily: 'var(--sans)',
+            fontSize: 14,
+            color: 'var(--editor-text-dim)',
+          }}
+        >
+          No templates in this category yet.
+        </div>
+      ) : (
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))',
+            gap: 24,
+          }}
+        >
+          {visible.map((t) => (
+            <TemplateCard
+              key={t.meta.id}
+              template={t}
+              onPick={() => onPick(t.meta.id, t.meta.name.split('—')[0].trim())}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 }

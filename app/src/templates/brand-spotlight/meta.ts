@@ -3,6 +3,7 @@ import type { TemplateMeta } from '../types';
 
 export const meta: TemplateMeta<SpotlightProps> = {
   id: 'brand-spotlight',
+  category: 'single',
   name: 'Brand Spotlight — Designer Feature',
   description:
     'Letter-poured wordmark, single hero coat, a designer quote, closing on the house monogram.',

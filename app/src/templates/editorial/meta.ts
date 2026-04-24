@@ -3,6 +3,7 @@ import type { TemplateMeta } from '../types';
 
 export const meta: TemplateMeta<EditorialProps> = {
   id: 'editorial',
+  category: 'edit',
   name: 'Editorial — The Edit',
   description:
     'Magazine-style vertical ad: masthead reveal, 2×2 grid of product plates, feature zoom, editor signature sign-off.',

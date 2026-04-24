@@ -3,6 +3,7 @@ import type { TemplateMeta } from '../types';
 
 export const meta: TemplateMeta<PairingProps> = {
   id: 'the-pairing',
+  category: 'lockup',
   name: 'The Pairing — Styled Duo',
   description:
     'Two products reveal separately, their prices add up through a "+" that morphs to "=", the cards converge, and a styled pair lockup invites the viewer to shop the duo.',

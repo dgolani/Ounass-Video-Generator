@@ -3,6 +3,7 @@ import type { TemplateMeta } from '../types';
 
 export const meta: TemplateMeta<HeroProps> = {
   id: 'hero',
+  category: 'single',
   name: 'Hero — Single Piece',
   description:
     'One product, full-frame. Slow Ken-Burns zoom through three acts: reveal → copy lockup → CTA. Tests single-product schema (not an array).',
