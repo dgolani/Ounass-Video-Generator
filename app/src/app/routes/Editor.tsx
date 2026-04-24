@@ -561,15 +561,6 @@ export function Editor() {
           onChange={onLocaleOverrideChange}
         />
 
-        {/* Per-project theme toggle — only visible for templates that
-         *  opt in via meta.supportsThemes. Two-state segmented. */}
-        {supportsThemes && (
-          <ThemeSegmented
-            mode={effectiveThemeMode}
-            onChange={onThemeModeChange}
-          />
-        )}
-
         {/* Copy / locale mismatch warning — yellow chip that appears
          *  when script detection disagrees with the active locale. */}
         {copyWarning && (
@@ -692,6 +683,19 @@ export function Editor() {
               </LocaleContext.Provider>
             </FieldFormatContext.Provider>
           </Stage>
+
+          {/* Sleek theme toggle — floats over the stage in the top-right,
+           *  only when the active template supports light/dark palettes.
+           *  Two circular indicators (sun + moon) with a copper pill that
+           *  slides between them on change. Uses data-export-ignore so
+           *  it's invisible to the MP4 export pipeline even though it's
+           *  a Stage sibling during editing. */}
+          {supportsThemes && (
+            <ThemeStagePill
+              mode={effectiveThemeMode}
+              onChange={onThemeModeChange}
+            />
+          )}
         </div>
         <div
           style={{
@@ -1046,54 +1050,133 @@ function LocaleSegmented({
   );
 }
 
-function ThemeSegmented({
+/** Sleek stage-floating light/dark toggle.
+ *
+ *  Composition: two 28px circular indicators (☀ sun / ☾ moon) side by
+ *  side inside a glass-morphed pill. A copper "marker" absolutely-
+ *  positioned behind them slides between the two positions on change
+ *  (180ms cubic-bezier) — no DOM swap, just a transform.
+ *
+ *  Backdrop: rgba black @ 38% + backdrop-filter blur(12px). Works
+ *  legibly over BOTH a light paper scene and a dark paper scene without
+ *  any palette-aware logic. Copper marker + bronze icon tints keep it
+ *  on-brand with the gallery hairline and the Safe-Zone label.
+ *
+ *  Export safety: `data-export-ignore="true"` is set so the MP4 pipeline
+ *  (html-to-image filter in lib/export.ts) drops it from every frame —
+ *  the marketer can leave the toggle visible during editing and still
+ *  get a clean render. */
+function ThemeStagePill({
   mode,
   onChange,
 }: {
   mode: ThemeMode;
   onChange: (next: ThemeMode) => void;
 }) {
-  const options: Array<{ value: ThemeMode; label: string }> = [
-    { value: 'light', label: 'Light' },
-    { value: 'dark', label: 'Dark' },
-  ];
+  const isDark = mode === 'dark';
   return (
     <div
+      data-export-ignore="true"
       role="tablist"
       aria-label="Theme"
-      style={{
-        display: 'inline-flex',
-        background: 'var(--editor-panel-2)',
-        border: '1px solid var(--editor-border)',
-        borderRadius: 'var(--r-md)',
-        padding: 2,
-      }}
       title="Switch between the template's light and dark palette"
+      style={{
+        position: 'absolute',
+        top: 16,
+        right: 16,
+        zIndex: 20,
+        display: 'inline-flex',
+        alignItems: 'center',
+        padding: 3,
+        gap: 2,
+        background: 'rgba(10, 10, 10, 0.42)',
+        backdropFilter: 'blur(14px) saturate(140%)',
+        WebkitBackdropFilter: 'blur(14px) saturate(140%)',
+        border: '1px solid rgba(255, 255, 255, 0.08)',
+        borderRadius: 999,
+        boxShadow:
+          '0 6px 20px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.06)',
+        fontFamily: 'var(--sans)',
+      }}
     >
-      {options.map((opt) => {
-        const active = mode === opt.value;
+      {/* Sliding copper marker. Width = half - padding; translates across on
+       *  state change. A single element, so the two button children stay
+       *  static — only this slides. */}
+      <div
+        aria-hidden
+        style={{
+          position: 'absolute',
+          top: 3,
+          bottom: 3,
+          left: 3,
+          width: 32,
+          borderRadius: 999,
+          background:
+            'linear-gradient(180deg, #C49373 0%, #A9724E 100%)',
+          boxShadow:
+            '0 2px 6px rgba(169, 114, 78, 0.45), inset 0 1px 0 rgba(255, 228, 208, 0.35)',
+          transform: `translateX(${isDark ? 34 : 0}px)`,
+          transition:
+            'transform 180ms cubic-bezier(0.32, 0.72, 0, 1)',
+          pointerEvents: 'none',
+        }}
+      />
+      {(['light', 'dark'] as const).map((value) => {
+        const active = mode === value;
+        const isLightBtn = value === 'light';
         return (
           <button
-            key={opt.value}
+            key={value}
             type="button"
             role="tab"
             aria-selected={active}
-            onClick={() => onChange(opt.value)}
+            aria-label={isLightBtn ? 'Light theme' : 'Dark theme'}
+            onClick={() => onChange(value)}
             style={{
-              background: active ? 'rgba(255,255,255,0.08)' : 'transparent',
-              color: active ? 'var(--editor-text)' : 'var(--editor-text-dim)',
+              position: 'relative',
+              zIndex: 1,
+              width: 32,
+              height: 32,
+              padding: 0,
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
               border: 0,
-              padding: '4px 10px',
-              fontFamily: 'var(--sans)',
-              fontSize: 11,
-              fontWeight: active ? 700 : 500,
-              letterSpacing: '0.04em',
-              borderRadius: 3,
+              background: 'transparent',
+              color: active ? '#1A1208' : 'rgba(255, 255, 255, 0.72)',
               cursor: 'pointer',
-              transition: 'background 120ms, color 120ms',
+              borderRadius: 999,
+              transition: 'color 160ms ease',
             }}
           >
-            {opt.label}
+            {isLightBtn ? (
+              // Sun — 8-ray with centre disc
+              <svg width="15" height="15" viewBox="0 0 16 16" aria-hidden>
+                <circle cx="8" cy="8" r="3" fill="currentColor" />
+                <g
+                  stroke="currentColor"
+                  strokeWidth="1.4"
+                  strokeLinecap="round"
+                >
+                  <line x1="8" y1="1.5" x2="8" y2="3" />
+                  <line x1="8" y1="13" x2="8" y2="14.5" />
+                  <line x1="1.5" y1="8" x2="3" y2="8" />
+                  <line x1="13" y1="8" x2="14.5" y2="8" />
+                  <line x1="3.2" y1="3.2" x2="4.3" y2="4.3" />
+                  <line x1="11.7" y1="11.7" x2="12.8" y2="12.8" />
+                  <line x1="3.2" y1="12.8" x2="4.3" y2="11.7" />
+                  <line x1="11.7" y1="4.3" x2="12.8" y2="3.2" />
+                </g>
+              </svg>
+            ) : (
+              // Moon — crescent
+              <svg width="15" height="15" viewBox="0 0 16 16" aria-hidden>
+                <path
+                  d="M13.2 9.9A5.5 5.5 0 1 1 6.1 2.8a4.5 4.5 0 0 0 7.1 7.1Z"
+                  fill="currentColor"
+                />
+              </svg>
+            )}
           </button>
         );
       })}

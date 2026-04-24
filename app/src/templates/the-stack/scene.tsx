@@ -59,10 +59,11 @@ type SceneProps = {
   height?: number;
 };
 
-// Stack-Y positions (base px) — each plate lands 170px below the one above
-// on 9:16, 125px on 4:5 (the HTML uses the same override pattern).
+// Stack-Y positions (in 1920-base px — h() scales down to output).
+// 9:16 stack: plates land 170px apart. 4:5 original uses 125px apart on a
+// 1350px-tall stage; converted to 1920 base that's 125 * (1920/1350) = 178px.
 const PLATE_Y_9_16 = [0, 170, 340, 510];
-const PLATE_Y_4_5 = [0, 125, 250, 375];
+const PLATE_Y_4_5 = [0, 178, 356, 533];
 
 // Per-plate drop timing (seconds) — matches the CSS animation-delay /
 // duration of each .pN plate in the HTML.
@@ -167,7 +168,6 @@ export function TheStackScene({
   //  y positions in the HTML prototype already sit inside the safe rect
   //  — we keep them verbatim for layout fidelity.)
   const safeCX = is45 ? 540 : 480;
-  void safe;
 
   // ── Intro chrome fades (logo / kicker / top rule) ─────────────────
   const logoOpacity = interpolate([T(0.05), T(0.05 + 0.55)], [0, 1], Easing.easeOutCubic)(t);
@@ -307,26 +307,35 @@ export function TheStackScene({
     Easing.easeOutCubic,
   )(t);
 
-  // ── Layout positions (base px) ────────────────────────────────────
-  const logoTop = is45 ? 150 : 290;
-  const kickerTop = is45 ? 245 : 405;
-  const ruleTop = is45 ? 295 : 475;
-  const stackTop = is45 ? 330 : 560;
+  // ── Layout positions (all in 1920-base px; h() scales to output) ──
+  // The 4:5 originals were expressed in a 1350-tall stage; those values are
+  // multiplied by 1920/1350 ≈ 1.422 here so h() produces the same absolute
+  // output position on a 1350px canvas. Without this, the whole comp would
+  // collapse toward the top and leave the logo above the safe-top line.
+  const logoTop = is45 ? 213 : 290;
+  const kickerTop = is45 ? 348 : 405;
+  const ruleTop = is45 ? 420 : 475;
+  const stackTop = is45 ? 469 : 560;
+  const stackHeight = is45 ? 853 : 780;
   const stackIndexLeft = is45 ? 70 : 60;
-  const stackIndexTop = is45 ? 330 : 560;
-  const indexNYPositions = is45 ? [55, 180, 305, 430] : [80, 250, 420, 590];
-  const sealRight = is45 ? 80 : 90;
-  const sealTop = is45 ? 950 : 1350;
-  const sealSize = is45 ? 90 : 100;
-  const ctaTop = is45 ? 970 : 1470;
-  const bylineTop = is45 ? 1095 : 1575;
+  const stackIndexTop = is45 ? 469 : 560;
+  const indexNYPositions = is45 ? [78, 256, 434, 612] : [80, 250, 420, 590];
+  // 9:16 safe.right is 120 (Instagram like-stack clear). Must place the
+  // seal *past* that margin or it drops straight into the tap zone — so
+  // the seal's right-edge sits at max(safe.right, 80) + a small breathing
+  // gap. 4:5 has safe.right=0 so the original 80px inset survives.
+  const sealRight = Math.max(safe.right + 10, is45 ? 80 : 90);
+  const sealTop = is45 ? 1351 : 1350;
+  const sealSize = is45 ? 128 : 100;
+  const ctaTop = is45 ? 1380 : 1470;
+  const bylineTop = is45 ? 1557 : 1575;
   const plateW = is45 ? 820 : 760;
-  const plateH = is45 ? 125 : 170;
+  const plateH = is45 ? 178 : 170;
   const plateLeftOffset = 40; // offset right so plates clear the left index gutter
   // Sized so the longest supported brand name ("BOTTEGA VENETA" = 14 chars at
   // letter-spacing 0.18em) still clears the left origin label (~80px inc. pad)
   // and the right year/subheading label zone (~160px inc. pad) on both aspects.
-  const plateBrandSize = is45 ? 40 : 44;
+  const plateBrandSize = is45 ? 57 : 44;
   const plateYPositions = is45 ? PLATE_Y_4_5 : PLATE_Y_9_16;
 
   const metalGradient = `linear-gradient(180deg, rgba(255,255,255,0.14) 0%, rgba(255,255,255,0.0) 12%, rgba(0,0,0,0.0) 88%, rgba(0,0,0,0.25) 100%), linear-gradient(170deg, ${colors.metalDark} 0%, ${colors.metalMid} 25%, ${colors.metalLight} 50%, ${colors.metalMid} 75%, ${colors.metalDeepest} 100%)`;
@@ -397,8 +406,8 @@ export function TheStackScene({
           boutiqueName={boutiqueName}
           color={logoColor}
           width={w(is45 ? 360 : 420)}
-          height={h(is45 ? 80 : 90)}
-          fontSize={wh(is45 ? 64 : 72)}
+          height={h(is45 ? 114 : 90)}
+          fontSize={wh(is45 ? 102 : 72)}
           letterSpacing="14px"
         />
       </div>
@@ -464,7 +473,7 @@ export function TheStackScene({
           top: h(stackTop),
           left: 0,
           width: W,
-          height: h(is45 ? 600 : 780),
+          height: h(stackHeight),
         }}
       >
         {plates.slice(0, 4).map((plate, i) => {
@@ -595,7 +604,7 @@ export function TheStackScene({
           left: w(stackIndexLeft),
           top: h(stackIndexTop),
           width: w(60),
-          height: h(is45 ? 600 : 780),
+          height: h(stackHeight),
           pointerEvents: 'none',
         }}
       >
