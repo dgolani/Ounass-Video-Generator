@@ -1,11 +1,18 @@
 // Dev harness — mount any template's Scene at a chosen aspect + time,
-// with the safe-zone overlay toggleable. Used for visual-verifying the
-// Phase 2 template-by-template safe-zone polish passes.
+// with the safe-zone overlay toggleable and an optional dark-palette
+// override. Used for visual-verifying the Phase 2 template-by-template
+// polish passes — both safe-zone correctness AND brand-kit adaptivity.
 //
-// URL: /visual-test/:templateId?aspect=9:16|4:5&time=<sec>&overlay=0|1
-// Lifespan: added during Hero polish (commit below), deleted once the
-// last template (Lookbook) has been polished. Remove this file + the
-// route registration in App.tsx at that point.
+// URL:
+//   /visual-test/:templateId
+//     ?aspect=9:16|4:5
+//     &time=<sec>
+//     &overlay=0|1
+//     &palette=default|dark     // override props.colors for brand-adaptivity test
+//
+// Lifespan: added during Hero polish, deleted once the last template
+// (Lookbook) has been polished. Remove this file + the route
+// registration in App.tsx at that point.
 
 import { useSearchParams, useParams } from 'react-router-dom';
 import { useEffect } from 'react';
@@ -22,12 +29,28 @@ const ASPECTS: Record<AspectKey, { width: number; height: number }> = {
   '4:5': { width: 1080, height: 1350 },
 };
 
+// Dark palette overlay — represents a coherent "dark brand kit": both
+// background AND paper are dark tones, ink is light so it contrasts
+// with both surfaces (scene bg AND card paper). This is the pattern
+// the Brand Kit expects — ink is the dominant text color against BOTH
+// surfaces, so brands should set bg + paper in the same tonality.
+const DARK_PALETTE_OVERRIDE = {
+  background: '#1A1A1A',
+  paper: '#2A2A2A',              // dark paper so card text (ink) contrasts
+  ink: '#EDE9E2',                // light ink — contrasts with both bg and paper
+  backgroundDeep: '#0F0F0F',
+  cream: '#3A3A3A',
+  inkDeep: '#050505',
+  rule: '#4A4A4A',
+};
+
 export function VisualTest() {
   const { templateId = 'hero' } = useParams();
   const [params] = useSearchParams();
   const aspectKey = (params.get('aspect') ?? '9:16') as AspectKey;
   const timeSec = parseFloat(params.get('time') ?? '0');
   const overlay = params.get('overlay') === '1';
+  const palette = params.get('palette') ?? 'default';
 
   const { width, height } = ASPECTS[aspectKey] ?? ASPECTS['9:16'];
   const tpl = getTemplate(templateId);
@@ -52,6 +75,19 @@ export function VisualTest() {
   const Scene = tpl.Scene as ComponentType<SceneComponentProps>;
   const timeScale = controller.duration / tpl.meta.defaultDuration;
 
+  // Merge the dark-palette override into the template's colors so
+  // brand-kit adaptivity can be visually verified without creating a
+  // real project. Only keys the palette defines are overridden;
+  // template-specific colors (accent, accentDark, etc) keep their defaults.
+  const defaultProps = tpl.meta.defaultProps as { colors?: Record<string, string> };
+  const testProps =
+    palette === 'dark' && defaultProps.colors
+      ? {
+          ...defaultProps,
+          colors: { ...defaultProps.colors, ...DARK_PALETTE_OVERRIDE },
+        }
+      : defaultProps;
+
   return (
     <div
       style={{
@@ -71,7 +107,7 @@ export function VisualTest() {
       >
         <Stage width={width} height={height} controller={controller} chromeless>
           <Scene
-            props={tpl.meta.defaultProps as unknown as SceneComponentProps['props']}
+            props={testProps as unknown as SceneComponentProps['props']}
             timeScale={timeScale}
             width={width}
             height={height}
@@ -91,7 +127,7 @@ export function VisualTest() {
           borderRadius: 4,
         }}
       >
-        {templateId} · {aspectKey} · t={timeSec}s · overlay={overlay ? 'ON' : 'off'}
+        {templateId} · {aspectKey} · t={timeSec}s · overlay={overlay ? 'ON' : 'off'} · palette={palette}
       </div>
     </div>
   );

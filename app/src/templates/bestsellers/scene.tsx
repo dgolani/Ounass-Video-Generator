@@ -102,7 +102,11 @@ export function BestsellersScene({
     fontWeight: 700,
     letterSpacing: '0.3em',
     textTransform: 'uppercase',
-    color: 'rgba(0,0,0,0.60)',
+    // Brand-kit adaptive: use colors.ink at 60% opacity so the chrome
+    // stays readable whether the boutique runs a light or dark background.
+    // Previously hardcoded rgba(0,0,0,0.60) which vanished on dark palettes.
+    color: colors.ink,
+    opacity: 0.6,
   });
   const kickerStyle = useFieldFormat('kicker', {
     fontFamily: 'var(--font-body)',
@@ -118,7 +122,8 @@ export function BestsellersScene({
     fontWeight: 700,
     letterSpacing: '0.4em',
     textTransform: 'uppercase',
-    color: 'rgba(0,0,0,0.60)',
+    color: colors.ink,
+    opacity: 0.6,
   });
   const ctaHeadlineStyle = useFieldFormat('ctaHeadline', {
     fontFamily: 'var(--font-display)',
@@ -135,7 +140,10 @@ export function BestsellersScene({
     fontWeight: 800,
     letterSpacing: '0.35em',
     textTransform: 'uppercase',
-    color: '#fff',
+    // Button text = colors.background so it contrasts with the button's
+    // ink-coloured bg. Works both ways: light bg + dark ink → light text
+    // on dark button; dark bg + light ink → dark text on light button.
+    color: colors.background,
   });
   const productBrandlineStyle = useFieldFormat('products.*.brandline', {
     fontFamily: 'var(--font-display)',
@@ -150,7 +158,8 @@ export function BestsellersScene({
     fontFamily: 'var(--font-body)',
     fontSize: wh(22),
     fontWeight: 600,
-    color: 'rgba(0,0,0,0.60)',
+    color: colors.ink,
+    opacity: 0.6,
     letterSpacing: '0.05em',
   });
   const productPriceStyle = useFieldFormat('products.*.price', {
@@ -417,7 +426,9 @@ export function BestsellersScene({
       {/* N° 0X marker — sits below the header row, top-right of the
        *  product zone. Previously at contentTop + h(48) which put it
        *  right on top of headerMeta "The Edit · Spring" at the same y.
-       *  Now clears both the header and the right like-stack. */}
+       *  Now clears both the header and the right like-stack. Uses
+       *  colors.ink at 60% opacity so it adapts to brand-kit dark
+       *  palettes (was hardcoded rgba(0,0,0,0.60), invisible on dark). */}
       <div
         style={{
           position: 'absolute',
@@ -426,10 +437,14 @@ export function BestsellersScene({
           fontFamily: 'var(--font-display)',
           fontStyle: 'italic',
           fontSize: wh(36),
-          color: 'rgba(0,0,0,0.60)',
+          color: colors.ink,
           letterSpacing: '0.12em',
           zIndex: 11,
-          opacity: time < ctaIn ? 1 : interpolate([0, 0.4], [1, 0], Easing.easeInCubic)(time - ctaIn),
+          opacity:
+            0.6 *
+            (time < ctaIn
+              ? 1
+              : interpolate([0, 0.4], [1, 0], Easing.easeInCubic)(time - ctaIn)),
         }}
       >
         N° 0{activeRank}
@@ -508,7 +523,10 @@ export function BestsellersScene({
           }}
           style={{
             padding: `${h(22)}px ${w(56)}px`,
-            background: '#2D2D2D',
+            // Button bg = colors.ink so it's always a strong contrast
+            // against the scene background (previously hardcoded #2D2D2D
+            // which vanished on dark brand-kit backgrounds).
+            background: colors.ink,
             border: 0,
             borderRadius: wh(4),
             cursor: 'pointer',
