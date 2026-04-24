@@ -354,7 +354,6 @@ function Act3Filmstrip({
   T,
   s,
   safe,
-  contentTop,
   contentLeft,
   contentRight,
   contentCX,
@@ -559,25 +558,11 @@ function Act3Filmstrip({
         })}
       </div>
 
-      {/* Boutique name — anchored inside the content rect top edge.
-       *  (The "03 / 05" picture counter that used to live on the
-       *  right was removed 2026-04-24 — the filmstrip thumbnails at
-       *  the bottom already convey position without a numeric badge.) */}
-      <div
-        style={{
-          position: 'absolute',
-          left: contentLeft + w(60),
-          top: contentTop + h(40),
-          fontFamily: 'var(--font-display)',
-          fontWeight: 300,
-          fontStyle: 'italic',
-          fontSize: wh(34),
-          color: colors.paper,
-          letterSpacing: '-0.01em',
-        }}
-      >
-        {props.boutiqueName}
-      </div>
+      {/* Top-left boutique name removed — the boutique name already
+       *  appears prominently in Act 1 (title whisper) and Act 4
+       *  (outro wordmark), and each product's own brand shows in
+       *  the card caption during Act 3. A fourth instance
+       *  competed with the filmstrip for attention. */}
     </div>
   );
 }
