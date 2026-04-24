@@ -56,6 +56,12 @@ type ActProps = {
    *  in output pixels). Threaded from the root so safe-layer elements
    *  like the outro CTA and watermark stay clear of platform chrome. */
   safe: { top: number; bottom: number; left: number; right: number };
+  /** Content-rect anchors in output pixels. See SAFE_ZONE_PATTERNS.md. */
+  contentTop: number;
+  contentBottom: number;
+  contentLeft: number;
+  contentRight: number;
+  contentCX: number;
 };
 
 // ── Act 1 — title whisper over darkness ────────────────────────────────
@@ -168,7 +174,13 @@ function Act1Title({ props, T, s, safe: _safe }: ActProps) {
 }
 
 // ── Act 2 — columns slide up ───────────────────────────────────────────
-function Act2Columns({ props, T, s, safe: _safe }: ActProps) {
+function Act2Columns({
+  props,
+  T,
+  s,
+  contentLeft,
+  contentRight,
+}: ActProps) {
   const { time: t } = useTimeline();
   const { products, colors, act2Kicker, act2TitleLine1, act2TitleLine2 } = props;
   const { h, wh, W, H } = s;
@@ -297,8 +309,10 @@ function Act2Columns({ props, T, s, safe: _safe }: ActProps) {
           <div
             style={{
               position: 'absolute',
-              left: 0,
-              right: 0,
+              // Caption box — respects safe.right on 9:16 so the box
+              // centers on the content rect, not the canvas.
+              left: contentLeft,
+              right: W - contentRight,
               top: h(860),
               textAlign: 'center',
               opacity: op,
@@ -335,10 +349,21 @@ type Act3Props = ActProps & {
   onFocusClick: (i: number) => void;
 };
 
-function Act3Filmstrip({ props, T, s, safe, focusOverride, onFocusClick }: Act3Props) {
+function Act3Filmstrip({
+  props,
+  T,
+  s,
+  safe,
+  contentTop,
+  contentLeft,
+  contentRight,
+  contentCX,
+  focusOverride,
+  onFocusClick,
+}: Act3Props) {
   const { time: t } = useTimeline();
   const { products, colors, brand } = props;
-  const { w, h, wh, W, H } = s;
+  const { w, h, wh, H } = s;
   const currency = useCurrencyForLocale();
 
   const cycleStart = T(4.3);
@@ -356,7 +381,9 @@ function Act3Filmstrip({ props, T, s, safe, focusOverride, onFocusClick }: Act3P
 
   const heroW = w(720);
   const heroH = h(1080);
-  const heroX = (W - heroW) / 2;
+  // Centre the hero on the content rect (not canvas) so on 9:16 it
+  // doesn't list to the right under IG's like-stack.
+  const heroX = contentCX - heroW / 2;
   const heroY = (H - heroH) / 2 - h(60);
 
   const product = products[focusIdx];
@@ -448,7 +475,7 @@ function Act3Filmstrip({ props, T, s, safe, focusOverride, onFocusClick }: Act3P
               fontWeight: 300,
               fontSize: wh(34),
               lineHeight: 1.1,
-              color: '#1A1A1A',
+              color: colors.background,
               letterSpacing: '-0.01em',
               marginBottom: wh(10),
             }}
@@ -460,7 +487,7 @@ function Act3Filmstrip({ props, T, s, safe, focusOverride, onFocusClick }: Act3P
               fontFamily: 'var(--font-numeric)',
               fontWeight: 700,
               fontSize: wh(28),
-              color: '#1A1A1A',
+              color: colors.background,
             }}
           >
             {composePrice(product.price, currency)}
@@ -471,15 +498,15 @@ function Act3Filmstrip({ props, T, s, safe, focusOverride, onFocusClick }: Act3P
       <div
         style={{
           position: 'absolute',
-          left: 0,
-          right: 0,
-          // Filmstrip thumbnails are tappable — keep them above the
-          // bottom safe zone so the IG caption doesn't block interaction.
-          bottom: Math.max(h(140), safe.bottom + h(20)),
+          // Filmstrip thumbnails are tappable — anchored above the
+          // visible bottom edge and constrained to the content rect
+          // so the IG caption / like-stack don't block interaction.
+          left: contentLeft + w(40),
+          right: (s.W - contentRight) + w(40),
+          bottom: safe.bottom + h(20),
           display: 'flex',
           justifyContent: 'center',
           gap: wh(10),
-          padding: `0 ${w(40)}px`,
         }}
       >
         {products.map((p, i) => {
@@ -533,16 +560,19 @@ function Act3Filmstrip({ props, T, s, safe, focusOverride, onFocusClick }: Act3P
         })}
       </div>
 
+      {/* Boutique name + count row — anchored inside the content rect
+       *  top edge (was at h(100), under IG chrome on 9:16) and
+       *  respects safe.right so the count doesn't bleed into the
+       *  like-stack column. */}
       <div
         style={{
           position: 'absolute',
-          left: 0,
-          right: 0,
-          top: h(100),
+          left: contentLeft + w(60),
+          right: (s.W - contentRight) + w(60),
+          top: contentTop + h(40),
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
-          padding: `0 ${w(60)}px`,
         }}
       >
         <div
@@ -575,7 +605,7 @@ function Act3Filmstrip({ props, T, s, safe, focusOverride, onFocusClick }: Act3P
 }
 
 // ── Act 4 — outro ──────────────────────────────────────────────────────
-function Act4Outro({ props, T, s, safe }: ActProps) {
+function Act4Outro({ props, T, s, safe, contentTop, contentLeft, contentRight }: ActProps) {
   const { time: t } = useTimeline();
   const {
     colors,
@@ -686,14 +716,17 @@ function Act4Outro({ props, T, s, safe }: ActProps) {
         }}
       />
 
+      {/* Editorial frame border — now inset from the content rect on
+       *  all four sides so the frame stays inside IG's visible area on
+       *  9:16 (was at h(220)/h(220), both edges eaten by chrome). */}
       {wipeT > 0.9 && (
         <div
           style={{
             position: 'absolute',
-            left: w(80),
-            right: w(80),
-            top: h(220),
-            bottom: h(220),
+            left: contentLeft + w(80),
+            right: (s.W - contentRight) + w(80),
+            top: contentTop + h(40),
+            bottom: safe.bottom + h(40),
             border: `1px solid rgba(196,147,115,0.3)`,
             opacity: wordmarkOp,
           }}
@@ -747,9 +780,9 @@ function Act4Outro({ props, T, s, safe }: ActProps) {
           position: 'absolute',
           left: 0,
           right: 0,
-          // CTA anchored to the bottom safe zone so it clears the IG
-          // caption area while staying below the outro wordmark block.
-          bottom: Math.max(h(260), safe.bottom + h(60)),
+          // CTA anchored to the visible bottom edge so it clears the
+          // IG caption area while staying below the outro wordmark block.
+          bottom: safe.bottom + h(60),
           textAlign: 'center',
           opacity: ctaOp,
           transform: `translateY(${ctaY}px)`,
@@ -804,6 +837,27 @@ export function LookbookScene({
   const { w, h, wh } = s;
   const { base: safe } = useSafeZone({ width, height });
 
+  // Content-rect anchors. Every readability-critical element is pinned
+  // against this rect instead of the canvas edges, so nothing gets
+  // eaten by IG chrome on 9:16. See SAFE_ZONE_PATTERNS.md.
+  const contentTop = safe.top;
+  const contentBottom = height - safe.bottom;
+  const contentLeft = safe.left;
+  const contentRight = width - safe.right;
+  const contentCX = (contentLeft + contentRight) / 2;
+
+  const actProps: ActProps = {
+    props,
+    T,
+    s,
+    safe,
+    contentTop,
+    contentBottom,
+    contentLeft,
+    contentRight,
+    contentCX,
+  };
+
   const { colors, watermark } = props;
   const watermarkStyle = useFieldFormat('watermark', {
     fontFamily: 'var(--font-display)',
@@ -851,17 +905,14 @@ export function LookbookScene({
         }
       `}</style>
 
-      <Act1Title props={props} T={T} s={s} safe={safe} />
-      <Act2Columns props={props} T={T} s={s} safe={safe} />
+      <Act1Title {...actProps} />
+      <Act2Columns {...actProps} />
       <Act3Filmstrip
-        props={props}
-        T={T}
-        s={s}
-        safe={safe}
+        {...actProps}
         focusOverride={focusIdx}
         onFocusClick={(i) => setFocusIdx(i)}
       />
-      <Act4Outro props={props} T={T} s={s} safe={safe} />
+      <Act4Outro {...actProps} />
 
       <div
         style={{
@@ -874,12 +925,14 @@ export function LookbookScene({
         }}
       />
 
+      {/* Progress hairline — anchored inside the content rect's top edge
+       *  so it stays visible on 9:16 (was at h(48), under IG chrome). */}
       <div
         style={{
           position: 'absolute',
-          left: w(40),
-          right: w(40),
-          top: h(48),
+          left: contentLeft + w(40),
+          right: (width - contentRight) + w(40),
+          top: contentTop + h(24),
           height: wh(2),
           background: 'rgba(245,243,239,0.12)',
           pointerEvents: 'none',
@@ -895,12 +948,14 @@ export function LookbookScene({
         />
       </div>
 
+      {/* Watermark — anchored above the visible bottom edge (was at
+       *  h(60) from canvas bottom, under IG caption on 9:16). */}
       {watermark && time >= T(2.0) && time < T(7.0) && (
         <div
           style={{
             position: 'absolute',
-            left: w(60),
-            bottom: h(60),
+            left: contentLeft + w(60),
+            bottom: safe.bottom + h(30),
             pointerEvents: 'none',
             textShadow: '0 2px 12px rgba(0,0,0,0.6)',
             ...watermarkStyle,
