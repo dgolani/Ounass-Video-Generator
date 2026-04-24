@@ -82,15 +82,26 @@ export function BestsellersScene({
   const contentW = contentRight - contentLeft;
   const contentCY = (contentTop + contentBottom) / 2;
 
+  // Stack layout (from the top of the content rect):
+  //   Header    contentTop + 20..148
+  //   N° marker contentTop + 160..(160+36)
+  //   Kicker    contentTop + 220..(220+30)
+  //   Card      contentTop + 290..(290+1040)   ← explicit, NOT flex-centered
+  //   Dots      bottom: safe.bottom + 220      (overlaid on card by design)
+  //   CTA slab  bottom: safe.bottom            (appears during final phase)
+  // Previously the card was flex-centered in a wrapper taller than the
+  // card, which made the card's top overflow UP into the header zone
+  // (card top ~395 vs header bottom ~398 on 9:16) — so the kicker at
+  // y=508 sat VISUALLY ON TOP of the product image. Fixed by giving
+  // the card an explicit top + width + height.
   const HEADER_TOP_INSET = h(20);
   const HEADER_H = h(128);
-  // N° marker sits in the top band, BELOW the header — previously at
-  // contentTop + h(48), it collided with headerMeta ("The Edit · Spring")
-  // because both landed in the top-right corner at similar y.
-  const MARKER_TOP = HEADER_TOP_INSET + HEADER_H + h(20);
+  const MARKER_TOP = HEADER_TOP_INSET + HEADER_H + h(12);
   const MARKER_RIGHT_INSET = w(48);
-  // Kicker pushed down to clear the marker.
-  const KICKER_INSET_FROM_HEADER = h(110);
+  const KICKER_INSET_FROM_HEADER = h(72);
+  const CARD_TOP = h(290);
+  const CARD_W = w(720);
+  const CARD_H = h(1040);
   const DOTS_BOTTOM_INSET = h(220);
   const CTA_BOTTOM_INSET = safe.bottom;
 
@@ -314,17 +325,16 @@ export function BestsellersScene({
         {activeRank}
       </div>
 
-      {/* Product card — only render the active slot for cheap layering */}
+      {/* Product card — only render the active slot for cheap layering.
+       *  Explicit top + centered horizontally via a wrapper that's the
+       *  same size as the card (no flex-overflow shenanigans). */}
       <div
         style={{
           position: 'absolute',
-          top: contentTop + h(300),
-          left: contentLeft,
-          width: contentW,
-          bottom: height - (contentBottom - h(300)),
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
+          top: contentTop + CARD_TOP,
+          left: (contentLeft + (contentRight - contentLeft) / 2) - CARD_W / 2,
+          width: CARD_W,
+          height: CARD_H,
           zIndex: 5,
         }}
       >
@@ -362,8 +372,7 @@ export function BestsellersScene({
               key={product.id}
               style={{
                 position: 'absolute',
-                width: w(720),
-                height: h(1080),
+                inset: 0,
                 background: colors.paper,
                 boxShadow: `0 ${h(20)}px ${h(60)}px rgba(0,0,0,0.18), 0 ${h(4)}px ${h(12)}px rgba(0,0,0,0.08)`,
                 overflow: 'hidden',
