@@ -39,10 +39,6 @@ export type LookbookProps = {
   ctaText: string;
   ctaFooter: string;
 
-  /** Small italic boutique signature in the bottom-left corner during
-   *  Acts 2 and 3. Leave blank to hide. */
-  watermark: string;
-
   /** Optional boutique logo (data URL). When present, Act 4 renders it in
    *  place of the Fraunces wordmark text. */
   logo?: string;
@@ -72,8 +68,6 @@ export const defaultProps: LookbookProps = {
   boutiqueTagline: 'The definitive home of luxury.',
   ctaText: 'Shop the Lookbook',
   ctaFooter: 'Tap · Delivered in 60 minutes · Dubai & Abu Dhabi',
-
-  watermark: 'Ounass',
 
   logo: undefined,
 

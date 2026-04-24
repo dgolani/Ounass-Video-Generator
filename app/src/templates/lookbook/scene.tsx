@@ -388,7 +388,6 @@ function Act3Filmstrip({
 
   const product = products[focusIdx];
   if (!product) return null;
-  const countLabel = `0${focusIdx + 1} / ${String(products.length).padStart(2, '0')}`;
 
   return (
     <div style={{ opacity: stripOpacity }}>
@@ -560,45 +559,24 @@ function Act3Filmstrip({
         })}
       </div>
 
-      {/* Boutique name + count row — anchored inside the content rect
-       *  top edge (was at h(100), under IG chrome on 9:16) and
-       *  respects safe.right so the count doesn't bleed into the
-       *  like-stack column. */}
+      {/* Boutique name — anchored inside the content rect top edge.
+       *  (The "03 / 05" picture counter that used to live on the
+       *  right was removed 2026-04-24 — the filmstrip thumbnails at
+       *  the bottom already convey position without a numeric badge.) */}
       <div
         style={{
           position: 'absolute',
           left: contentLeft + w(60),
-          right: (s.W - contentRight) + w(60),
           top: contentTop + h(40),
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
+          fontFamily: 'var(--font-display)',
+          fontWeight: 300,
+          fontStyle: 'italic',
+          fontSize: wh(34),
+          color: colors.paper,
+          letterSpacing: '-0.01em',
         }}
       >
-        <div
-          style={{
-            fontFamily: 'var(--font-display)',
-            fontWeight: 300,
-            fontStyle: 'italic',
-            fontSize: wh(34),
-            color: colors.paper,
-            letterSpacing: '-0.01em',
-          }}
-        >
-          {props.boutiqueName}
-        </div>
-        <div
-          style={{
-            fontFamily: 'var(--font-body)',
-            fontWeight: 700,
-            fontSize: wh(22),
-            letterSpacing: `${wh(3)}px`,
-            color: colors.accent,
-            textTransform: 'uppercase',
-          }}
-        >
-          {countLabel}
-        </div>
+        {props.boutiqueName}
       </div>
     </div>
   );
@@ -831,10 +809,10 @@ export function LookbookScene({
   width = BASE_W,
   height = BASE_H,
 }: SceneProps) {
-  const { time, duration, compositionStartSec } = useTimeline();
+  const { time } = useTimeline();
   const T = (x: number) => x * timeScale;
   const s = makeScale(width, height);
-  const { w, h, wh } = s;
+  const { wh } = s;
   const { base: safe } = useSafeZone({ width, height });
 
   // Content-rect anchors. Every readability-critical element is pinned
@@ -858,15 +836,7 @@ export function LookbookScene({
     contentCX,
   };
 
-  const { colors, watermark } = props;
-  const watermarkStyle = useFieldFormat('watermark', {
-    fontFamily: 'var(--font-display)',
-    fontStyle: 'italic',
-    fontSize: wh(34),
-    fontWeight: 300,
-    letterSpacing: '-0.01em',
-    color: 'rgba(245,243,239,0.85)',
-  });
+  const { colors } = props;
   const [focusIdx, setFocusIdx] = useState<number | null>(null);
   const [tapMark, setTapMark] = useState<{ x: number; y: number } | null>(null);
 
@@ -925,45 +895,11 @@ export function LookbookScene({
         }}
       />
 
-      {/* Progress hairline — anchored inside the content rect's top edge
-       *  so it stays visible on 9:16 (was at h(48), under IG chrome). */}
-      <div
-        style={{
-          position: 'absolute',
-          left: contentLeft + w(40),
-          right: (width - contentRight) + w(40),
-          top: contentTop + h(24),
-          height: wh(2),
-          background: 'rgba(245,243,239,0.12)',
-          pointerEvents: 'none',
-        }}
-      >
-        <div
-          style={{
-            height: '100%',
-            width: `${clamp((time - compositionStartSec) / duration, 0, 1) * 100}%`,
-            background: colors.accent,
-            transition: 'width 0.1s linear',
-          }}
-        />
-      </div>
-
-      {/* Watermark — anchored above the visible bottom edge (was at
-       *  h(60) from canvas bottom, under IG caption on 9:16). */}
-      {watermark && time >= T(2.0) && time < T(7.0) && (
-        <div
-          style={{
-            position: 'absolute',
-            left: contentLeft + w(60),
-            bottom: safe.bottom + h(30),
-            pointerEvents: 'none',
-            textShadow: '0 2px 12px rgba(0,0,0,0.6)',
-            ...watermarkStyle,
-          }}
-        >
-          {watermark}
-        </div>
-      )}
+      {/* Progress hairline and bottom-left watermark were removed (2026-04-24)
+       *  — they added a Story-app-like chrome that competed with the
+       *  editorial composition for no real gain (the ad's own pacing
+       *  already cues timing; the watermark duplicated the wordmark
+       *  shown in Act 1 + Act 4). */}
 
       {tapMark && (
         <div

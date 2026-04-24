@@ -50,16 +50,6 @@ export const fields: FieldDescriptor[] = [
   { kind: 'text', path: 'ctaText', label: 'CTA text', sceneIds: ['act-4'], role: 'body' },
   { kind: 'text', path: 'ctaFooter', label: 'CTA footer', sceneIds: ['act-4'], role: 'body' },
 
-  { kind: 'section', label: 'Watermark' },
-  {
-    kind: 'text',
-    path: 'watermark',
-    label: 'Boutique signature',
-    placeholder: 'Leave blank to hide',
-    sceneIds: ['act-4'],
-    role: 'display',
-  },
-
   { kind: 'section', label: 'Colors' },
   { kind: 'color', path: 'colors.background', label: 'Background' },
   { kind: 'color', path: 'colors.paper', label: 'Text / paper' },
