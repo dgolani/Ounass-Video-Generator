@@ -22,6 +22,8 @@ import {
   svgToDataURL,
 } from '../../lib/logo';
 import { uid } from '../../lib/uid';
+import { mapOunassProductToFields } from '../../lib/importers/ounass';
+import { OunassImporterDialog } from './OunassImporterDialog';
 
 type Props = {
   fields: FieldDescriptor[];
@@ -437,6 +439,25 @@ function ProductRow({
     onChange({ ...product, [imagePath]: dataURL });
   };
 
+  // Ounass importer dialog state — opened by the cloud-arrow button
+  // in the row header. The dialog returns a parsed product + the
+  // chosen image URL; we merge those into the row's editable fields
+  // via `mapOunassProductToFields()` (template-agnostic mapper).
+  const [importerOpen, setImporterOpen] = useState(false);
+  const handleOunassImport = (
+    payload: import('../../lib/importers/ounass').OunassProduct,
+    imageUrl: string,
+  ) => {
+    const patch = mapOunassProductToFields(
+      payload,
+      productFields,
+      imagePath,
+      imageUrl,
+    );
+    onChange({ ...product, ...patch });
+    setImporterOpen(false);
+  };
+
   return (
     <div
       style={{
@@ -471,6 +492,12 @@ function ProductRow({
         </span>
         <div style={{ display: 'flex', gap: 4 }}>
           <RowIconButton
+            title="Import from Ounass by SKU"
+            onClick={() => setImporterOpen(true)}
+          >
+            ↧
+          </RowIconButton>
+          <RowIconButton
             title="Move up"
             onClick={onMoveUp}
             disabled={index === 0}
@@ -494,6 +521,19 @@ function ProductRow({
           </RowIconButton>
         </div>
       </div>
+
+      {/* Importer dialog — modal portal, only rendered when triggered.
+       *  Closes on backdrop click / Esc / Cancel; on success the
+       *  parsed product + chosen image are merged into the row via
+       *  mapOunassProductToFields(). */}
+      {importerOpen && (
+        <OunassImporterDialog
+          onClose={() => setImporterOpen(false)}
+          onImport={({ product: imported, imageUrl }) =>
+            handleOunassImport(imported, imageUrl)
+          }
+        />
+      )}
 
       {/* Body: image + fields */}
       <div style={{ display: 'grid', gridTemplateColumns: '88px 1fr', gap: 12 }}>
