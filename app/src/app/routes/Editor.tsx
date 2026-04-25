@@ -1244,6 +1244,11 @@ function LocaleSegmented({
  *  unit reads as "this ad's view options" rather than four toolbar
  *  widgets competing for attention. */
 function SettingsUmbrella({ children }: { children: React.ReactNode }) {
+  // No `overflow: hidden` here — popovers anchored to children
+  // (e.g. TranslateStatusPill's diagnostic panel) must be able to
+  // escape the umbrella's rounded corners. The hairline dividers
+  // and slot children don't bleed outside the rounded shell on
+  // their own, so we don't need clipping.
   return (
     <div
       role="group"
@@ -1254,7 +1259,6 @@ function SettingsUmbrella({ children }: { children: React.ReactNode }) {
         background: 'var(--editor-panel-2)',
         border: '1px solid var(--editor-border)',
         borderRadius: 'var(--r-md)',
-        overflow: 'hidden',
         height: 36,
       }}
     >
@@ -1488,120 +1492,486 @@ function TranslateStatusPill({
   state: TranslatorState;
   translating: boolean;
 }) {
+  // Local "is the popover open" state. Click pill to toggle. Closes
+  // automatically when clicking outside or pressing Escape.
+  const [open, setOpen] = useState(false);
+  const wrapRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const onPointer = (e: PointerEvent) => {
+      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setOpen(false);
+    };
+    document.addEventListener('pointerdown', onPointer);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('pointerdown', onPointer);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [open]);
+
+  // Resolve the pill's surface form (label, tone, etc.) from state.
+  // Steady "Chrome-on-device" path renders a quiet pill that's still
+  // clickable so the marketer can confirm what's active and access the
+  // diagnostic popover at any time. (The previous build returned null
+  // here, hiding the affordance entirely — making it discoverable
+  // helps debugging.)
   let label: string;
-  let tooltip: string;
-  let tone: 'info' | 'progress' | 'warn';
+  let tone: 'info' | 'progress' | 'warn' | 'success';
 
   if (state.kind === 'downloading') {
-    const pct = Math.round(state.progress * 100);
-    label = `Preparing AR · ${pct}%`;
-    tooltip =
-      'First-time download of the on-device translator (about 22 MB). Happens once per browser. You can keep editing in EN while it finishes.';
+    label = `Preparing AR · ${Math.round(state.progress * 100)}%`;
     tone = 'progress';
   } else if (translating) {
     label = 'Translating…';
-    tooltip = 'Auto-translating editable text fields to Arabic.';
     tone = 'progress';
   } else if (state.kind === 'available' && state.provider === 'mymemory') {
-    // We're on the cloud fallback — surface a quiet info indicator so
-    // the marketer knows translations are going through the network
-    // (and may be a touch slower than the on-device path).
     label = 'Cloud translate';
-    tooltip =
-      'Auto-translation is using MyMemory (cloud). Chrome\'s on-device translator is unavailable in this browser, so each AR fill makes a small network call. Free up to 1 000 words/day; the daily counter resets at UTC midnight.';
     tone = 'info';
+  } else if (state.kind === 'available' && state.provider === 'chrome') {
+    label = 'On-device';
+    tone = 'success';
   } else if (state.kind === 'unavailable') {
     label = 'Auto-translate off';
-    if (state.reason === 'no-api') {
-      tooltip =
-        'On-device auto-translate needs Chrome 138+ or Edge. You can still type Arabic by hand into any field — it will save and render with RTL layout.';
-    } else if (state.reason === 'pair-not-supported') {
-      tooltip =
-        'Chrome reports EN→AR is not supported on this device. The Gemini Nano model may not be installed yet — open chrome://on-device-internals to check, or wait for Chrome to download it. You can still type Arabic manually.';
-    } else {
-      tooltip = state.detail
-        ? `Translator failed: ${state.detail}. Click "Retry" to try again, or type Arabic manually.`
-        : 'Translator failed to initialise. Click "Retry" to try again, or type Arabic manually.';
-    }
     tone = 'warn';
   } else {
-    // 'available' + not translating + AR is the steady state — render nothing.
-    return null;
+    label = 'Auto-translate';
+    tone = 'info';
   }
 
   const colors =
     tone === 'progress'
       ? { fg: '#1A1208', bg: 'var(--editor-accent)', border: 'var(--editor-accent)' }
-      : tone === 'info'
+      : tone === 'success'
         ? { fg: 'var(--editor-text)', bg: 'var(--editor-panel-2)', border: 'var(--editor-border)' }
-        : { fg: 'var(--editor-text-dim)', bg: 'var(--editor-panel-2)', border: 'var(--editor-border)' };
+        : tone === 'info'
+          ? { fg: 'var(--editor-text)', bg: 'var(--editor-panel-2)', border: 'var(--editor-border)' }
+          : { fg: 'var(--editor-text-dim)', bg: 'var(--editor-panel-2)', border: 'var(--editor-border)' };
+
+  return (
+    <div ref={wrapRef} style={{ position: 'relative', display: 'inline-flex' }}>
+      <button
+        type="button"
+        aria-haspopup="dialog"
+        aria-expanded={open}
+        onClick={() => setOpen((v) => !v)}
+        style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 6,
+          padding: '4px 10px',
+          fontFamily: 'var(--sans)',
+          fontSize: 11,
+          fontWeight: 600,
+          letterSpacing: '0.04em',
+          color: colors.fg,
+          background: colors.bg,
+          border: `1px solid ${colors.border}`,
+          borderRadius: 'var(--r-md)',
+          whiteSpace: 'nowrap',
+          cursor: 'pointer',
+          transition: 'background 120ms, color 120ms',
+        }}
+      >
+        {tone === 'progress' && (
+          <span
+            aria-hidden
+            style={{
+              display: 'inline-block',
+              width: 8,
+              height: 8,
+              borderRadius: '50%',
+              border: '1.5px solid currentColor',
+              borderRightColor: 'transparent',
+              animation: 'translate-spin 0.9s linear infinite',
+            }}
+          />
+        )}
+        {tone === 'success' && (
+          <span
+            aria-hidden
+            style={{
+              display: 'inline-block',
+              width: 6,
+              height: 6,
+              borderRadius: '50%',
+              background: 'var(--success)',
+            }}
+          />
+        )}
+        {(tone === 'warn' || tone === 'info') && <span aria-hidden>ⓘ</span>}
+        {label}
+      </button>
+      {open && <TranslatePopover state={state} translating={translating} />}
+      <style>{`@keyframes translate-spin { to { transform: rotate(360deg); } }`}</style>
+    </div>
+  );
+}
+
+/** Click-down popover anchored to the pill, with state-aware content.
+ *
+ *  Three primary scenarios:
+ *
+ *  1. **Cloud fallback active.** Shows the why ("Chrome's on-device
+ *     translator isn't available") and an upgrade path: copy two
+ *     chrome:// URLs to enable the on-device API. Each URL has its
+ *     own one-click copy button with a brief "Copied" confirmation.
+ *
+ *  2. **Unavailable / error.** Shows the captured error detail in a
+ *     code block, a Retry button, and the same upgrade path so the
+ *     marketer can opt into the on-device flow if their browser
+ *     supports it.
+ *
+ *  3. **On-device active.** Confirms the path with a green dot and
+ *     surfaces the language pack info — no upgrade nag needed.
+ *
+ *  Browser security blocks programmatic navigation to chrome:// URLs,
+ *  so the popover surfaces the URLs as copyable strings + clear steps
+ *  rather than fake-action buttons. Trust the marketer to paste; don't
+ *  pretend a button can do something the browser disallows. */
+function TranslatePopover({
+  state,
+  translating,
+}: {
+  state: TranslatorState;
+  translating: boolean;
+}) {
+  const isCloud = state.kind === 'available' && state.provider === 'mymemory';
+  const isOnDevice = state.kind === 'available' && state.provider === 'chrome';
+  const isUnavailable = state.kind === 'unavailable';
+  const isDownloading = state.kind === 'downloading';
 
   return (
     <div
-      role="status"
-      title={tooltip}
+      role="dialog"
+      aria-label="Auto-translate options"
       style={{
-        display: 'inline-flex',
-        alignItems: 'center',
-        gap: 6,
-        padding: '4px 10px',
-        fontFamily: 'var(--sans)',
-        fontSize: 11,
-        fontWeight: 600,
-        letterSpacing: '0.04em',
-        color: colors.fg,
-        background: colors.bg,
-        border: `1px solid ${colors.border}`,
+        position: 'absolute',
+        top: 'calc(100% + 6px)',
+        right: 0,
+        zIndex: 50,
+        width: 340,
+        padding: 14,
+        background: 'var(--editor-panel)',
+        border: '1px solid var(--editor-border)',
         borderRadius: 'var(--r-md)',
-        whiteSpace: 'nowrap',
+        boxShadow: '0 12px 32px rgba(0,0,0,0.42), 0 2px 8px rgba(0,0,0,0.28)',
+        fontFamily: 'var(--sans)',
+        fontSize: 12,
+        color: 'var(--editor-text)',
+        lineHeight: 1.5,
+        textAlign: 'left',
       }}
     >
-      {tone === 'progress' && (
-        <span
-          aria-hidden
+      {/* Header — state title + sub */}
+      <div style={{ marginBottom: 10 }}>
+        <div
           style={{
-            display: 'inline-block',
-            width: 8,
-            height: 8,
-            borderRadius: '50%',
-            border: '1.5px solid currentColor',
-            borderRightColor: 'transparent',
-            animation: 'translate-spin 0.9s linear infinite',
-          }}
-        />
-      )}
-      {(tone === 'warn' || tone === 'info') && <span aria-hidden>ⓘ</span>}
-      {label}
-      {state.kind === 'unavailable' && state.reason === 'error' && (
-        // Manual retry — fires a fresh availability check + create call.
-        // Useful when the first attempt errored transiently (e.g. the
-        // language pack hadn't finished downloading yet, or a permission
-        // prompt was dismissed).
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            void retryTranslator();
-          }}
-          style={{
-            marginLeft: 4,
-            padding: '1px 6px',
-            background: 'transparent',
-            border: '1px solid currentColor',
-            borderRadius: 3,
-            color: 'inherit',
-            font: 'inherit',
-            fontSize: 10,
-            fontWeight: 700,
-            letterSpacing: '0.06em',
-            textTransform: 'uppercase',
-            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            fontFamily: 'var(--serif)',
+            fontSize: 14,
+            fontWeight: 500,
+            letterSpacing: '-0.01em',
           }}
         >
-          Retry
-        </button>
+          {isOnDevice && (
+            <span
+              aria-hidden
+              style={{
+                width: 8,
+                height: 8,
+                borderRadius: '50%',
+                background: 'var(--success)',
+              }}
+            />
+          )}
+          {isCloud && '☁'}
+          {isUnavailable && '⚠'}
+          {isDownloading && '⏳'}
+          {translating && !isUnavailable && '⏳'}
+          <span>
+            {isOnDevice && 'On-device translation'}
+            {isCloud && 'Cloud translation (MyMemory)'}
+            {isUnavailable && 'Auto-translate is off'}
+            {isDownloading && 'Preparing on-device translator'}
+            {translating && state.kind !== 'unavailable' && !isDownloading && !isOnDevice && !isCloud && 'Translating…'}
+          </span>
+        </div>
+        <div
+          style={{
+            marginTop: 4,
+            fontSize: 11,
+            color: 'var(--editor-text-dim)',
+            letterSpacing: '0.02em',
+          }}
+        >
+          {isOnDevice && 'Translations run locally via Chrome\u2019s built-in Gemini Nano. Free, private, offline after the first download.'}
+          {isCloud && 'Each AR fill makes a small network call to MyMemory. Free up to 1 000 words/day per IP.'}
+          {isUnavailable && state.reason === 'no-api' &&
+            'Chrome\u2019s built-in translator isn\u2019t exposed in this browser, and the cloud fallback couldn\u2019t reach the network.'}
+          {isUnavailable && state.reason === 'pair-not-supported' &&
+            'Chrome reports EN→AR isn\u2019t supported on this device — the on-device language model may not be installed yet. The cloud fallback also couldn\u2019t reach the network.'}
+          {isUnavailable && state.reason === 'error' &&
+            'The translator failed to initialise. Try the steps below or fall back to typing Arabic manually.'}
+          {isDownloading && `${Math.round(state.progress * 100)}% downloaded. About 22 MB total — happens once per browser, then translation is instant and offline.`}
+        </div>
+      </div>
+
+      {/* Error detail when present */}
+      {isUnavailable && state.reason === 'error' && state.detail && (
+        <div
+          style={{
+            margin: '6px 0 12px',
+            padding: '8px 10px',
+            background: 'rgba(216, 82, 88, 0.08)',
+            border: '1px solid rgba(216, 82, 88, 0.32)',
+            borderRadius: 4,
+            fontFamily:
+              'ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace',
+            fontSize: 11,
+            color: '#D85258',
+            wordBreak: 'break-word',
+          }}
+        >
+          {state.detail}
+        </div>
       )}
-      <style>{`@keyframes translate-spin { to { transform: rotate(360deg); } }`}</style>
+
+      {/* Upgrade path — shown whenever cloud-or-error so marketers can
+       *  opt into the on-device flow if their Chrome supports it. Hidden
+       *  in steady on-device or downloading states (no nag needed). */}
+      {(isCloud || isUnavailable) && (
+        <ChromeOnDeviceSteps />
+      )}
+
+      {/* Footer actions — Retry for error state, Close for everything. */}
+      <div
+        style={{
+          marginTop: 12,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'flex-end',
+          gap: 8,
+        }}
+      >
+        {(isUnavailable || isCloud) && (
+          <button
+            type="button"
+            onClick={() => void retryTranslator()}
+            style={{
+              padding: '6px 12px',
+              background: 'transparent',
+              color: 'var(--editor-text)',
+              border: '1px solid var(--editor-border)',
+              borderRadius: 4,
+              fontSize: 11,
+              fontWeight: 600,
+              letterSpacing: '0.04em',
+              textTransform: 'uppercase',
+              cursor: 'pointer',
+            }}
+          >
+            Retry detection
+          </button>
+        )}
+      </div>
     </div>
+  );
+}
+
+/** Numbered steps to enable Chrome's on-device Translator API. Each
+ *  chrome:// URL gets a one-click "Copy" button that places it on the
+ *  clipboard and flashes a confirmation — browsers block JS-initiated
+ *  navigation to chrome:// URLs, so paste-and-go is the most direct
+ *  affordance we can offer. */
+function ChromeOnDeviceSteps() {
+  return (
+    <div
+      style={{
+        marginTop: 6,
+        padding: 10,
+        background: 'var(--editor-panel-2)',
+        border: '1px solid var(--editor-border)',
+        borderRadius: 4,
+      }}
+    >
+      <div
+        style={{
+          fontSize: 11,
+          fontWeight: 700,
+          letterSpacing: '0.06em',
+          textTransform: 'uppercase',
+          color: 'var(--editor-text-dim)',
+          marginBottom: 8,
+        }}
+      >
+        Want it faster + offline?
+      </div>
+      <div
+        style={{
+          fontSize: 11,
+          color: 'var(--editor-text-dim)',
+          marginBottom: 10,
+        }}
+      >
+        Enable Chrome\u2019s on-device translator (one-time, ~22 MB
+        download). Works in Chrome 138+ and Edge.
+      </div>
+      <ol
+        style={{
+          margin: 0,
+          padding: 0,
+          listStyle: 'none',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 8,
+          counterReset: 'step',
+        }}
+      >
+        <CopyStep
+          n={1}
+          label="Open the flag, set to Enabled"
+          url="chrome://flags/#translation-api"
+        />
+        <CopyStep
+          n={2}
+          label="Make sure the language model is installed"
+          url="chrome://components/"
+          hint='Look for "Optimization Guide On Device Model" → Update if old'
+        />
+        <li
+          style={{
+            display: 'flex',
+            alignItems: 'flex-start',
+            gap: 10,
+          }}
+        >
+          <span style={stepNumberStyle}>3</span>
+          <span style={{ fontSize: 12 }}>
+            Restart Chrome, reload this page, click <b>Retry detection</b>{' '}
+            below.
+          </span>
+        </li>
+      </ol>
+    </div>
+  );
+}
+
+const stepNumberStyle: React.CSSProperties = {
+  flex: 'none',
+  width: 22,
+  height: 22,
+  borderRadius: '50%',
+  background: 'var(--editor-accent)',
+  color: '#1A1208',
+  fontSize: 11,
+  fontWeight: 700,
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  marginTop: 1,
+};
+
+/** Single step row with a chrome:// URL displayed as a code chip + a
+ *  Copy button that flashes "Copied" for 1.6 s after success. */
+function CopyStep({
+  n,
+  label,
+  url,
+  hint,
+}: {
+  n: number;
+  label: string;
+  url: string;
+  hint?: string;
+}) {
+  const [copied, setCopied] = useState(false);
+  return (
+    <li
+      style={{
+        display: 'flex',
+        alignItems: 'flex-start',
+        gap: 10,
+      }}
+    >
+      <span style={stepNumberStyle}>{n}</span>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: 12, marginBottom: 4 }}>{label}</div>
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6,
+            background: 'var(--editor-panel)',
+            border: '1px solid var(--editor-border)',
+            borderRadius: 4,
+            padding: '4px 6px',
+          }}
+        >
+          <code
+            style={{
+              flex: 1,
+              fontFamily:
+                'ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace',
+              fontSize: 11,
+              color: 'var(--editor-text)',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {url}
+          </code>
+          <button
+            type="button"
+            onClick={async () => {
+              try {
+                await navigator.clipboard.writeText(url);
+                setCopied(true);
+                setTimeout(() => setCopied(false), 1600);
+              } catch {
+                /* clipboard denied — silent; user can select + copy */
+              }
+            }}
+            style={{
+              flex: 'none',
+              padding: '3px 8px',
+              background: copied ? 'var(--success)' : 'var(--editor-accent)',
+              color: '#1A1208',
+              border: 0,
+              borderRadius: 3,
+              fontSize: 10,
+              fontWeight: 700,
+              letterSpacing: '0.06em',
+              textTransform: 'uppercase',
+              cursor: 'pointer',
+              minWidth: 56,
+              transition: 'background 160ms',
+            }}
+          >
+            {copied ? 'Copied' : 'Copy'}
+          </button>
+        </div>
+        {hint && (
+          <div
+            style={{
+              marginTop: 4,
+              fontSize: 11,
+              color: 'var(--editor-text-dim)',
+              fontStyle: 'italic',
+            }}
+          >
+            {hint}
+          </div>
+        )}
+      </div>
+    </li>
   );
 }
