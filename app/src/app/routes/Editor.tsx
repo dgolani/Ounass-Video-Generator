@@ -303,6 +303,14 @@ export function Editor() {
   const [translatorState, setTranslatorState] =
     useState<TranslatorState>({ kind: 'unavailable', reason: 'no-api' });
   const [isTranslating, setIsTranslating] = useState(false);
+  /** How many fields the most recent batch successfully filled, plus
+   *  the timestamp it landed. Drives the "✓ Translated" success flash
+   *  on the pill (auto-fades after ~2.4s) and the headline number in
+   *  the popover ("12 fields ready"). Survives popover open/close —
+   *  marketers can re-open the popover later and still see what was
+   *  done. Resets to 0 on locale change. */
+  const [lastBatchCount, setLastBatchCount] = useState(0);
+  const [lastBatchAt, setLastBatchAt] = useState<number | null>(null);
 
   useEffect(() => {
     // Subscribe first so the prewarm's state transitions land in React.
@@ -345,6 +353,8 @@ export function Editor() {
         },
       }));
       setIsTranslating(false);
+      setLastBatchCount(Object.keys(translations).length);
+      setLastBatchAt(Date.now());
     });
     return () => {
       cancelled = true;
@@ -719,6 +729,11 @@ export function Editor() {
               <TranslateStatusPill
                 state={translatorState}
                 translating={isTranslating}
+                lastBatchCount={lastBatchCount}
+                lastBatchAt={lastBatchAt}
+                hasExistingTranslations={
+                  Object.keys(editable.localizedText?.ar ?? {}).length > 0
+                }
               />
             </div>
           </UmbrellaSlot>
@@ -1488,9 +1503,20 @@ function AspectSwitcher({
 function TranslateStatusPill({
   state,
   translating,
+  lastBatchCount,
+  lastBatchAt,
+  hasExistingTranslations,
 }: {
   state: TranslatorState;
   translating: boolean;
+  lastBatchCount: number;
+  lastBatchAt: number | null;
+  /** True when `Project.localizedText.ar` already holds at least one
+   *  cached translation — meaning auto-translate has worked on this
+   *  project at some point (possibly a previous session). Lets the
+   *  pill stay in the positive "Active" state across reloads even if
+   *  the current session hasn't run a new batch yet. */
+  hasExistingTranslations: boolean;
 }) {
   // Local "is the popover open" state. Click pill to toggle. Closes
   // automatically when clicking outside or pressing Escape.
@@ -1515,14 +1541,31 @@ function TranslateStatusPill({
     };
   }, [open]);
 
-  // Resolve the pill's surface form (label, tone, etc.) from state.
-  // Steady "Chrome-on-device" path renders a quiet pill that's still
-  // clickable so the marketer can confirm what's active and access the
-  // diagnostic popover at any time. (The previous build returned null
-  // here, hiding the affordance entirely — making it discoverable
-  // helps debugging.)
+  /** Brief "✓ Translated" celebratory state shown for ~2.4 s after the
+   *  most recent batch lands. Re-renders when `lastBatchAt` changes;
+   *  the timer expires via setTimeout. */
+  const [celebrating, setCelebrating] = useState(false);
+  useEffect(() => {
+    if (lastBatchAt == null || lastBatchCount === 0) return;
+    setCelebrating(true);
+    const id = setTimeout(() => setCelebrating(false), 2400);
+    return () => clearTimeout(id);
+  }, [lastBatchAt, lastBatchCount]);
+
+  // Resolve the pill's surface form (label, tone, icon) from state.
+  // Order matters: "translating now" beats "just finished", "downloading"
+  // beats both, error always shows. Steady cloud-active becomes a positive
+  // "Active · Cloud" once at least one batch has succeeded — the upgrade
+  // nag goes quiet, the pill confirms it's working.
   let label: string;
   let tone: 'info' | 'progress' | 'warn' | 'success';
+  // "Filled" means at least one translation exists for this project —
+  // either from the current session's batch or from prior sessions
+  // (cached on the project). Used to flip the pill from neutral
+  // "Cloud translate" to positive "Active · Cloud" once the marketer
+  // has confirmation that translation actually works.
+  const hasFilled =
+    (lastBatchAt != null && lastBatchCount > 0) || hasExistingTranslations;
 
   if (state.kind === 'downloading') {
     label = `Preparing AR · ${Math.round(state.progress * 100)}%`;
@@ -1530,12 +1573,18 @@ function TranslateStatusPill({
   } else if (translating) {
     label = 'Translating…';
     tone = 'progress';
-  } else if (state.kind === 'available' && state.provider === 'mymemory') {
-    label = 'Cloud translate';
-    tone = 'info';
-  } else if (state.kind === 'available' && state.provider === 'chrome') {
-    label = 'On-device';
+  } else if (celebrating) {
+    label = `Translated · ${lastBatchCount} field${lastBatchCount === 1 ? '' : 's'}`;
     tone = 'success';
+  } else if (state.kind === 'available' && state.provider === 'chrome') {
+    label = hasFilled ? 'Active · On-device' : 'On-device';
+    tone = 'success';
+  } else if (state.kind === 'available' && state.provider === 'mymemory') {
+    // After at least one successful batch we want to celebrate, not nag.
+    // Switch tone from `info` (neutral) to `success` (positive green dot)
+    // and label to "Active · Cloud" so the pill confirms it's working.
+    label = hasFilled ? 'Active · Cloud' : 'Cloud translate';
+    tone = hasFilled ? 'success' : 'info';
   } else if (state.kind === 'unavailable') {
     label = 'Auto-translate off';
     tone = 'warn';
@@ -1607,7 +1656,14 @@ function TranslateStatusPill({
         {(tone === 'warn' || tone === 'info') && <span aria-hidden>ⓘ</span>}
         {label}
       </button>
-      {open && <TranslatePopover state={state} translating={translating} />}
+      {open && (
+        <TranslatePopover
+          state={state}
+          translating={translating}
+          lastBatchCount={lastBatchCount}
+          hasFilled={hasFilled}
+        />
+      )}
       <style>{`@keyframes translate-spin { to { transform: rotate(360deg); } }`}</style>
     </div>
   );
@@ -1637,14 +1693,93 @@ function TranslateStatusPill({
 function TranslatePopover({
   state,
   translating,
+  lastBatchCount,
+  hasFilled,
 }: {
   state: TranslatorState;
   translating: boolean;
+  lastBatchCount: number;
+  hasFilled: boolean;
 }) {
   const isCloud = state.kind === 'available' && state.provider === 'mymemory';
   const isOnDevice = state.kind === 'available' && state.provider === 'chrome';
   const isUnavailable = state.kind === 'unavailable';
   const isDownloading = state.kind === 'downloading';
+  // Working = at least one batch has succeeded. When working, we shift
+  // tone from "here's how to set it up" to "it's working — here's the
+  // status, and an optional faster path is available".
+  const isWorking = (isCloud || isOnDevice) && hasFilled;
+
+  // Upgrade card collapsed by default in the working-cloud state — the
+  // marketer has confirmed translation works, the upgrade is optional.
+  // Always-expanded for unavailable/error so the fix is front-and-centre.
+  const [upgradeOpen, setUpgradeOpen] = useState(!isWorking);
+
+  // ── Resolve the header content from state ──
+  let headerIcon: React.ReactNode;
+  let headerTitle: string;
+  let headerSub: string;
+  let headerColor = 'var(--editor-text)';
+
+  if (isOnDevice && isWorking) {
+    headerIcon = <SuccessDot />;
+    headerTitle = 'Auto-translate is working';
+    headerSub =
+      lastBatchCount > 0
+        ? `${lastBatchCount} field${lastBatchCount === 1 ? '' : 's'} translated locally via Chrome\u2019s on-device model. Free, private, offline.`
+        : 'Arabic copy is saved with this project, filled by Chrome\u2019s on-device model. Free, private, offline.';
+    headerColor = 'var(--success)';
+  } else if (isOnDevice) {
+    headerIcon = <SuccessDot />;
+    headerTitle = 'On-device translator ready';
+    headerSub =
+      'Click AR in the toolbar to start translating. Free, private, offline.';
+  } else if (isCloud && isWorking) {
+    headerIcon = <SuccessDot />;
+    headerTitle = 'Auto-translate is working';
+    // When the marketer just ran a batch, lead with the count — they
+    // saw it happen and the number reinforces the success. When the
+    // translations were already cached on the project (e.g. from a
+    // previous session), drop the count — "0 fields translated" reads
+    // as failure even though everything is fine.
+    headerSub =
+      lastBatchCount > 0
+        ? `${lastBatchCount} field${lastBatchCount === 1 ? '' : 's'} translated via MyMemory (cloud). Free up to 1 000 words/day.`
+        : 'Arabic copy is saved with this project, filled by MyMemory (cloud). Free up to 1 000 words/day per IP.';
+    headerColor = 'var(--success)';
+  } else if (isCloud) {
+    headerIcon = <span aria-hidden>☁</span>;
+    headerTitle = 'Cloud translator ready';
+    headerSub =
+      'AR fills will route through MyMemory (cloud). Free up to 1 000 words/day per IP.';
+  } else if (isDownloading) {
+    headerIcon = <span aria-hidden>⏳</span>;
+    headerTitle = 'Preparing on-device translator';
+    headerSub = `${Math.round(state.progress * 100)}% downloaded. About 22 MB total — happens once per browser, then translation is instant and offline.`;
+  } else if (translating) {
+    headerIcon = <span aria-hidden>⏳</span>;
+    headerTitle = 'Translating…';
+    headerSub = 'Filling editable text fields with Arabic.';
+  } else if (isUnavailable && state.reason === 'no-api') {
+    headerIcon = <span aria-hidden>⚠</span>;
+    headerTitle = 'Auto-translate is off';
+    headerSub =
+      'Chrome\u2019s built-in translator isn\u2019t exposed here, and the cloud fallback couldn\u2019t reach the network. You can still type Arabic manually.';
+  } else if (isUnavailable && state.reason === 'pair-not-supported') {
+    headerIcon = <span aria-hidden>⚠</span>;
+    headerTitle = 'Translator not available for EN→AR';
+    headerSub =
+      'Chrome reports the EN→AR pair isn\u2019t supported on this device — the on-device language model may not be installed yet — and the cloud fallback couldn\u2019t reach the network.';
+  } else if (isUnavailable) {
+    headerIcon = <span aria-hidden>⚠</span>;
+    headerTitle = 'Translator failed to start';
+    headerSub =
+      'Both providers errored. Try the steps below or fall back to typing Arabic manually.';
+  } else {
+    headerIcon = <span aria-hidden>ⓘ</span>;
+    headerTitle = 'Auto-translate';
+    headerSub = 'Status pending.';
+  }
 
   return (
     <div
@@ -1668,7 +1803,7 @@ function TranslatePopover({
         textAlign: 'left',
       }}
     >
-      {/* Header — state title + sub */}
+      {/* Header */}
       <div style={{ marginBottom: 10 }}>
         <div
           style={{
@@ -1679,30 +1814,11 @@ function TranslatePopover({
             fontSize: 14,
             fontWeight: 500,
             letterSpacing: '-0.01em',
+            color: headerColor,
           }}
         >
-          {isOnDevice && (
-            <span
-              aria-hidden
-              style={{
-                width: 8,
-                height: 8,
-                borderRadius: '50%',
-                background: 'var(--success)',
-              }}
-            />
-          )}
-          {isCloud && '☁'}
-          {isUnavailable && '⚠'}
-          {isDownloading && '⏳'}
-          {translating && !isUnavailable && '⏳'}
-          <span>
-            {isOnDevice && 'On-device translation'}
-            {isCloud && 'Cloud translation (MyMemory)'}
-            {isUnavailable && 'Auto-translate is off'}
-            {isDownloading && 'Preparing on-device translator'}
-            {translating && state.kind !== 'unavailable' && !isDownloading && !isOnDevice && !isCloud && 'Translating…'}
-          </span>
+          {headerIcon}
+          <span>{headerTitle}</span>
         </div>
         <div
           style={{
@@ -1712,19 +1828,11 @@ function TranslatePopover({
             letterSpacing: '0.02em',
           }}
         >
-          {isOnDevice && 'Translations run locally via Chrome\u2019s built-in Gemini Nano. Free, private, offline after the first download.'}
-          {isCloud && 'Each AR fill makes a small network call to MyMemory. Free up to 1 000 words/day per IP.'}
-          {isUnavailable && state.reason === 'no-api' &&
-            'Chrome\u2019s built-in translator isn\u2019t exposed in this browser, and the cloud fallback couldn\u2019t reach the network.'}
-          {isUnavailable && state.reason === 'pair-not-supported' &&
-            'Chrome reports EN→AR isn\u2019t supported on this device — the on-device language model may not be installed yet. The cloud fallback also couldn\u2019t reach the network.'}
-          {isUnavailable && state.reason === 'error' &&
-            'The translator failed to initialise. Try the steps below or fall back to typing Arabic manually.'}
-          {isDownloading && `${Math.round(state.progress * 100)}% downloaded. About 22 MB total — happens once per browser, then translation is instant and offline.`}
+          {headerSub}
         </div>
       </div>
 
-      {/* Error detail when present */}
+      {/* Error detail */}
       {isUnavailable && state.reason === 'error' && state.detail && (
         <div
           style={{
@@ -1744,14 +1852,57 @@ function TranslatePopover({
         </div>
       )}
 
-      {/* Upgrade path — shown whenever cloud-or-error so marketers can
-       *  opt into the on-device flow if their Chrome supports it. Hidden
-       *  in steady on-device or downloading states (no nag needed). */}
-      {(isCloud || isUnavailable) && (
-        <ChromeOnDeviceSteps />
+      {/* Upgrade path — appears for cloud / unavailable / on-device-not-yet-
+       *  filled. Hidden when on-device is already working (no upgrade
+       *  needed) and when downloading (already on the upgrade path).
+       *
+       *  Cloud-working state: collapsed by default with a soft
+       *  "Switch to on-device translator (faster + offline) →"
+       *  expander, so the working marketer isn't nagged but still
+       *  knows the option exists.
+       *
+       *  Unavailable state: expanded by default — the marketer needs
+       *  the steps front-and-centre to get translation back. */}
+      {(isCloud || isUnavailable) && !isDownloading && (
+        <>
+          {isWorking ? (
+            <button
+              type="button"
+              onClick={() => setUpgradeOpen((v) => !v)}
+              aria-expanded={upgradeOpen}
+              style={{
+                width: '100%',
+                padding: '8px 10px',
+                background: 'transparent',
+                color: 'var(--editor-text-dim)',
+                border: '1px dashed var(--editor-border)',
+                borderRadius: 4,
+                fontFamily: 'inherit',
+                fontSize: 11,
+                fontWeight: 600,
+                letterSpacing: '0.04em',
+                cursor: 'pointer',
+                textAlign: 'left',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+              }}
+            >
+              <span>Switch to on-device (faster + offline)</span>
+              <span aria-hidden style={{ fontSize: 10 }}>
+                {upgradeOpen ? '▾' : '▸'}
+              </span>
+            </button>
+          ) : null}
+          {upgradeOpen && (
+            <div style={{ marginTop: isWorking ? 10 : 0 }}>
+              <ChromeOnDeviceSteps />
+            </div>
+          )}
+        </>
       )}
 
-      {/* Footer actions — Retry for error state, Close for everything. */}
+      {/* Footer actions */}
       <div
         style={{
           marginTop: 12,
@@ -1783,6 +1934,22 @@ function TranslatePopover({
         )}
       </div>
     </div>
+  );
+}
+
+function SuccessDot() {
+  return (
+    <span
+      aria-hidden
+      style={{
+        width: 9,
+        height: 9,
+        borderRadius: '50%',
+        background: 'var(--success)',
+        boxShadow: '0 0 0 2px rgba(102, 178, 105, 0.18)',
+        flex: 'none',
+      }}
+    />
   );
 }
 
