@@ -82,6 +82,46 @@ export function ounassSkuUrl(sku: string): string {
   return `https://www.ounass.ae/product/findbysku?sku=${encodeURIComponent(cleaned)}`;
 }
 
+/** Base URL applied to relative image paths returned by Ounass.
+ *
+ *  The `findbysku` API returns `media[].src` like
+ *  `/2/1/219552822_grey_in.jpg?ts=1776254014.7642` — these are
+ *  Magento-style hashed paths that need the storefront media CDN as
+ *  prefix. Verified against the live response (April 2026): the
+ *  resolved URLs at
+ *  `https://www.ounass.ae/media/catalog/product/2/1/...jpg` render
+ *  the production catalog images.
+ *
+ *  Exported so the constant is easy to swap if Ounass migrates the
+ *  CDN later (or splits per-region). */
+export const OUNASS_IMAGE_BASE_URL =
+  'https://www.ounass.ae/media/catalog/product';
+
+function resolveImageUrl(raw: string): string {
+  let u = raw.trim();
+  if (!u) return '';
+  if (u.startsWith('//')) return `https:${u}`;
+  if (u.startsWith('http://') || u.startsWith('https://')) return u;
+  if (u.startsWith('/')) return `${OUNASS_IMAGE_BASE_URL}${u}`;
+  return `${OUNASS_IMAGE_BASE_URL}/${u}`;
+}
+
+/** Strip HTML tags from a string and collapse whitespace runs. Used
+ *  for the `description` field which Ounass returns as
+ *  `"<p>Effortlessly elegant, the Margherita Mule 50…</p>\n"`. */
+function stripHtml(html: string): string {
+  return html
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&#39;|&apos;/g, "'")
+    .replace(/&quot;/g, '"')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 /** Fetch a SKU through the marketer's browser session. Returns a
  *  normalised OunassProduct or throws OunassImporterError. */
 export async function fetchOunassProduct(sku: string): Promise<OunassProduct> {
@@ -161,60 +201,95 @@ export function parseOunassResponse(json: unknown, skuFallback = ''): OunassProd
   const product = unwrapProduct(obj);
 
   const name = stringFromKeys(product, [
+    'name', // confirmed: Ounass live response key
     'displayName',
-    'name',
     'title',
     'productName',
     'shortName',
   ]);
 
-  // Brand can be a string ("Saint Laurent") or an object ({ name: "…" }).
+  // Brand sits under `designer` (string) on the live Ounass response.
+  // Fall back to brand-as-string, brand-as-object, designer-as-object,
+  // and analytics.brand for older / alternate payloads.
   const brand =
-    stringFromKeys(product, ['brandName', 'designerName']) ||
+    stringFromKeys(product, ['designer', 'brandName', 'designerName']) ||
     (typeof product.brand === 'string'
-      ? (product.brand as string)
+      ? (product.brand as string).trim()
       : pickString((product.brand as Record<string, unknown> | undefined) ?? {}, [
           'name',
           'displayName',
           'label',
         ])) ||
-    pickString((product.designer as Record<string, unknown> | undefined) ?? {}, [
-      'name',
-      'displayName',
+    (product.designer && typeof product.designer === 'object' && !Array.isArray(product.designer)
+      ? pickString(product.designer as Record<string, unknown>, ['name', 'displayName'])
+      : '') ||
+    pickString((product.analytics as Record<string, unknown> | undefined) ?? {}, [
+      'brand',
+      'designer',
     ]);
 
-  const description = stringFromKeys(product, [
+  const descriptionRaw = stringFromKeys(product, [
     'description',
     'summary',
     'shortDescription',
     'productDescription',
   ]);
+  // Ounass wraps description in <p>…</p>\n. Strip tags + collapse
+  // whitespace so the editor's text field gets clean copy.
+  const description = stripHtml(descriptionRaw);
 
-  const category = stringFromKeys(product, [
-    'categoryName',
-    'category',
-    'departmentName',
-    'productType',
-  ]);
+  // Category preference, most-specific first:
+  //   1. Last breadcrumb name ("Heels") — matches what marketers see
+  //      on the storefront PDP.
+  //   2. analytics.class ("Heels") — the single-word ad-tracking label.
+  //   3. analytics.subClass ("Mules") — slightly more granular if the
+  //      class field is empty.
+  //   4. productClass / categoryName / productType — older payloads.
+  const breadcrumbs = product.breadcrumbs;
+  let category = '';
+  if (Array.isArray(breadcrumbs) && breadcrumbs.length > 0) {
+    const last = breadcrumbs[breadcrumbs.length - 1];
+    if (last && typeof last === 'object') {
+      category = pickString(last as Record<string, unknown>, ['name', 'label']);
+    }
+  }
+  if (!category) {
+    category =
+      pickString((product.analytics as Record<string, unknown> | undefined) ?? {}, [
+        'class',
+        'subClass',
+        'productClass',
+      ]) ||
+      stringFromKeys(product, [
+        'productClass',
+        'categoryName',
+        'category',
+        'departmentName',
+        'productType',
+      ]);
+  }
 
-  // Price can live in many places. We prefer the sale/effective price
-  // if both list and sale exist (matches what the marketer would see
-  // on-site).
+  // Price preference: salePrice > finalPrice > minPrice > price >
+  // initialPrice. The live response has top-level `price: 4920` plus
+  // `minPrice: 4920` plus `initialPrice: 4920` — they're equal at full
+  // price, but minPrice wins when there's a markdown.
   const priceNumber =
     numberFromKeys(product, [
       'salePrice',
       'finalPrice',
+      'specialPrice',
       'currentPrice',
       'unitPrice',
       'priceFinal',
+      'minPrice',
       'price',
+      'initialPrice',
     ]) ?? null;
-  const currency = stringFromKeys(product, ['currency', 'currencyCode']) || 'AED';
+  const currency =
+    stringFromKeys(product, ['localeCurrency', 'currency', 'currencyCode']) || 'AED';
   const price =
     priceNumber != null ? `${formatNumber(priceNumber)} ${currency}` : '';
 
-  // Images: API responses tend to vary widely. We try a flat string
-  // array first, then nested shapes.
   const images = collectImageUrls(product);
 
   if (!name && !brand && images.length === 0) {
@@ -225,7 +300,9 @@ export function parseOunassResponse(json: unknown, skuFallback = ''): OunassProd
   }
 
   return {
-    sku: stringFromKeys(product, ['sku', 'productCode', 'code']) || skuFallback,
+    sku:
+      stringFromKeys(product, ['sku', 'visibleSku', 'productCode', 'code']) ||
+      skuFallback,
     name,
     brand,
     price,
@@ -305,53 +382,55 @@ function formatNumber(n: number): string {
 }
 
 /** Walk a product object looking for image URLs in every common
- *  arrangement Ounass and similar e-com APIs use. Returns absolute
- *  https:// URLs only — relative paths are skipped because the editor
- *  embeds them as data URLs and base path is uncertain. */
+ *  arrangement Ounass and similar e-com APIs use. Resolves relative
+ *  paths via OUNASS_IMAGE_BASE_URL — the live response returns
+ *  Magento-style hashed paths like `/2/1/219552822_grey_in.jpg?ts=…`
+ *  rather than absolute CDN URLs.
+ *
+ *  Image kinds (`media[].mediaType`) are filtered to "image" only —
+ *  videos in the same array are skipped because the editor's
+ *  product-row image slot expects still images. */
 function collectImageUrls(product: Record<string, unknown>): string[] {
   const out: string[] = [];
   const seen = new Set<string>();
   const push = (url: unknown) => {
     if (typeof url !== 'string') return;
-    let u = url.trim();
-    if (!u) return;
-    // Schemaless URLs like "//cdn.ounass.ae/…" — promote to https.
-    if (u.startsWith('//')) u = `https:${u}`;
-    if (!u.startsWith('http')) return;
-    if (seen.has(u)) return;
-    seen.add(u);
-    out.push(u);
+    const resolved = resolveImageUrl(url);
+    if (!resolved) return;
+    if (seen.has(resolved)) return;
+    seen.add(resolved);
+    out.push(resolved);
   };
 
-  // Direct keys with a flat URL or array of URLs.
-  for (const key of [
-    'image',
-    'imageUrl',
-    'mainImage',
-    'thumbnail',
-    'mediaUrl',
-  ]) {
-    push(product[key]);
-  }
-
-  // Array under common keys: ["url1","url2"] or [{ url: "…" }, …]
-  for (const key of ['images', 'media', 'mediaList', 'gallery', 'imageUrls']) {
-    const arr = product[key];
-    if (!Array.isArray(arr)) continue;
-    for (const item of arr) {
-      if (typeof item === 'string') push(item);
-      else if (item && typeof item === 'object') {
-        for (const k of ['url', 'src', 'href', 'imageUrl', 'mediaUrl']) {
-          push((item as Record<string, unknown>)[k]);
-        }
+  // Live Ounass shape: `media: [{ src, mediaType: 'image', position }, …]`
+  // Sort by `position` (1, 2, 3, 4) so the marketer sees images in the
+  // same order as the storefront PDP gallery.
+  const mediaArr = product.media;
+  if (Array.isArray(mediaArr)) {
+    const sorted = [...mediaArr].sort((a, b) => {
+      const pa = (a as Record<string, unknown>)?.position;
+      const pb = (b as Record<string, unknown>)?.position;
+      const na = typeof pa === 'number' ? pa : 0;
+      const nb = typeof pb === 'number' ? pb : 0;
+      return na - nb;
+    });
+    for (const item of sorted) {
+      if (typeof item === 'string') {
+        push(item);
+        continue;
+      }
+      if (!item || typeof item !== 'object') continue;
+      const obj = item as Record<string, unknown>;
+      // Skip videos / non-image media types.
+      const kind = obj.mediaType;
+      if (typeof kind === 'string' && kind !== 'image') continue;
+      for (const k of ['url', 'src', 'href', 'imageUrl', 'mediaUrl']) {
+        push(obj[k]);
       }
     }
-  }
-
-  // Nested media object: { media: { images: [...], video: ... } }
-  const nested = product.media;
-  if (nested && typeof nested === 'object' && !Array.isArray(nested)) {
-    const arr = (nested as Record<string, unknown>).images;
+  } else if (mediaArr && typeof mediaArr === 'object') {
+    // Older shape: `{ media: { images: [...] } }`
+    const arr = (mediaArr as Record<string, unknown>).images;
     if (Array.isArray(arr)) {
       for (const item of arr) {
         if (typeof item === 'string') push(item);
@@ -359,6 +438,32 @@ function collectImageUrls(product: Record<string, unknown>): string[] {
           for (const k of ['url', 'src', 'href']) {
             push((item as Record<string, unknown>)[k]);
           }
+        }
+      }
+    }
+  }
+
+  // Top-level direct keys (single URLs).
+  for (const key of [
+    'image',
+    'imageUrl',
+    'mainImage',
+    'thumbnail',
+    'smallImage',
+    'mediaUrl',
+  ]) {
+    push(product[key]);
+  }
+
+  // Other array keys for older / alternate payloads.
+  for (const key of ['images', 'mediaList', 'gallery', 'imageUrls']) {
+    const arr = product[key];
+    if (!Array.isArray(arr)) continue;
+    for (const item of arr) {
+      if (typeof item === 'string') push(item);
+      else if (item && typeof item === 'object') {
+        for (const k of ['url', 'src', 'href', 'imageUrl', 'mediaUrl']) {
+          push((item as Record<string, unknown>)[k]);
         }
       }
     }
