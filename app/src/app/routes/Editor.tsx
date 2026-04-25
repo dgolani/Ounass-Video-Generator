@@ -611,22 +611,34 @@ export function Editor() {
               borderRadius: 4,
             }}
           />
-          {savedHint && (
-            <span
-              style={{
-                fontFamily: 'var(--sans)',
-                fontSize: 11,
-                color:
-                  savedHint.startsWith('Storage') ? '#D85258' : 'var(--success)',
-                letterSpacing: '0.08em',
-                textTransform: 'uppercase',
-                fontWeight: 700,
-                whiteSpace: 'nowrap',
-              }}
-            >
-              {savedHint}
-            </span>
-          )}
+          {/* Reserved fixed-width slot for the autosave hint
+           *  ("SAVED" / "Saving…" / storage error). Always rendered;
+           *  swaps to `visibility: hidden` between flashes so the
+           *  toolbar geometry stays identical across save cycles —
+           *  prevents the umbrella + right cluster from sliding every
+           *  time autosave fires. Sized for the longest label
+           *  (`Storage full!` ≈ 92px). */}
+          <span
+            aria-live="polite"
+            style={{
+              display: 'inline-block',
+              flex: '0 0 92px',
+              width: 92,
+              minWidth: 92,
+              fontFamily: 'var(--sans)',
+              fontSize: 11,
+              color: savedHint?.startsWith('Storage')
+                ? '#D85258'
+                : 'var(--success)',
+              letterSpacing: '0.08em',
+              textTransform: 'uppercase',
+              fontWeight: 700,
+              whiteSpace: 'nowrap',
+              visibility: savedHint ? 'visible' : 'hidden',
+            }}
+          >
+            {savedHint ?? 'Saved'}
+          </span>
         </div>
 
         <div style={{ flex: 1 }} />
