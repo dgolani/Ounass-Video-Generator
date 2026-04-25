@@ -33,6 +33,15 @@ type Props = {
   /** Optional drop-shadow applied via CSS filter (works on SVG mask + text). */
   shadow?: string;
   style?: CSSProperties;
+  /** Per-field typography override applied ONLY to the text-fallback
+   *  mode (mode 3). Pass the result of
+   *  `useFieldFormat('boutiqueName', { fontFamily, fontSize, fontWeight,
+   *  letterSpacing, color, … })` so the editor's "Aa" drawer for the
+   *  boutique-name field can drive the rendered text. Spread last
+   *  inside the text-fallback span so its values win over the
+   *  component's defaults. SVG and raster modes ignore this — they
+   *  render the uploaded artwork, not text. */
+  nameStyle?: CSSProperties;
 };
 
 export function BoutiqueLogo({
@@ -47,6 +56,7 @@ export function BoutiqueLogo({
   letterSpacing = '-0.03em',
   shadow,
   style,
+  nameStyle,
 }: Props) {
   // Mode 1 — SVG: mask-image with solid fill.
   if (logo && isSvgDataURL(logo)) {
@@ -94,6 +104,9 @@ export function BoutiqueLogo({
 
   // Mode 3 — text fallback. Scales with the bounding box so the
   // wordmark roughly fills the same footprint the logo would.
+  // `nameStyle` (from useFieldFormat('boutiqueName', …)) is spread
+  // LAST so the editor's typography drawer wins over the component's
+  // and the caller's defaults.
   const textSize = fontSize ?? Math.min(width / 4.2, height * 0.9);
   return (
     <div
@@ -111,6 +124,7 @@ export function BoutiqueLogo({
         lineHeight: 0.9,
         textShadow: shadow ? `0 ${4}px ${24}px rgba(0,0,0,0.4)` : undefined,
         ...style,
+        ...nameStyle,
       }}
     >
       {boutiqueName}

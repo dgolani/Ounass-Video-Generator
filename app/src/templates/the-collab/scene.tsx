@@ -29,6 +29,7 @@ import {
 } from '../../engine';
 import type { CollabProps } from './schema';
 import { BoutiqueLogo } from '../BoutiqueLogo';
+import { composePrice, useCurrencyForLocale } from '../../lib/price';
 
 const BASE_W = 1080;
 const BASE_H = 1920;
@@ -152,15 +153,17 @@ export function TheCollabScene({
     textTransform: 'uppercase',
     color: colors.accent,
   });
-  const editSmallStyle = useFieldFormat('editSmallLeft', {
+  const editSmallBaseStyle = {
     fontFamily: 'var(--font-body)',
-    fontWeight: 500,
+    fontWeight: 500 as const,
     fontSize: wh(20),
     letterSpacing: '0.3em',
-    textTransform: 'uppercase',
+    textTransform: 'uppercase' as const,
     color: colors.ink,
     opacity: 0.6,
-  });
+  };
+  const editSmallStyle = useFieldFormat('editSmallLeft', editSmallBaseStyle);
+  const editSmallRightStyle = useFieldFormat('editSmallRight', editSmallBaseStyle);
   const editMainStyle = useFieldFormat('editMain', {
     fontFamily: 'var(--font-display)',
     fontStyle: 'italic',
@@ -175,15 +178,18 @@ export function TheCollabScene({
     fontSize: wh(44),
     color: colors.ink,
   });
-  const capsuleTagStyle = useFieldFormat('capsuleTag1', {
+  const capsuleTagBaseStyle = {
     fontFamily: 'var(--font-body)',
-    fontWeight: 500,
+    fontWeight: 500 as const,
     fontSize: wh(18),
     letterSpacing: '0.28em',
-    textTransform: 'uppercase',
+    textTransform: 'uppercase' as const,
     color: colors.ink,
     opacity: 0.6,
-  });
+  };
+  const capsuleTagStyle = useFieldFormat('capsuleTag1', capsuleTagBaseStyle);
+  const capsuleTag2Style = useFieldFormat('capsuleTag2', capsuleTagBaseStyle);
+  const capsuleTag3Style = useFieldFormat('capsuleTag3', capsuleTagBaseStyle);
   const ctaStyle = useFieldFormat('ctaText', {
     fontFamily: 'var(--font-body)',
     fontSize: wh(30),
@@ -201,6 +207,58 @@ export function TheCollabScene({
     color: colors.ink,
     opacity: 0.6,
   });
+
+  // Local card-name font size constant (mirrors the layout block below).
+  const cardNameSizeForHook = is45 ? 28 : 32;
+
+  // ── Per-card sub-field hooks (wildcards: products.*.*) ────────────
+  // Mirrors the existing hardcoded inline styles for category / name /
+  // price below the product images. textAlign is applied at the call
+  // site (it isn't part of FieldBaseStyle — see field-format docs).
+  const productCategoryStyle = useFieldFormat('products.*.category', {
+    fontFamily: 'var(--font-body)',
+    fontWeight: 500,
+    fontSize: wh(15),
+    letterSpacing: '0.3em',
+    color: hexToRgba(colors.ink, 0.6),
+    textTransform: 'uppercase',
+  });
+  const productNameStyle = useFieldFormat('products.*.name', {
+    fontFamily: 'var(--font-display)',
+    fontWeight: 300,
+    fontSize: wh(cardNameSizeForHook),
+    color: colors.ink,
+    letterSpacing: '0.01em',
+    lineHeight: 1.15,
+  });
+  const productPriceStyle = useFieldFormat('products.*.price', {
+    fontFamily: 'var(--font-body)',
+    fontWeight: 700,
+    fontSize: wh(18),
+    letterSpacing: '0.2em',
+    color: colors.accent,
+  });
+
+  // Boutique mark (left) + collaborator mark (right) text-fallback Aa
+  // drawers — both <BoutiqueLogo> instances need their own per-field
+  // style so the editor can tweak each independently.
+  const boutiqueNameStyle = useFieldFormat('boutiqueName', {
+    fontFamily: 'Fraunces, serif',
+    fontWeight: 300,
+    fontSize: wh(is45 ? 64 : 60),
+    letterSpacing: '0.14em',
+    color: logoColor,
+  });
+  const collabNameStyle = useFieldFormat('collabName', {
+    fontFamily: 'Fraunces, serif',
+    fontWeight: 400,
+    fontSize: wh(is45 ? 64 : 60),
+    letterSpacing: '0.14em',
+    color: collabLogoColor,
+  });
+
+  // Locale-aware currency suffix for product prices.
+  const currency = useCurrencyForLocale();
 
   // Horizontal center anchor — HTML uses --safe-cx (480 / 540).
   const safeCX = is45 ? 540 : 480;
@@ -308,7 +366,8 @@ export function TheCollabScene({
   // Card dimensions (HTML base px)
   const cardW = is45 ? 240 : 264;
   const cardImgH = is45 ? 320 : 360;
-  const cardNameSize = is45 ? 28 : 32;
+  // cardNameSize is declared as `cardNameSizeForHook` above (near the
+  // products.*.name format hook) so the hook can read it.
   const cardGap = 20;
 
   // Right-anchored inset clamp (safe.right=120 on 9:16). The lockup,
@@ -443,6 +502,7 @@ export function TheCollabScene({
             fontSize={wh(is45 ? 64 : 60)}
             fontWeight={300}
             letterSpacing="0.14em"
+            nameStyle={boutiqueNameStyle}
           />
         </div>
 
@@ -469,6 +529,7 @@ export function TheCollabScene({
             fontSize={wh(is45 ? 64 : 60)}
             fontWeight={400}
             letterSpacing="0.14em"
+            nameStyle={collabNameStyle}
           />
         </div>
 
@@ -550,7 +611,7 @@ export function TheCollabScene({
             alignSelf: 'center',
           }}
         />
-        <span style={editSmallStyle}>{editSmallRight}</span>
+        <span style={editSmallRightStyle}>{editSmallRight}</span>
       </div>
 
       {/* ── PRODUCT TRIO ───────────────────────────────────────────── */}
@@ -693,48 +754,16 @@ export function TheCollabScene({
                 )}
               </div>
               {/* Category (small caps) */}
-              <div
-                style={{
-                  marginTop: h(18),
-                  fontFamily: 'var(--font-body)',
-                  fontWeight: 500,
-                  fontSize: wh(15),
-                  letterSpacing: '0.3em',
-                  color: hexToRgba(colors.ink, 0.6),
-                  textTransform: 'uppercase',
-                  textAlign: 'center',
-                }}
-              >
+              <div style={{ marginTop: h(18), textAlign: 'center', ...productCategoryStyle }}>
                 {product.category}
               </div>
               {/* Name */}
-              <div
-                style={{
-                  marginTop: h(6),
-                  fontFamily: 'var(--font-display)',
-                  fontWeight: 300,
-                  fontSize: wh(cardNameSize),
-                  color: colors.ink,
-                  letterSpacing: '0.01em',
-                  textAlign: 'center',
-                  lineHeight: 1.15,
-                }}
-              >
+              <div style={{ marginTop: h(6), textAlign: 'center', ...productNameStyle }}>
                 {product.name}
               </div>
               {/* Price */}
-              <div
-                style={{
-                  marginTop: h(8),
-                  fontFamily: 'var(--font-body)',
-                  fontWeight: 700,
-                  fontSize: wh(18),
-                  letterSpacing: '0.2em',
-                  color: colors.accent,
-                  textAlign: 'center',
-                }}
-              >
-                {product.price}
+              <div style={{ marginTop: h(8), textAlign: 'center', ...productPriceStyle }}>
+                {composePrice(product.price, currency)}
               </div>
             </div>
           );
@@ -768,7 +797,7 @@ export function TheCollabScene({
             opacity: 0.7,
           }}
         />
-        <span style={capsuleTagStyle}>{capsuleTag2}</span>
+        <span style={capsuleTag2Style}>{capsuleTag2}</span>
         <span
           aria-hidden
           style={{
@@ -779,7 +808,7 @@ export function TheCollabScene({
             opacity: 0.7,
           }}
         />
-        <span style={capsuleTagStyle}>{capsuleTag3}</span>
+        <span style={capsuleTag3Style}>{capsuleTag3}</span>
       </div>
 
       {/* ── CTA ────────────────────────────────────────────────────── */}

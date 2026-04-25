@@ -122,6 +122,67 @@ export function BrandSpotlightScene({
     textTransform: 'uppercase',
     color: '#fff',
   });
+  const presentsLabelStyle = useFieldFormat('presentsLabel', {
+    fontFamily: 'var(--font-body)',
+    fontSize: wh(24),
+    fontWeight: 700,
+    letterSpacing: '0.5em',
+    textTransform: 'uppercase',
+    color: 'rgba(255,255,255,0.7)',
+  });
+  const heroBrandlineStyle = useFieldFormat('hero.brandline', {
+    fontFamily: 'var(--font-display)',
+    fontStyle: 'italic',
+    fontSize: wh(32),
+    letterSpacing: '0.15em',
+    textTransform: 'uppercase',
+    color: colors.ink,
+  });
+  const heroNameStyle = useFieldFormat('hero.name', {
+    fontFamily: 'var(--font-body)',
+    fontSize: wh(22),
+    fontWeight: 600,
+    color: 'rgba(0,0,0,0.60)',
+    letterSpacing: '0.08em',
+  });
+  const heroPriceStyle = useFieldFormat('hero.price', {
+    fontFamily: 'var(--font-numeric)',
+    fontSize: wh(26),
+    fontWeight: 700,
+    color: colors.accent,
+    letterSpacing: '0.08em',
+  });
+  const quoteAttribStyle = useFieldFormat('quoteAttrib', {
+    fontFamily: 'var(--font-body)',
+    fontStyle: 'normal',
+    fontSize: wh(24),
+    fontWeight: 700,
+    letterSpacing: '0.5em',
+    color: colors.accent,
+    textTransform: 'uppercase',
+  });
+  const finalKickerStyle = useFieldFormat('finalKicker', {
+    fontFamily: 'var(--font-body)',
+    fontSize: wh(24),
+    fontWeight: 700,
+    letterSpacing: '0.5em',
+    color: 'rgba(255,255,255,0.6)',
+    textTransform: 'uppercase',
+  });
+  const finalMetaStyle = useFieldFormat('finalMeta', {
+    fontFamily: 'var(--font-body)',
+    fontSize: wh(22),
+    fontWeight: 600,
+    letterSpacing: '0.35em',
+    color: 'rgba(255,255,255,0.55)',
+    textTransform: 'uppercase',
+  });
+  const boutiqueNameStyle = useFieldFormat('boutiqueName', {
+    fontFamily: 'var(--font-display)',
+    fontSize: wh(22),
+    fontWeight: 300,
+    letterSpacing: '-0.03em',
+  });
 
   const letters = featuredBrand.split('');
 
@@ -212,13 +273,8 @@ export function BrandSpotlightScene({
           right: 0,
           textAlign: 'center',
           zIndex: 10,
-          fontFamily: 'var(--font-body)',
-          fontSize: wh(24),
-          fontWeight: 700,
-          letterSpacing: '0.5em',
-          textTransform: 'uppercase',
-          color: 'rgba(255,255,255,0.7)',
-          opacity: 1 - finalOp,
+          ...presentsLabelStyle,
+          opacity: (presentsLabelStyle.opacity ?? 1) * (1 - finalOp),
         }}
       >
         {/* When a logo is set, show logo + "presents"; otherwise show boutique name + "presents" */}
@@ -232,6 +288,7 @@ export function BrandSpotlightScene({
             fontSize={wh(22)}
             fontWeight={800}
             letterSpacing="0.5em"
+            nameStyle={boutiqueNameStyle}
           />
           <span>{presentsLabel.replace(new RegExp(boutiqueName, 'i'), '').trim() || 'presents'}</span>
         </div>
@@ -380,25 +437,12 @@ export function BrandSpotlightScene({
               bottom: h(40),
             }}
           >
-            <div
-              style={{
-                fontFamily: 'var(--font-display)',
-                fontStyle: 'italic',
-                fontSize: wh(32),
-                letterSpacing: '0.15em',
-                textTransform: 'uppercase',
-                color: colors.ink,
-              }}
-            >
+            <div style={{ ...heroBrandlineStyle }}>
               {hero.brandline}
             </div>
             <div
               style={{
-                fontFamily: 'var(--font-body)',
-                fontSize: wh(22),
-                fontWeight: 600,
-                color: 'rgba(0,0,0,0.60)',
-                letterSpacing: '0.08em',
+                ...heroNameStyle,
                 marginTop: h(6),
               }}
             >
@@ -406,11 +450,7 @@ export function BrandSpotlightScene({
             </div>
             <div
               style={{
-                fontFamily: 'var(--font-numeric)',
-                fontSize: wh(26),
-                fontWeight: 700,
-                color: colors.accent,
-                letterSpacing: '0.08em',
+                ...heroPriceStyle,
                 marginTop: h(10),
               }}
             >
@@ -491,13 +531,7 @@ export function BrandSpotlightScene({
           style={{
             display: 'block',
             marginTop: h(28),
-            fontFamily: 'var(--font-body)',
-            fontStyle: 'normal',
-            fontSize: wh(24),
-            fontWeight: 700,
-            letterSpacing: '0.5em',
-            color: colors.accent,
-            textTransform: 'uppercase',
+            ...quoteAttribStyle,
           }}
         >
           {quoteAttrib}
@@ -532,16 +566,7 @@ export function BrandSpotlightScene({
         >
           {finalMono}
         </div>
-        <div
-          style={{
-            fontFamily: 'var(--font-body)',
-            fontSize: wh(24),
-            fontWeight: 700,
-            letterSpacing: '0.5em',
-            color: 'rgba(255,255,255,0.6)',
-            textTransform: 'uppercase',
-          }}
-        >
+        <div style={{ ...finalKickerStyle }}>
           {finalKicker}
         </div>
         <div
@@ -555,14 +580,9 @@ export function BrandSpotlightScene({
         </div>
         <div
           style={{
-            fontFamily: 'var(--font-body)',
-            fontSize: wh(22),
-            fontWeight: 600,
-            letterSpacing: '0.35em',
-            color: 'rgba(255,255,255,0.55)',
-            textTransform: 'uppercase',
             textAlign: 'center',
             padding: `0 ${w(40)}px`,
+            ...finalMetaStyle,
           }}
         >
           {finalMeta}

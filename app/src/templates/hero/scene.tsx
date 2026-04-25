@@ -208,6 +208,21 @@ function Copy({ props, T, s, safe }: ActProps) {
     fontWeight: 300,
     color: colors.paper,
   });
+  const productCategoryStyle = useFieldFormat('product.category', {
+    fontFamily: 'var(--font-body)',
+    fontWeight: 700,
+    fontSize: wh(20),
+    letterSpacing: `${wh(3)}px`,
+    textTransform: 'uppercase',
+    color: colors.accent,
+  });
+  const productNameStyle = useFieldFormat('product.name', {
+    fontFamily: 'var(--font-display)',
+    fontWeight: 300,
+    fontSize: wh(36),
+    lineHeight: 1.1,
+    color: colors.paper,
+  });
 
   if (t < T(2.0) || t > T(5.0)) return null;
 
@@ -292,25 +307,16 @@ function Copy({ props, T, s, safe }: ActProps) {
       >
         <div
           style={{
-            fontFamily: 'var(--font-body)',
-            fontWeight: 700,
-            fontSize: wh(20),
-            letterSpacing: `${wh(3)}px`,
-            textTransform: 'uppercase',
-            color: colors.accent,
             marginBottom: wh(8),
+            ...productCategoryStyle,
           }}
         >
           {product.category}
         </div>
         <div
           style={{
-            fontFamily: 'var(--font-display)',
-            fontWeight: 300,
-            fontSize: wh(36),
-            lineHeight: 1.1,
-            color: colors.paper,
             marginBottom: wh(8),
+            ...productNameStyle,
           }}
         >
           {product.name}
@@ -353,6 +359,12 @@ function CTA({ props, T, s, safe }: ActProps) {
     textTransform: 'uppercase',
     color: colors.paper,
   });
+  const boutiqueNameStyle = useFieldFormat('boutiqueName', {
+    fontFamily: 'var(--font-display)',
+    fontSize: wh(160),
+    fontWeight: 300,
+    letterSpacing: '-0.03em',
+  });
 
   if (t < T(5.0)) return null;
 
@@ -388,6 +400,7 @@ function CTA({ props, T, s, safe }: ActProps) {
           height={h(280)}
           fontSize={wh(160)}
           shadow="0 4px 24px rgba(0,0,0,0.5)"
+          nameStyle={boutiqueNameStyle}
         />
       </div>
 
@@ -416,7 +429,6 @@ function CTA({ props, T, s, safe }: ActProps) {
             position: 'relative',
             overflow: 'hidden',
             ...ctaTextStyle,
-            color: ctaTextStyle.color ?? colors.background,
           }}
         >
           {ctaText}

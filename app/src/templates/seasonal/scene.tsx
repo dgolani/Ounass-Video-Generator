@@ -134,6 +134,45 @@ export function SeasonalScene({
     letterSpacing: '-0.04em',
     color: colors.accent,
   });
+  const word2Style = useFieldFormat('word2', {
+    fontFamily: 'var(--font-display)',
+    fontStyle: 'italic',
+    fontSize: wh(520),
+    fontWeight: 300,
+    lineHeight: 0.9,
+    letterSpacing: '-0.04em',
+    color: colors.accent,
+  });
+  const word3Style = useFieldFormat('word3', {
+    fontFamily: 'var(--font-display)',
+    fontStyle: 'italic',
+    fontSize: wh(520),
+    fontWeight: 300,
+    lineHeight: 0.9,
+    letterSpacing: '-0.04em',
+    color: colors.accent,
+  });
+  const sideEditorialLineStyle = useFieldFormat('sideEditorialLine', {
+    fontFamily: 'var(--font-body)',
+    fontSize: wh(20),
+    fontWeight: 700,
+    letterSpacing: '0.6em',
+    textTransform: 'uppercase',
+    color: 'rgba(0,0,0,0.60)',
+  });
+  const seasonChipStyle = useFieldFormat('seasonChip', {
+    fontFamily: 'var(--font-display)',
+    fontStyle: 'italic',
+    fontSize: wh(110),
+    color: colors.cream,
+    letterSpacing: '-0.02em',
+  });
+  const boutiqueNameStyle = useFieldFormat('boutiqueName', {
+    fontFamily: 'var(--font-display)',
+    fontSize: wh(28),
+    fontWeight: 300,
+    letterSpacing: '-0.03em',
+  });
   const finalKickerStyle = useFieldFormat('finalKicker', {
     fontFamily: 'var(--font-body)',
     fontSize: wh(26),
@@ -168,6 +207,7 @@ export function SeasonalScene({
   });
 
   const words = [word1, word2, word3];
+  const wordStyles = [refrainStyle, word2Style, word3Style];
 
   // Word phase: three 3-second phases, then freeze word 3 until FINAL_IN.
   let activeWordIdx: number;
@@ -282,6 +322,7 @@ export function SeasonalScene({
           fontSize={wh(28)}
           fontWeight={800}
           letterSpacing="0.5em"
+          nameStyle={boutiqueNameStyle}
         />
       </div>
 
@@ -361,8 +402,8 @@ export function SeasonalScene({
           style={{
             whiteSpace: 'nowrap',
             textAlign: 'center',
-            ...refrainStyle,
-            opacity: (refrainStyle.opacity ?? 1) * wordOp,
+            ...wordStyles[activeWordIdx],
+            opacity: (wordStyles[activeWordIdx].opacity ?? 1) * wordOp,
             transform: `translateY(-50%) translateY(${h(wordDy)}px) scale(${wordScale}) rotate(${wordRot}deg)`,
           }}
         >
@@ -459,14 +500,11 @@ export function SeasonalScene({
           top: contentCY,
           transform: 'translateY(-50%) rotate(90deg)',
           transformOrigin: 'right center',
-          fontFamily: 'var(--font-body)',
-          fontSize: wh(20),
-          fontWeight: 700,
-          letterSpacing: '0.6em',
-          textTransform: 'uppercase',
-          color: 'rgba(0,0,0,0.60)',
           zIndex: 6,
-          opacity: time < T(FINAL_IN) ? 1 : 1 - finalOp,
+          ...sideEditorialLineStyle,
+          opacity:
+            (sideEditorialLineStyle.opacity ?? 1) *
+            (time < T(FINAL_IN) ? 1 : 1 - finalOp),
         }}
       >
         {sideEditorialLine}
@@ -525,11 +563,7 @@ export function SeasonalScene({
               style={{
                 position: 'relative',
                 zIndex: 2,
-                fontFamily: 'var(--font-display)',
-                fontStyle: 'italic',
-                fontSize: wh(110),
-                color: colors.cream,
-                letterSpacing: '-0.02em',
+                ...seasonChipStyle,
               }}
             >
               {seasonChip}

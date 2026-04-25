@@ -334,6 +334,12 @@ function CTA({ props, T, s, safe }: ActProps) {
     textTransform: 'uppercase',
     color: colors.paper,
   });
+  const boutiqueNameStyle = useFieldFormat('boutiqueName', {
+    fontFamily: 'var(--font-display)',
+    fontSize: wh(160),
+    fontWeight: 300,
+    letterSpacing: '-0.03em',
+  });
 
   if (t < T(4.8)) return null;
 
@@ -384,6 +390,7 @@ function CTA({ props, T, s, safe }: ActProps) {
           width={w(680)}
           height={h(300)}
           fontSize={wh(160)}
+          nameStyle={boutiqueNameStyle}
         />
       </div>
 

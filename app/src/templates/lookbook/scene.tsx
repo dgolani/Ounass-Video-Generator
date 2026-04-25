@@ -202,6 +202,15 @@ function Act2Columns({
     letterSpacing: '-0.01em',
     color: colors.paper,
   });
+  const act2TitleLine2Style = useFieldFormat('act2TitleLine2', {
+    // Same base as act2TitleStyle — the italic em wrapper is structural.
+    fontFamily: 'var(--font-display)',
+    fontSize: wh(64),
+    fontWeight: 300,
+    lineHeight: 1.05,
+    letterSpacing: '-0.01em',
+    color: colors.paper,
+  });
 
   return (
     <>
@@ -333,7 +342,7 @@ function Act2Columns({
               <div style={{ ...act2TitleStyle }}>
                 {act2TitleLine1}
                 <br />
-                <em style={{ fontWeight: act2TitleStyle.fontWeight ?? 300 }}>{act2TitleLine2}</em>
+                <em style={{ ...act2TitleLine2Style }}>{act2TitleLine2}</em>
               </div>
             </div>
           </div>
@@ -364,6 +373,23 @@ function Act3Filmstrip({
   const { products, colors, brand } = props;
   const { w, h, wh, H } = s;
   const currency = useCurrencyForLocale();
+
+  const productColorStyle = useFieldFormat('products.*.color', {
+    fontFamily: 'var(--font-body)',
+    fontWeight: 700,
+    fontSize: wh(20),
+    letterSpacing: `${wh(3)}px`,
+    color: colors.accentDark,
+    textTransform: 'uppercase',
+  });
+  const productNameStyle = useFieldFormat('products.*.name', {
+    fontFamily: 'var(--font-display)',
+    fontWeight: 300,
+    fontSize: wh(34),
+    lineHeight: 1.1,
+    color: colors.background,
+    letterSpacing: '-0.01em',
+  });
 
   const cycleStart = T(4.3);
   const perProduct = T(0.55);
@@ -456,26 +482,16 @@ function Act3Filmstrip({
         >
           <div
             style={{
-              fontFamily: 'var(--font-body)',
-              fontWeight: 700,
-              fontSize: wh(20),
-              letterSpacing: `${wh(3)}px`,
-              color: colors.accentDark,
-              textTransform: 'uppercase',
               marginBottom: wh(10),
+              ...productColorStyle,
             }}
           >
             {brand} · {product.color}
           </div>
           <div
             style={{
-              fontFamily: 'var(--font-display)',
-              fontWeight: 300,
-              fontSize: wh(34),
-              lineHeight: 1.1,
-              color: colors.background,
-              letterSpacing: '-0.01em',
               marginBottom: wh(10),
+              ...productNameStyle,
             }}
           >
             {product.name}
@@ -615,6 +631,12 @@ function Act4Outro({ props, T, s, safe, contentTop, contentLeft, contentRight }:
     letterSpacing: '0.01em',
     color: 'rgba(245,243,239,0.72)',
   });
+  const boutiqueNameStyle = useFieldFormat('boutiqueName', {
+    fontFamily: 'var(--font-display)',
+    fontSize: wh(180),
+    fontWeight: 300,
+    letterSpacing: '-0.03em',
+  });
 
   if (t < T(7.0)) return null;
 
@@ -725,6 +747,7 @@ function Act4Outro({ props, T, s, safe, contentTop, contentLeft, contentRight }:
           height={h(360)}
           fontSize={wh(180)}
           shadow="0 4px 24px rgba(0,0,0,0.4)"
+          nameStyle={boutiqueNameStyle}
         />
 
         <div

@@ -34,6 +34,7 @@ import {
 } from '../../engine';
 import type { NewInProps } from './schema';
 import { BoutiqueLogo } from '../BoutiqueLogo';
+import { composePrice, useCurrencyForLocale } from '../../lib/price';
 
 const BASE_W = 1080;
 const BASE_H = 1920;
@@ -182,6 +183,65 @@ export function NewInScene({
     color: colors.ink,
     opacity: 0.6,
   });
+  // BoutiqueLogo's text-fallback footprint is computed from width/height
+  // (see Math.min(width/4.2, height*0.9) in BoutiqueLogo.tsx). Picking a
+  // representative number here is fine — the editor uses `sizeScale` as a
+  // multiplier on this base, so the relative sizing the marketer sets in
+  // the Aa drawer is what carries through to the rendered wordmark.
+  const boutiqueNameStyle = useFieldFormat('boutiqueName', {
+    fontFamily: 'Fraunces, serif',
+    fontSize: wh(72),
+    fontWeight: 300,
+    letterSpacing: '14px',
+    color: logoColor,
+  });
+
+  // ── Per-product wildcard format overrides ─────────────────────────
+  // One hook per logical field; spread at each render site so editor
+  // edits in the products.*.X drawers reach every card.
+  const productCategoryStyle = useFieldFormat('products.*.category', {
+    fontFamily: 'var(--font-body)',
+    fontWeight: 700,
+    fontSize: wh(20),
+    letterSpacing: '0.32em',
+    color: hexToRgba(colors.ink, 0.6),
+  });
+  const productBrandStyle = useFieldFormat('products.*.brand', {
+    fontFamily: 'var(--font-display)',
+    fontStyle: 'italic',
+    fontWeight: 300,
+    fontSize: wh(26),
+    color: hexToRgba(colors.ink, 0.6),
+  });
+  const productNameStyle = useFieldFormat('products.*.name', {
+    fontFamily: 'var(--font-display)',
+    fontStyle: 'italic',
+    fontWeight: 300,
+    fontSize: wh(38),
+    letterSpacing: '-0.01em',
+    color: colors.ink,
+    lineHeight: 1,
+  });
+  // FieldBaseStyle doesn't carry CSS shorthands like `fontVariantNumeric`
+  // — that's a typography polish we keep on the wrapper element rather
+  // than the override. The hook only governs the editor-controllable
+  // shape (family, size, weight, color, etc.).
+  const productPriceStyle = useFieldFormat('products.*.price', {
+    fontFamily: 'var(--font-display)',
+    fontSize: wh(30),
+    color: colors.ink,
+    letterSpacing: '0.02em',
+  });
+  const productRecapPriceStyle = useFieldFormat('products.*.recapPrice', {
+    fontFamily: 'var(--font-display)',
+    fontSize: wh(26),
+    color: colors.ink,
+  });
+
+  // Locale-aware currency suffix for the price-composition helper —
+  // strips the raw price's hard-coded currency and re-appends the
+  // brand-kit's suffix for the active locale.
+  const currency = useCurrencyForLocale();
 
   // The HTML uses --safe-cx (480 on 9:16, 540 on 4:5).
   const safeCX = is45 ? 540 : 480;
@@ -495,6 +555,7 @@ export function NewInScene({
           height={h(90)}
           fontSize={wh(72)}
           letterSpacing="14px"
+          nameStyle={boutiqueNameStyle}
         />
       </div>
 
@@ -714,11 +775,7 @@ export function NewInScene({
                   position: 'absolute',
                   left: w(28),
                   bottom: h(24),
-                  fontFamily: 'var(--font-body)',
-                  fontWeight: 700,
-                  fontSize: wh(20),
-                  letterSpacing: '0.32em',
-                  color: hexToRgba(colors.ink, 0.6),
+                  ...productCategoryStyle,
                 }}
               >
                 {p.category}
@@ -729,11 +786,7 @@ export function NewInScene({
                   position: 'absolute',
                   right: w(28),
                   bottom: h(24),
-                  fontFamily: 'var(--font-display)',
-                  fontStyle: 'italic',
-                  fontWeight: 300,
-                  fontSize: wh(26),
-                  color: hexToRgba(colors.ink, 0.6),
+                  ...productBrandStyle,
                 }}
               >
                 {p.brand}
@@ -792,29 +845,16 @@ export function NewInScene({
                 transform: `translateY(${h(metaTy(i))}px)`,
               }}
             >
-              <div
-                style={{
-                  fontFamily: 'var(--font-display)',
-                  fontStyle: 'italic',
-                  fontWeight: 300,
-                  fontSize: wh(38),
-                  letterSpacing: '-0.01em',
-                  color: colors.ink,
-                  lineHeight: 1,
-                }}
-              >
+              <div style={{ ...productNameStyle }}>
                 {p.name}
               </div>
               <div
                 style={{
-                  fontFamily: 'var(--font-display)',
                   fontVariantNumeric: 'tabular-nums',
-                  fontSize: wh(30),
-                  color: colors.ink,
-                  letterSpacing: '0.02em',
+                  ...productPriceStyle,
                 }}
               >
-                {p.price}
+                {composePrice(p.price, currency)}
               </div>
             </div>
           ))}
@@ -895,11 +935,7 @@ export function NewInScene({
                       position: 'absolute',
                       left: w(20),
                       bottom: h(18),
-                      fontFamily: 'var(--font-body)',
-                      fontWeight: 700,
-                      fontSize: wh(20),
-                      letterSpacing: '0.3em',
-                      color: hexToRgba(colors.ink, 0.6),
+                      ...productCategoryStyle,
                     }}
                   >
                     {p.category}
@@ -909,13 +945,11 @@ export function NewInScene({
                       position: 'absolute',
                       right: w(20),
                       bottom: h(18),
-                      fontFamily: 'var(--font-display)',
                       fontVariantNumeric: 'tabular-nums',
-                      fontSize: wh(26),
-                      color: colors.ink,
+                      ...productRecapPriceStyle,
                     }}
                   >
-                    {p.recapPrice}
+                    {composePrice(p.recapPrice, currency)}
                   </div>
                 </div>
               );

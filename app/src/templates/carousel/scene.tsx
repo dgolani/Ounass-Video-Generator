@@ -109,6 +109,23 @@ export function CarouselScene({
     letterSpacing: '-0.03em',
     color: lightText,
   });
+  const titleLine2Style = useFieldFormat('titleLine2', {
+    fontFamily: 'var(--font-display)',
+    fontStyle: 'italic',
+    fontSize: wh(150),
+    fontWeight: 300,
+    lineHeight: 0.95,
+    letterSpacing: '-0.03em',
+    color: lightText,
+  });
+  const categoryLabelStyle = useFieldFormat('categoryLabel', {
+    fontFamily: 'var(--font-body)',
+    fontSize: wh(22),
+    fontWeight: 700,
+    letterSpacing: '0.4em',
+    textTransform: 'uppercase',
+    color: colors.accent,
+  });
   const finalHeadlineStyle = useFieldFormat('finalHeadline', {
     fontFamily: 'var(--font-display)',
     fontStyle: 'italic',
@@ -117,6 +134,45 @@ export function CarouselScene({
     color: lightText,
     letterSpacing: '-0.02em',
   });
+  const finalKickerStyle = useFieldFormat('finalKicker', {
+    fontFamily: 'var(--font-body)',
+    fontSize: wh(26),
+    fontWeight: 700,
+    letterSpacing: '0.5em',
+    color: lightText,
+    opacity: 0.6,
+    textTransform: 'uppercase',
+  });
+  const finalSublineStyle = useFieldFormat('finalSubline', {
+    fontFamily: 'var(--font-body)',
+    fontSize: wh(24),
+    letterSpacing: '0.25em',
+    color: lightText,
+    opacity: 0.55,
+    textTransform: 'uppercase',
+  });
+  const itemBrandlineStyle = useFieldFormat('items.*.brandline', {
+    fontFamily: 'var(--font-display)',
+    fontStyle: 'italic',
+    fontSize: wh(28),
+    letterSpacing: '0.15em',
+    textTransform: 'uppercase',
+  });
+  const itemNameStyle = useFieldFormat('items.*.name', {
+    fontFamily: 'var(--font-body)',
+    fontSize: wh(20),
+    fontWeight: 600,
+    color: colors.ink,
+    opacity: 0.6,
+    letterSpacing: '0.04em',
+  });
+  const itemPriceStyle = useFieldFormat('items.*.price', {
+    fontFamily: 'var(--font-numeric)',
+    fontSize: wh(22),
+    fontWeight: 700,
+    color: colors.accent,
+    letterSpacing: '0.08em',
+  });
   const ctaButtonStyle = useFieldFormat('ctaButton', {
     fontFamily: 'var(--font-body)',
     fontSize: wh(26),
@@ -124,6 +180,12 @@ export function CarouselScene({
     letterSpacing: '0.35em',
     textTransform: 'uppercase',
     color: lightText,
+  });
+  const boutiqueNameStyle = useFieldFormat('boutiqueName', {
+    fontFamily: 'var(--font-display)',
+    fontSize: wh(28),
+    fontWeight: 300,
+    letterSpacing: '-0.03em',
   });
   const logoColor = useFieldColor('logo', lightText);
 
@@ -213,15 +275,11 @@ export function CarouselScene({
           fontSize={wh(28)}
           fontWeight={800}
           letterSpacing="0.5em"
+          nameStyle={boutiqueNameStyle}
         />
         <div
           style={{
-            fontFamily: 'var(--font-body)',
-            fontSize: wh(22),
-            fontWeight: 700,
-            letterSpacing: '0.4em',
-            textTransform: 'uppercase',
-            color: colors.accent,
+            ...categoryLabelStyle,
           }}
         >
           {categoryLabel}
@@ -249,7 +307,7 @@ export function CarouselScene({
         <div style={{ ...titleLineStyle }}>
           {titleLine1}
           <br />
-          <em>{titleLine2}</em>
+          <em style={{ ...titleLine2Style }}>{titleLine2}</em>
         </div>
       </div>
 
@@ -316,36 +374,23 @@ export function CarouselScene({
                 >
                   <div
                     style={{
-                      fontFamily: 'var(--font-display)',
-                      fontStyle: 'italic',
-                      fontSize: wh(28),
-                      letterSpacing: '0.15em',
-                      textTransform: 'uppercase',
+                      ...itemBrandlineStyle,
                     }}
                   >
                     {it.brandline}
                   </div>
                   <div
                     style={{
-                      fontFamily: 'var(--font-body)',
-                      fontSize: wh(20),
-                      fontWeight: 600,
-                      color: colors.ink,
-                      opacity: 0.6,
                       marginTop: h(4),
-                      letterSpacing: '0.04em',
+                      ...itemNameStyle,
                     }}
                   >
                     {it.name}
                   </div>
                   <div
                     style={{
-                      fontFamily: 'var(--font-numeric)',
-                      fontSize: wh(22),
-                      fontWeight: 700,
-                      color: colors.accent,
-                      letterSpacing: '0.08em',
                       marginTop: h(8),
+                      ...itemPriceStyle,
                     }}
                   >
                     {composePrice(it.price, currency)}
@@ -428,13 +473,7 @@ export function CarouselScene({
         </div>
         <div
           style={{
-            fontFamily: 'var(--font-body)',
-            fontSize: wh(26),
-            fontWeight: 700,
-            letterSpacing: '0.5em',
-            color: lightText,
-            opacity: 0.6,
-            textTransform: 'uppercase',
+            ...finalKickerStyle,
           }}
         >
           {finalKicker}
@@ -450,12 +489,7 @@ export function CarouselScene({
         </div>
         <div
           style={{
-            fontFamily: 'var(--font-body)',
-            fontSize: wh(24),
-            letterSpacing: '0.25em',
-            color: lightText,
-            opacity: 0.55,
-            textTransform: 'uppercase',
+            ...finalSublineStyle,
           }}
         >
           {finalSubline}

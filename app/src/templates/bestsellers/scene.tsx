@@ -180,6 +180,12 @@ export function BestsellersScene({
     letterSpacing: '0.08em',
     color: colors.accent,
   });
+  const boutiqueNameStyle = useFieldFormat('boutiqueName', {
+    fontFamily: 'var(--font-display)',
+    fontSize: wh(28),
+    fontWeight: 300,
+    letterSpacing: '-0.03em',
+  });
 
   // Only 5 product slots are supported. If more are provided, extra are ignored;
   // if fewer, remaining slots stay blank.
@@ -270,6 +276,7 @@ export function BestsellersScene({
           fontSize={wh(28)}
           fontWeight={800}
           letterSpacing="0.5em"
+          nameStyle={boutiqueNameStyle}
         />
         <div style={{ ...headerMetaStyle }}>
           {headerMeta}

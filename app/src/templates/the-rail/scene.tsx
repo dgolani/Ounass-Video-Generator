@@ -28,6 +28,7 @@ import {
 } from '../../engine';
 import type { RailProps, RailProduct } from './schema';
 import { BoutiqueLogo } from '../BoutiqueLogo';
+import { composePrice, useCurrencyForLocale } from '../../lib/price';
 
 const BASE_W = 1080;
 const BASE_H = 1920;
@@ -166,6 +167,95 @@ export function TheRailScene({
     color: colors.ink,
     opacity: 0.6,
   });
+  // BoutiqueLogo's text fallback derives its size from width/height; the
+  // base size below is just so the editor's sizeScale multiplier has a
+  // sensible anchor when marketers tweak the wordmark in the Aa drawer.
+  const boutiqueNameStyle = useFieldFormat('boutiqueName', {
+    fontFamily: 'Fraunces, serif',
+    fontSize: wh(is45 ? 68 : 72),
+    fontWeight: 300,
+    letterSpacing: '14px',
+    color: logoColor,
+  });
+
+  // ── Capsule + hero editorial format overrides ─────────────────────
+  const editKickerStyle = useFieldFormat('editKicker', {
+    fontFamily: 'var(--font-mono, var(--font-body))',
+    fontWeight: 700,
+    fontSize: wh(13),
+    letterSpacing: '0.42em',
+    color: colors.accent,
+    textTransform: 'uppercase',
+  });
+  const heroSizesStyle = useFieldFormat('heroSizes', {
+    fontFamily: 'var(--font-mono, var(--font-body))',
+    fontWeight: 700,
+    fontSize: wh(16),
+    letterSpacing: '0.28em',
+    color: colors.ink,
+  });
+  const capsuleCountStyle = useFieldFormat('capsuleCount', {
+    fontFamily: 'var(--font-display)',
+    fontWeight: 400,
+    fontSize: wh(28),
+    color: colors.ink,
+  });
+  // capsuleTagStyle() (below) is the shared base for the three capsule
+  // word slots — each override hook below spreads on top, so editing
+  // the "Aa" drawer for one word doesn't touch the others.
+  const capsuleWord1Style = useFieldFormat(
+    'capsuleWord1',
+    capsuleTagStyle(colors.ink, wh(12)),
+  );
+  const capsuleWord2Style = useFieldFormat(
+    'capsuleWord2',
+    capsuleTagStyle(colors.ink, wh(12)),
+  );
+  const capsuleWord3Style = useFieldFormat(
+    'capsuleWord3',
+    capsuleTagStyle(colors.ink, wh(12)),
+  );
+
+  // ── Per-product wildcard format overrides ─────────────────────────
+  const productNameStyle = useFieldFormat('products.*.name', {
+    fontFamily: 'var(--font-display)',
+    fontStyle: 'italic',
+    fontWeight: 300,
+    fontSize: wh(is45 ? 34 : 44),
+    color: colors.ink,
+    letterSpacing: '0.01em',
+    lineHeight: 1.15,
+  });
+  // textAlign isn't part of FieldBaseStyle (it's not a typographic
+  // override) — keep it on the wrapper element where the price tag is
+  // composed so the centered layout survives.
+  const productPriceStyle = useFieldFormat('products.*.price', {
+    fontFamily: 'var(--font-mono, var(--font-body))',
+    fontWeight: 700,
+    fontSize: wh(13),
+    letterSpacing: '0.12em',
+    color: colors.ink,
+    textTransform: 'uppercase',
+  });
+  const productPriceUnitStyle = useFieldFormat('products.*.priceUnit', {
+    fontFamily: 'var(--font-mono, var(--font-body))',
+    fontWeight: 700,
+    fontSize: wh(9),
+    letterSpacing: '0.2em',
+    color: colors.ink,
+    opacity: 0.6,
+    textTransform: 'uppercase',
+  });
+  const productIndexLabelStyle = useFieldFormat('products.*.indexLabel', {
+    fontFamily: 'var(--font-mono, var(--font-body))',
+    fontWeight: 700,
+    fontSize: wh(10),
+    letterSpacing: '0.15em',
+    color: hexToRgba(colors.ink, 0.3),
+  });
+
+  // Locale-aware currency suffix for the price-composition helper.
+  const currency = useCurrencyForLocale();
 
   const safeCX = is45 ? 540 : 480;
 
@@ -419,6 +509,7 @@ export function TheRailScene({
           height={h(is45 ? 80 : 90)}
           fontSize={wh(is45 ? 68 : 72)}
           letterSpacing="14px"
+          nameStyle={boutiqueNameStyle}
         />
       </div>
 
@@ -644,11 +735,7 @@ export function TheRailScene({
                     position: 'absolute',
                     top: -wh(4),
                     left: -wh(14),
-                    fontFamily: 'var(--font-mono, var(--font-body))',
-                    fontWeight: 700,
-                    fontSize: wh(10),
-                    letterSpacing: '0.15em',
-                    color: hexToRgba(colors.ink, 0.3),
+                    ...productIndexLabelStyle,
                     opacity: tagOpacity,
                     zIndex: 3,
                   }}
@@ -656,9 +743,14 @@ export function TheRailScene({
                   {product.indexLabel}
                 </div>
 
-                {/* Price tag clipped to the hook */}
+                {/* Price tag clipped to the hook. Layout-only props
+                 *  (position, padding, background, border, transform, …)
+                 *  stay on the wrapper; productPriceStyle handles font
+                 *  + color so the editor's "Aa" drawer for the price
+                 *  field can override typography for every card. */}
                 <div
                   style={{
+                    ...productPriceStyle,
                     position: 'absolute',
                     top: wh(20),
                     right: -wh(12),
@@ -667,13 +759,7 @@ export function TheRailScene({
                     background: colors.background,
                     border: `1px solid ${colors.ink}`,
                     borderRadius: wh(2),
-                    fontFamily: 'var(--font-mono, var(--font-body))',
-                    fontWeight: 700,
-                    fontSize: wh(12),
-                    letterSpacing: '0.12em',
-                    color: colors.ink,
                     textAlign: 'center',
-                    textTransform: 'uppercase',
                     transform: 'rotate(6deg)',
                     boxShadow: `0 ${h(2)}px ${h(4)}px rgba(0,0,0,0.08)`,
                     opacity: tagOpacity,
@@ -694,13 +780,13 @@ export function TheRailScene({
                       background: colors.ink,
                     }}
                   />
-                  <span style={{ fontSize: wh(13), display: 'block' }}>{product.price}</span>
+                  <span style={{ display: 'block', ...productPriceStyle }}>
+                    {composePrice(product.price, currency)}
+                  </span>
                   <span
                     style={{
-                      fontSize: wh(9),
-                      letterSpacing: '0.2em',
-                      opacity: 0.6,
                       display: 'block',
+                      ...productPriceUnitStyle,
                     }}
                   >
                     {product.priceUnit}
@@ -738,16 +824,7 @@ export function TheRailScene({
               aria-hidden
               style={{ width: wh(28), height: 1, background: colors.accent, opacity: 0.7 }}
             />
-            <span
-              style={{
-                fontFamily: 'var(--font-mono, var(--font-body))',
-                fontWeight: 700,
-                fontSize: wh(13),
-                letterSpacing: '0.42em',
-                color: colors.accent,
-                textTransform: 'uppercase',
-              }}
-            >
+            <span style={{ ...editKickerStyle }}>
               {editKicker}
             </span>
             <span
@@ -757,29 +834,21 @@ export function TheRailScene({
           </div>
           <div
             style={{
-              fontFamily: 'var(--font-display)',
-              fontStyle: 'italic',
-              fontWeight: 300,
-              fontSize: wh(is45 ? 34 : 44),
-              color: colors.ink,
-              letterSpacing: '0.01em',
-              lineHeight: 1.15,
               marginBottom: wh(10),
               whiteSpace: 'nowrap',
+              ...productNameStyle,
             }}
           >
             {heroProduct.name}
           </div>
-          <div
-            style={{
-              fontFamily: 'var(--font-mono, var(--font-body))',
-              fontWeight: 700,
-              fontSize: wh(16),
-              letterSpacing: '0.28em',
-              color: colors.ink,
-            }}
-          >
-            {heroProduct.price} {heroProduct.priceUnit} · {heroSizes}
+          <div style={{ ...heroSizesStyle }}>
+            <span style={{ ...productPriceStyle }}>
+              {composePrice(heroProduct.price, currency)}
+            </span>{' '}
+            <span style={{ ...productPriceUnitStyle }}>
+              {heroProduct.priceUnit}
+            </span>{' '}
+            · {heroSizes}
           </div>
         </div>
       ) : null}
@@ -799,17 +868,10 @@ export function TheRailScene({
             whiteSpace: 'nowrap',
           }}
         >
-          <span
-            style={{
-              fontFamily: 'var(--font-display)',
-              fontWeight: 400,
-              fontSize: wh(28),
-              color: colors.ink,
-            }}
-          >
+          <span style={{ ...capsuleCountStyle }}>
             {capsuleCount}
           </span>
-          <span style={capsuleTagStyle(colors.ink, wh(12))}>{capsuleWord1}</span>
+          <span style={{ ...capsuleWord1Style }}>{capsuleWord1}</span>
           <span
             aria-hidden
             style={{
@@ -820,7 +882,7 @@ export function TheRailScene({
               opacity: 0.7,
             }}
           />
-          <span style={capsuleTagStyle(colors.ink, wh(12))}>{capsuleWord2}</span>
+          <span style={{ ...capsuleWord2Style }}>{capsuleWord2}</span>
           <span
             aria-hidden
             style={{
@@ -831,7 +893,7 @@ export function TheRailScene({
               opacity: 0.7,
             }}
           />
-          <span style={capsuleTagStyle(colors.ink, wh(12))}>{capsuleWord3}</span>
+          <span style={{ ...capsuleWord3Style }}>{capsuleWord3}</span>
         </div>
       ) : null}
 

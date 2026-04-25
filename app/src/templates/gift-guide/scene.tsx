@@ -126,6 +126,60 @@ export function GiftGuideScene({
     textTransform: 'uppercase',
     color: colors.accent,
   });
+  const headLine2Style = useFieldFormat('headLine2', {
+    fontFamily: 'var(--font-display)',
+    fontStyle: 'italic',
+    fontSize: wh(150),
+    fontWeight: 300,
+    lineHeight: 0.95,
+    letterSpacing: '-0.03em',
+    color: colors.ink,
+  });
+  const boxLabelStyle = useFieldFormat('boxLabel', {
+    fontFamily: 'var(--font-display)',
+    fontStyle: 'italic',
+    fontSize: wh(86),
+    letterSpacing: '-0.02em',
+    color: colors.cream,
+  });
+  const ribbonLabelStyle = useFieldFormat('ribbonLabel', {
+    fontFamily: 'var(--font-body)',
+    fontSize: wh(24),
+    fontWeight: 800,
+    letterSpacing: '0.5em',
+    textTransform: 'uppercase',
+    color: colors.accent,
+  });
+  const footKickerStyle = useFieldFormat('footKicker', {
+    fontFamily: 'var(--font-body)',
+    fontSize: wh(24),
+    fontWeight: 700,
+    letterSpacing: '0.5em',
+    textTransform: 'uppercase',
+    color: 'rgba(0,0,0,0.60)',
+  });
+  const pickNameStyle = useFieldFormat('picks.*.name', {
+    fontFamily: 'var(--font-display)',
+    fontStyle: 'italic',
+    fontSize: wh(24),
+    letterSpacing: '0.1em',
+    textTransform: 'uppercase',
+    color: colors.ink,
+  });
+  const pickSubStyle = useFieldFormat('picks.*.sub', {
+    fontFamily: 'var(--font-body)',
+    fontStyle: 'normal',
+    fontSize: wh(20),
+    fontWeight: 700,
+    letterSpacing: '0.1em',
+    color: colors.accent,
+  });
+  const boutiqueNameStyle = useFieldFormat('boutiqueName', {
+    fontFamily: 'var(--font-display)',
+    fontSize: wh(28),
+    fontWeight: 300,
+    letterSpacing: '-0.03em',
+  });
 
   // Title fade-in
   const titleP = clamp(time / Math.max(T(0.8), 0.01), 0, 1);
@@ -225,6 +279,7 @@ export function GiftGuideScene({
             fontSize={wh(28)}
             fontWeight={800}
             letterSpacing="0.5em"
+            nameStyle={boutiqueNameStyle}
           />
         </div>
         <div
@@ -243,7 +298,7 @@ export function GiftGuideScene({
         >
           {headLine1}
           <br />
-          {headLine2}
+          <span style={{ ...headLine2Style }}>{headLine2}</span>
         </div>
       </div>
 
@@ -352,25 +407,15 @@ export function GiftGuideScene({
                         left: w(14),
                         bottom: h(14),
                         right: w(14),
-                        color: colors.ink,
-                        fontFamily: 'var(--font-display)',
-                        fontStyle: 'italic',
-                        fontSize: wh(24),
-                        letterSpacing: '0.1em',
-                        textTransform: 'uppercase',
+                        ...pickNameStyle,
                       }}
                     >
                       {p.name}
                       <small
                         style={{
                           display: 'block',
-                          fontFamily: 'var(--font-body)',
-                          fontStyle: 'normal',
-                          fontSize: wh(20),
-                          fontWeight: 700,
-                          letterSpacing: '0.1em',
-                          color: colors.accent,
                           marginTop: h(4),
+                          ...pickSubStyle,
                         }}
                       >
                         {p.sub}
@@ -416,12 +461,8 @@ export function GiftGuideScene({
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                color: colors.cream,
-                fontFamily: 'var(--font-display)',
-                fontStyle: 'italic',
-                fontSize: wh(86),
-                letterSpacing: '-0.02em',
                 zIndex: 2,
+                ...boxLabelStyle,
               }}
             >
               {boxLabel}
@@ -530,14 +571,9 @@ export function GiftGuideScene({
           zIndex: 16,
           padding: `${h(18)}px ${w(48)}px`,
           background: colors.ink,
-          color: colors.accent,
-          fontFamily: 'var(--font-body)',
-          fontSize: wh(24),
-          fontWeight: 800,
-          letterSpacing: '0.5em',
-          textTransform: 'uppercase',
           whiteSpace: 'nowrap',
-          opacity: labelOp,
+          ...ribbonLabelStyle,
+          opacity: (ribbonLabelStyle.opacity ?? 1) * labelOp,
         }}
       >
         {ribbonLabel}
@@ -559,13 +595,8 @@ export function GiftGuideScene({
       >
         <div
           style={{
-            fontFamily: 'var(--font-body)',
-            fontSize: wh(24),
-            fontWeight: 700,
-            letterSpacing: '0.5em',
-            textTransform: 'uppercase',
-            color: 'rgba(0,0,0,0.60)',
             marginBottom: h(14),
+            ...footKickerStyle,
           }}
         >
           {footKicker}

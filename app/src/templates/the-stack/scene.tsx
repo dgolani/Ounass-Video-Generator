@@ -161,6 +161,92 @@ export function TheStackScene({
     color: colors.ink,
     opacity: 0.6,
   });
+  // bylineItalic inherits fontFamily/fontSize from the byline base style;
+  // FieldBaseStyle requires those keys so we restate them here. The
+  // editor's Aa drawer for `bylineItalic` overrides at the call site.
+  const bylineItalicStyle = useFieldFormat('bylineItalic', {
+    fontFamily: 'var(--font-display)',
+    fontStyle: 'italic',
+    fontWeight: 300,
+    fontSize: wh(26),
+    color: colors.ink,
+  });
+
+  // Boutique-name text fallback typography (Aa drawer for the
+  // boutique-name field). Spread into <BoutiqueLogo nameStyle={…}>
+  // so it wins inside mode-3 (text fallback) only.
+  const boutiqueNameStyle = useFieldFormat('boutiqueName', {
+    fontFamily: 'Fraunces, serif',
+    fontWeight: 300,
+    fontSize: wh(is45 ? 102 : 72),
+    letterSpacing: '14px',
+    color: logoColor,
+  });
+
+  // ── Per-plate sub-field hooks (wildcards: plates.*.*) ─────────────
+  // The brand-name center text + left/right metadata on each plate all
+  // need to honour the Aa drawer. textShadow stays inline at the call
+  // site (it's animation-adjacent for the engraved-foil look).
+  const plateBrandSizePx = is45 ? 57 : 44;
+  const plateBrandStyle = useFieldFormat('plates.*.brand', {
+    fontFamily: 'var(--font-body)',
+    fontWeight: 800,
+    fontSize: wh(plateBrandSizePx),
+    letterSpacing: '0.18em',
+    color: colors.engraved,
+    textTransform: 'uppercase',
+  });
+  const plateIndexLabelStyle = useFieldFormat('plates.*.indexLabel', {
+    fontFamily: 'var(--font-body)',
+    fontWeight: 500,
+    fontSize: wh(12),
+    letterSpacing: '0.24em',
+    color: hexToRgba(colors.engraved, 0.45),
+    textTransform: 'uppercase',
+  });
+  const plateOriginStyle = useFieldFormat('plates.*.origin', {
+    fontFamily: 'var(--font-display)',
+    fontStyle: 'italic',
+    fontSize: wh(13),
+    letterSpacing: '0.02em',
+    color: hexToRgba(colors.engraved, 0.35),
+  });
+  const plateYearRomanStyle = useFieldFormat('plates.*.yearRoman', {
+    fontFamily: 'var(--font-body)',
+    fontWeight: 700,
+    fontSize: wh(14),
+    letterSpacing: '0.22em',
+    color: colors.foil,
+  });
+  const plateSubheadingStyle = useFieldFormat('plates.*.subheading', {
+    fontFamily: 'var(--font-body)',
+    fontWeight: 500,
+    fontSize: wh(12),
+    color: hexToRgba(colors.foil, 0.6),
+    letterSpacing: '0.22em',
+  });
+
+  // ── Seal-word hooks (rendered inside SVG <text>) ──────────────────
+  // SVG <text> accepts inline `style` like HTML; `fill` stays a separate
+  // SVG attribute (it's the SVG-equivalent of CSS color).
+  const sealWord1Style = useFieldFormat('sealWord1', {
+    fontFamily: 'var(--font-display)',
+    fontStyle: 'italic',
+    fontWeight: 400,
+    fontSize: 22,
+  });
+  const sealWord2Style = useFieldFormat('sealWord2', {
+    fontFamily: 'var(--font-body)',
+    fontWeight: 700,
+    fontSize: 12,
+    letterSpacing: '0.3em',
+  });
+  const sealWord3Style = useFieldFormat('sealWord3', {
+    fontFamily: 'var(--font-display)',
+    fontWeight: 400,
+    fontSize: 14,
+    letterSpacing: '0.18em',
+  });
 
   // The HTML uses --safe-cx (480 on 9:16, 540 on 4:5) as the
   // horizontal centering anchor. Reproduce that directly.
@@ -332,10 +418,11 @@ export function TheStackScene({
   const plateW = is45 ? 820 : 760;
   const plateH = is45 ? 178 : 170;
   const plateLeftOffset = 40; // offset right so plates clear the left index gutter
-  // Sized so the longest supported brand name ("BOTTEGA VENETA" = 14 chars at
-  // letter-spacing 0.18em) still clears the left origin label (~80px inc. pad)
-  // and the right year/subheading label zone (~160px inc. pad) on both aspects.
-  const plateBrandSize = is45 ? 57 : 44;
+  // plateBrandSizePx (defined above near the plates.*.brand hook so the
+  // wildcard hook can use it) — sized so the longest supported brand name
+  // ("BOTTEGA VENETA" = 14 chars at letter-spacing 0.18em) still clears the
+  // left origin label (~80px inc. pad) and the right year/subheading label
+  // zone (~160px inc. pad) on both aspects.
   const plateYPositions = is45 ? PLATE_Y_4_5 : PLATE_Y_9_16;
 
   const metalGradient = `linear-gradient(180deg, rgba(255,255,255,0.14) 0%, rgba(255,255,255,0.0) 12%, rgba(0,0,0,0.0) 88%, rgba(0,0,0,0.25) 100%), linear-gradient(170deg, ${colors.metalDark} 0%, ${colors.metalMid} 25%, ${colors.metalLight} 50%, ${colors.metalMid} 75%, ${colors.metalDeepest} 100%)`;
@@ -409,6 +496,7 @@ export function TheStackScene({
           height={h(is45 ? 114 : 90)}
           fontSize={wh(is45 ? 102 : 72)}
           letterSpacing="14px"
+          nameStyle={boutiqueNameStyle}
         />
       </div>
 
@@ -521,14 +609,9 @@ export function TheStackScene({
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  fontFamily: 'var(--font-body)',
-                  fontWeight: 800,
-                  fontSize: wh(plateBrandSize),
-                  letterSpacing: '0.18em',
-                  color: colors.engraved,
-                  textTransform: 'uppercase',
                   whiteSpace: 'nowrap',
                   textShadow: '0 -1px 0 rgba(0,0,0,0.4), 0 1px 0 rgba(255,255,255,0.15)',
+                  ...plateBrandStyle,
                 }}
               >
                 {plate.brand}
@@ -541,24 +624,15 @@ export function TheStackScene({
                   left: wh(30),
                   top: '50%',
                   transform: 'translateY(-50%)',
-                  fontFamily: 'var(--font-body)',
-                  fontWeight: 500,
-                  fontSize: wh(12),
-                  letterSpacing: '0.24em',
-                  color: hexToRgba(colors.engraved, 0.45),
+                  ...plateIndexLabelStyle,
                   lineHeight: 1.5,
-                  textTransform: 'uppercase',
                 }}
               >
                 {plate.indexLabel}
                 <br />
                 <span
                   style={{
-                    fontFamily: 'var(--font-display)',
-                    fontStyle: 'italic',
-                    fontSize: wh(13),
-                    letterSpacing: '0.02em',
-                    color: hexToRgba(colors.engraved, 0.35),
+                    ...plateOriginStyle,
                     textTransform: 'none',
                   }}
                 >
@@ -571,24 +645,14 @@ export function TheStackScene({
                   right: wh(30),
                   top: '50%',
                   transform: 'translateY(-50%)',
-                  fontFamily: 'var(--font-body)',
-                  fontWeight: 700,
-                  fontSize: wh(14),
-                  letterSpacing: '0.22em',
-                  color: colors.foil,
                   textAlign: 'right',
+                  ...plateYearRomanStyle,
                   lineHeight: 1.5,
                 }}
               >
                 {plate.yearRoman}
                 <br />
-                <span
-                  style={{
-                    fontWeight: 500,
-                    color: hexToRgba(colors.foil, 0.6),
-                    fontSize: wh(12),
-                  }}
-                >
+                <span style={{ ...plateSubheadingStyle }}>
                   {plate.subheading}
                 </span>
               </div>
@@ -704,12 +768,8 @@ export function TheStackScene({
             x="100"
             y="86"
             textAnchor="middle"
-            fontFamily="var(--font-display)"
-            fontStyle="italic"
-            fontWeight={400}
-            fontSize={22}
             fill={colors.background}
-            letterSpacing={2}
+            style={{ ...sealWord1Style }}
           >
             {sealWord1}
           </text>
@@ -717,11 +777,8 @@ export function TheStackScene({
             x="100"
             y="118"
             textAnchor="middle"
-            fontFamily="var(--font-body)"
-            fontWeight={800}
-            fontSize={18}
             fill={colors.background}
-            letterSpacing={4}
+            style={{ ...sealWord2Style }}
           >
             {sealWord2}
           </text>
@@ -729,11 +786,8 @@ export function TheStackScene({
             x="100"
             y="146"
             textAnchor="middle"
-            fontFamily="var(--font-display)"
-            fontWeight={400}
-            fontSize={18}
             fill={colors.background}
-            letterSpacing={4}
+            style={{ ...sealWord3Style }}
           >
             {sealWord3}
           </text>
@@ -803,7 +857,7 @@ export function TheStackScene({
         }}
       >
         {bylineStart}{' '}
-        <em style={{ fontStyle: 'italic' }}>{bylineItalic}</em>
+        <em style={{ ...bylineItalicStyle }}>{bylineItalic}</em>
       </div>
     </div>
   );

@@ -212,6 +212,22 @@ function Grid({ props, T, s, safe, contentTop, contentBottom, contentLeft, conte
   const { products, colors } = props;
   const { w, h, wh } = s;
 
+  const productNameStyle = useFieldFormat('products.*.name', {
+    fontFamily: 'var(--font-display)',
+    fontStyle: 'italic',
+    fontWeight: 300,
+    fontSize: wh(22),
+    color: colors.ink,
+  });
+  const productCategoryStyle = useFieldFormat('products.*.category', {
+    fontFamily: 'var(--font-body)',
+    fontSize: wh(20),
+    fontWeight: 700,
+    letterSpacing: `${wh(2.5)}px`,
+    textTransform: 'uppercase',
+    color: colors.ink,
+  });
+
   const gridIn = interpolate([T(1.8), T(2.4)], [0, 1], Easing.easeOutExpo)(t);
   const gridOut = interpolate([T(5.2), T(5.6)], [1, 0], Easing.easeInCubic)(t);
   const op = gridIn * gridOut;
@@ -349,15 +365,11 @@ function Grid({ props, T, s, safe, contentTop, contentBottom, contentLeft, conte
               </span>
               <span
                 style={{
-                  fontFamily: 'var(--font-display)',
-                  fontStyle: 'italic',
-                  fontWeight: 300,
-                  fontSize: wh(22),
-                  color: colors.ink,
                   whiteSpace: 'nowrap',
                   overflow: 'hidden',
                   textOverflow: 'ellipsis',
                   maxWidth: '75%',
+                  ...productNameStyle,
                 }}
               >
                 {p.name}
@@ -384,16 +396,10 @@ function Grid({ props, T, s, safe, contentTop, contentBottom, contentLeft, conte
           style={{
             display: 'flex',
             justifyContent: 'space-between',
-            fontFamily: 'var(--font-body)',
-            fontSize: wh(20),
-            fontWeight: 700,
-            letterSpacing: `${wh(2.5)}px`,
-            textTransform: 'uppercase',
-            color: colors.ink,
           }}
         >
           {products.slice(0, 4).map((p) => (
-            <span key={p.id}>{p.category}</span>
+            <span key={p.id} style={productCategoryStyle}>{p.category}</span>
           ))}
         </div>
       </div>
@@ -406,6 +412,16 @@ function Feature({ props, T, s, safe, contentTop, contentBottom, contentCX }: Ac
   const { time: t } = useTimeline();
   const { products, featureCaption, colors } = props;
   const { w, h, wh } = s;
+
+  const featureCaptionStyle = useFieldFormat('featureCaption', {
+    fontFamily: 'var(--font-display)',
+    fontStyle: 'italic',
+    fontWeight: 300,
+    fontSize: wh(34),
+    lineHeight: 1.35,
+    color: colors.ink,
+  });
+
   const hero = products[0];
   if (!hero) return null;
 
@@ -502,13 +518,8 @@ function Feature({ props, T, s, safe, contentTop, contentBottom, contentCX }: Ac
         </div>
         <div
           style={{
-            fontFamily: 'var(--font-display)',
-            fontStyle: 'italic',
-            fontWeight: 300,
-            fontSize: wh(34),
-            lineHeight: 1.35,
-            color: colors.ink,
-            opacity: 0.9,
+            ...featureCaptionStyle,
+            opacity: (featureCaptionStyle.opacity ?? 1) * 0.9,
           }}
         >
           "{featureCaption}"
@@ -563,6 +574,12 @@ function Signature({ props, T, s, safe, contentTop }: ActProps) {
     letterSpacing: `${wh(2.5)}px`,
     textTransform: 'uppercase',
     color: colors.ink,
+  });
+  const boutiqueNameStyle = useFieldFormat('boutiqueName', {
+    fontFamily: 'var(--font-display)',
+    fontSize: wh(180),
+    fontWeight: 300,
+    letterSpacing: '-0.03em',
   });
 
   if (t < T(7.4)) return null;
@@ -636,6 +653,7 @@ function Signature({ props, T, s, safe, contentTop }: ActProps) {
           width={w(700)}
           height={h(280)}
           fontSize={wh(180)}
+          nameStyle={boutiqueNameStyle}
         />
       </div>
 

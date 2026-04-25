@@ -26,6 +26,7 @@ import {
 } from '../../engine';
 import type { PairingProps } from './schema';
 import { BoutiqueLogo } from '../BoutiqueLogo';
+import { composePrice, useCurrencyForLocale } from '../../lib/price';
 
 const BASE_W = 1080;
 const BASE_H = 1920;
@@ -214,6 +215,29 @@ export function ThePairingScene({
     color: colors.ink,
     opacity: 0.6,
   });
+  // Currency-suffix label that trails the total price ("AED" / "د.إ.").
+  // Was hardcoded inline; surface it via the Aa drawer.
+  const totalCurrencyStyle = useFieldFormat('totalCurrency', {
+    fontFamily: 'var(--font-body)',
+    fontWeight: 500,
+    fontSize: wh(is45 ? 24 * (1920 / 1350) : 28),
+    letterSpacing: '0.18em',
+    color: hexToRgba(colors.ink, 0.6),
+  });
+  // Boutique-name text-fallback typography (mode-3 of <BoutiqueLogo>).
+  const boutiqueNameStyle = useFieldFormat('boutiqueName', {
+    fontFamily: 'Fraunces, serif',
+    fontWeight: 300,
+    fontSize: wh(72),
+    letterSpacing: '14px',
+    color: logoColor,
+  });
+
+  // Locale-aware currency suffix — strips any built-in currency from the
+  // raw price strings and re-applies the brand-kit's locale-mapped one
+  // (`AED` for en, `د.إ.` for ar, …) so language toggles reflow prices
+  // without per-field edits.
+  const currency = useCurrencyForLocale();
 
   // The HTML uses --safe-cx (480 on 9:16, 540 on 4:5) as the
   // horizontal centering anchor. 9:16 has safe.right=120, so cx sits
@@ -248,7 +272,8 @@ export function ThePairingScene({
   const pairTop = is45 ? 790 * CONV : 1170;
   const pairW = is45 ? 880 : 900;
   const totalFontSize = is45 ? 88 * CONV : 112;
-  const aedFontSize = is45 ? 24 * CONV : 28;
+  // aedFontSize was inlined; the totalCurrency span now picks fontSize from
+  // useFieldFormat('totalCurrency', …) via the Aa drawer.
 
   const ctaTop = is45 ? 1010 * CONV : 1470;
   const bylineTop = is45 ? 1120 * CONV : 1575;
@@ -583,6 +608,7 @@ export function ThePairingScene({
           height={h(logoH)}
           fontSize={wh(72)}
           letterSpacing="14px"
+          nameStyle={boutiqueNameStyle}
         />
       </div>
 
@@ -665,7 +691,7 @@ export function ThePairingScene({
         <div style={{ ...pieceANameStyle, marginBottom: h(14), whiteSpace: 'pre-line' }}>
           {pieceA.name}
         </div>
-        <div style={pieceAPriceStyle}>{pieceA.price}</div>
+        <div style={pieceAPriceStyle}>{composePrice(pieceA.price, currency)}</div>
       </div>
 
       {/* ── Card B (right) ────────────────────────────────────────── */}
@@ -709,7 +735,7 @@ export function ThePairingScene({
         <div style={{ ...pieceBNameStyle, marginBottom: h(14), whiteSpace: 'pre-line' }}>
           {pieceB.name}
         </div>
-        <div style={pieceBPriceStyle}>{pieceB.price}</div>
+        <div style={pieceBPriceStyle}>{composePrice(pieceB.price, currency)}</div>
       </div>
 
       {/* ── Operator badge (center, between cards) ───────────────── */}
@@ -797,6 +823,12 @@ export function ThePairingScene({
             paddingTop: h(12),
           }}
         >
+          {/* Digit-slam over the numeric portion only — `totalPrice`
+           *  on the schema is digits-only (e.g. "7,930"). The currency
+           *  suffix renders separately below in its own span so it
+           *  can size and animate independently. Wrapping with
+           *  `composePrice` here would double-emit the suffix because
+           *  the trailing span already covers it. */}
           {Array.from(totalPrice).map((ch, i) => {
             const { opacity, ty } = digitFade(i);
             return (
@@ -814,17 +846,15 @@ export function ThePairingScene({
           })}
           <span
             style={{
-              fontFamily: 'var(--font-body)',
-              fontWeight: 500,
-              fontSize: wh(aedFontSize),
-              letterSpacing: '0.18em',
-              color: hexToRgba(colors.ink, 0.6),
               alignSelf: 'flex-start',
               marginTop: h(8),
               marginLeft: wh(12),
-              opacity: aedFade.opacity,
               transform: `translateY(${h(aedFade.ty)}px)`,
               display: 'inline-block',
+              ...totalCurrencyStyle,
+              // Multiply animation opacity onto whatever the Aa drawer
+              // resolved (defaults to undefined → 1).
+              opacity: (totalCurrencyStyle.opacity ?? 1) * aedFade.opacity,
             }}
           >
             {totalCurrency}
