@@ -631,50 +631,69 @@ export function Editor() {
 
         <div style={{ flex: 1 }} />
 
-        {/* Undo/redo — SVG arrow icons, square 32px ghost buttons.
-         *  Tight 2px gap marks them as one functional unit. */}
-        <div style={{ display: 'flex', gap: 2 }}>
-          <IconButton onClick={undo} disabled={!canUndo} title="Undo (⌘Z)">
-            <UndoIcon />
-          </IconButton>
-          <IconButton onClick={redo} disabled={!canRedo} title="Redo (⌘⇧Z)">
-            <RedoIcon />
-          </IconButton>
-        </div>
+        {/* ── Settings umbrella ─────────────────────────────────────
+         *
+         *  All four per-project view settings live inside one rounded
+         *  container with hairline dividers — visually a single unit so
+         *  the marketer reads it as "this ad's view options" rather
+         *  than four separate toolbar widgets. Order is intentional:
+         *
+         *    Aspect → Safe → Theme (only if template opts in) → Locale
+         *
+         *  Aspect is the most physical (changes canvas dimensions);
+         *  Safe is the editor-only viewfinder hint; Theme + Locale are
+         *  per-project overrides on top of brand-kit defaults. The
+         *  auto-translate status pill, when present, hugs the locale
+         *  group so the marketer sees the relationship at a glance.
+         *
+         *  Centered in the toolbar via flex-1 spacers on both sides.
+         */}
+        <SettingsUmbrella>
+          <UmbrellaSlot>
+            <AspectSwitcher
+              aspects={template.meta.aspects}
+              index={aspectIndex}
+              onChange={onAspectChange}
+            />
+          </UmbrellaSlot>
 
-        {/* Aspect switcher — segmented with neutral-tint active state. */}
-        <AspectSwitcher
-          aspects={template.meta.aspects}
-          index={aspectIndex}
-          onChange={onAspectChange}
-        />
+          <UmbrellaDivider />
 
-        {/* Safe-zone guide toggle — subtle copper-tinted chip when on;
-         *  ghost when off. Never full-primary so it doesn't compete
-         *  with the Export CTA for attention. */}
-        <SafeToggle
-          active={showSafeZones}
-          onClick={() => setShowSafeZones((v) => !v)}
-        />
+          <UmbrellaSlot>
+            <SafeToggle
+              active={showSafeZones}
+              onClick={() => setShowSafeZones((v) => !v)}
+            />
+          </UmbrellaSlot>
 
-        {/* Per-project locale toggle: override the brand-kit default for
-         *  this ad only. Two-state segmented; the active side shows a
-         *  dot to signal it's an explicit override vs. inherited. */}
-        <LocaleSegmented
-          locale={effectiveLocale}
-          isOverride={editable.localeOverride !== undefined}
-          brandDefault={brand.locale}
-          onChange={onLocaleOverrideChange}
-        />
+          {supportsThemes && (
+            <>
+              <UmbrellaDivider />
+              <UmbrellaSlot>
+                <ThemeMiniToggle
+                  mode={effectiveThemeMode}
+                  onChange={onThemeModeChange}
+                />
+              </UmbrellaSlot>
+            </>
+          )}
 
-        {/* Auto-translate status — appears next to the locale toggle
-         *  whenever the AR locale is active and the Chrome translator
-         *  is doing something the marketer should know about: pack
-         *  download, in-flight batch, or unsupported browser. Quiet
-         *  during steady state (translator available + no work). */}
-        {effectiveLocale === 'ar' && (
-          <TranslateStatusPill state={translatorState} translating={isTranslating} />
-        )}
+          <UmbrellaDivider />
+
+          <UmbrellaSlot>
+            <LocaleSegmented
+              locale={effectiveLocale}
+              isOverride={editable.localeOverride !== undefined}
+              brandDefault={brand.locale}
+              onChange={onLocaleOverrideChange}
+            />
+            {effectiveLocale === 'ar' && (
+              <TranslateStatusPill state={translatorState} translating={isTranslating} />
+            )}
+          </UmbrellaSlot>
+        </SettingsUmbrella>
+
+        <div style={{ flex: 1 }} />
 
         {/* Copy / locale mismatch warning — yellow chip that appears
          *  when script detection disagrees with the active locale. */}
@@ -709,6 +728,18 @@ export function Editor() {
             </span>
           </div>
         )}
+
+        {/* Undo/redo — SVG arrow icons, square 32px ghost buttons.
+         *  Sit immediately before Export so destructive actions are
+         *  rightmost and the eye lands on Export last. */}
+        <div style={{ display: 'flex', gap: 2 }}>
+          <IconButton onClick={undo} disabled={!canUndo} title="Undo (⌘Z)">
+            <UndoIcon />
+          </IconButton>
+          <IconButton onClick={redo} disabled={!canRedo} title="Redo (⌘⇧Z)">
+            <RedoIcon />
+          </IconButton>
+        </div>
 
         <Button variant="primary" size="sm" onClick={() => setExportOpen(true)}>
           Export
@@ -798,19 +829,6 @@ export function Editor() {
               </LocaleContext.Provider>
             </FieldFormatContext.Provider>
           </Stage>
-
-          {/* Sleek theme toggle — floats over the stage in the top-right,
-           *  only when the active template supports light/dark palettes.
-           *  Two circular indicators (sun + moon) with a copper pill that
-           *  slides between them on change. Uses data-export-ignore so
-           *  it's invisible to the MP4 export pipeline even though it's
-           *  a Stage sibling during editing. */}
-          {supportsThemes && (
-            <ThemeStagePill
-              mode={effectiveThemeMode}
-              onChange={onThemeModeChange}
-            />
-          )}
         </div>
         <div
           style={{
@@ -1165,23 +1183,77 @@ function LocaleSegmented({
   );
 }
 
-/** Sleek stage-floating light/dark toggle.
+/** Settings umbrella — single rounded container that groups Aspect /
+ *  Safe / Theme / Locale into one visual unit. Internal hairline
+ *  dividers (UmbrellaDivider) separate the groups; each group sits
+ *  inside an UmbrellaSlot so the padding and alignment stay consistent
+ *  even as we add/remove sections (theme is conditional). The whole
+ *  unit reads as "this ad's view options" rather than four toolbar
+ *  widgets competing for attention. */
+function SettingsUmbrella({ children }: { children: React.ReactNode }) {
+  return (
+    <div
+      role="group"
+      aria-label="Project settings"
+      style={{
+        display: 'inline-flex',
+        alignItems: 'stretch',
+        background: 'var(--editor-panel-2)',
+        border: '1px solid var(--editor-border)',
+        borderRadius: 'var(--r-md)',
+        overflow: 'hidden',
+        height: 36,
+      }}
+    >
+      {children}
+    </div>
+  );
+}
+
+function UmbrellaSlot({ children }: { children: React.ReactNode }) {
+  return (
+    <div
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: 6,
+        padding: '0 8px',
+      }}
+    >
+      {children}
+    </div>
+  );
+}
+
+function UmbrellaDivider() {
+  // Hairline column between groups. Sits flush top-to-bottom of the
+  // container so the umbrella reads as one segmented unit (think the
+  // Mac menubar's vertical dividers, not the Discord channel dividers).
+  return (
+    <div
+      aria-hidden
+      style={{
+        width: 1,
+        background: 'var(--editor-border)',
+        flex: 'none',
+      }}
+    />
+  );
+}
+
+/** Compact sun/moon theme toggle for the toolbar umbrella.
  *
- *  Composition: two 28px circular indicators (☀ sun / ☾ moon) side by
- *  side inside a glass-morphed pill. A copper "marker" absolutely-
- *  positioned behind them slides between the two positions on change
- *  (180ms cubic-bezier) — no DOM swap, just a transform.
+ *  Same sliding-copper-marker pattern as the previous stage-floating
+ *  pill, but tuned to sit inside the umbrella's panel-2 background
+ *  rather than over arbitrary scene art (so no glass-morph blur
+ *  backdrop, and the inactive icons use the editor-text-dim token
+ *  to match the other unselected toolbar widgets).
  *
- *  Backdrop: rgba black @ 38% + backdrop-filter blur(12px). Works
- *  legibly over BOTH a light paper scene and a dark paper scene without
- *  any palette-aware logic. Copper marker + bronze icon tints keep it
- *  on-brand with the gallery hairline and the Safe-Zone label.
- *
- *  Export safety: `data-export-ignore="true"` is set so the MP4 pipeline
- *  (html-to-image filter in lib/export.ts) drops it from every frame —
- *  the marketer can leave the toggle visible during editing and still
- *  get a clean render. */
-function ThemeStagePill({
+ *  Carries `data-export-ignore="true"` like every editor-only chrome
+ *  element — but it doesn't actually need it here because the umbrella
+ *  lives in the toolbar grid area, not as a Stage sibling. Keeping the
+ *  attribute is cheap insurance for future moves. */
+function ThemeMiniToggle({
   mode,
   onChange,
 }: {
@@ -1196,41 +1268,30 @@ function ThemeStagePill({
       aria-label="Theme"
       title="Switch between the template's light and dark palette"
       style={{
-        position: 'absolute',
-        top: 16,
-        right: 16,
-        zIndex: 20,
+        position: 'relative',
         display: 'inline-flex',
         alignItems: 'center',
-        padding: 3,
-        gap: 2,
-        background: 'rgba(10, 10, 10, 0.42)',
-        backdropFilter: 'blur(14px) saturate(140%)',
-        WebkitBackdropFilter: 'blur(14px) saturate(140%)',
-        border: '1px solid rgba(255, 255, 255, 0.08)',
+        padding: 2,
+        gap: 0,
+        background: 'rgba(0,0,0,0.18)',
+        border: '1px solid var(--editor-border)',
         borderRadius: 999,
-        boxShadow:
-          '0 6px 20px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.06)',
-        fontFamily: 'var(--sans)',
       }}
     >
-      {/* Sliding copper marker. Width = half - padding; translates across on
-       *  state change. A single element, so the two button children stay
-       *  static — only this slides. */}
       <div
         aria-hidden
         style={{
           position: 'absolute',
-          top: 3,
-          bottom: 3,
-          left: 3,
-          width: 32,
+          top: 2,
+          bottom: 2,
+          left: 2,
+          width: 26,
           borderRadius: 999,
           background:
             'linear-gradient(180deg, #C49373 0%, #A9724E 100%)',
           boxShadow:
-            '0 2px 6px rgba(169, 114, 78, 0.45), inset 0 1px 0 rgba(255, 228, 208, 0.35)',
-          transform: `translateX(${isDark ? 34 : 0}px)`,
+            '0 1px 3px rgba(169, 114, 78, 0.45), inset 0 1px 0 rgba(255, 228, 208, 0.35)',
+          transform: `translateX(${isDark ? 26 : 0}px)`,
           transition:
             'transform 180ms cubic-bezier(0.32, 0.72, 0, 1)',
           pointerEvents: 'none',
@@ -1250,23 +1311,22 @@ function ThemeStagePill({
             style={{
               position: 'relative',
               zIndex: 1,
-              width: 32,
-              height: 32,
+              width: 26,
+              height: 26,
               padding: 0,
               display: 'inline-flex',
               alignItems: 'center',
               justifyContent: 'center',
               border: 0,
               background: 'transparent',
-              color: active ? '#1A1208' : 'rgba(255, 255, 255, 0.72)',
+              color: active ? '#1A1208' : 'var(--editor-text-dim)',
               cursor: 'pointer',
               borderRadius: 999,
               transition: 'color 160ms ease',
             }}
           >
             {isLightBtn ? (
-              // Sun — 8-ray with centre disc
-              <svg width="15" height="15" viewBox="0 0 16 16" aria-hidden>
+              <svg width="13" height="13" viewBox="0 0 16 16" aria-hidden>
                 <circle cx="8" cy="8" r="3" fill="currentColor" />
                 <g
                   stroke="currentColor"
@@ -1284,8 +1344,7 @@ function ThemeStagePill({
                 </g>
               </svg>
             ) : (
-              // Moon — crescent
-              <svg width="15" height="15" viewBox="0 0 16 16" aria-hidden>
+              <svg width="13" height="13" viewBox="0 0 16 16" aria-hidden>
                 <path
                   d="M13.2 9.9A5.5 5.5 0 1 1 6.1 2.8a4.5 4.5 0 0 0 7.1 7.1Z"
                   fill="currentColor"
