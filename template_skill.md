@@ -193,6 +193,37 @@ const logoColor = useFieldColor('logo', colors.ink);
 <BoutiqueLogo logo={logo} boutiqueName={boutiqueName} color={logoColor} ... />
 ```
 
+**MANDATORY: thread `useFieldFormat('boutiqueName', …)` through the `nameStyle` prop.**
+
+`<BoutiqueLogo>` falls back to a text wordmark when no logo SVG is uploaded. That fallback span has its own typography defaults — without `nameStyle`, the marketer's "Aa" drawer override on the boutiqueName field has nothing to write to and silently no-ops. Every scene that renders BoutiqueLogo must:
+
+```tsx
+const boutiqueNameStyle = useFieldFormat('boutiqueName', {
+  fontFamily: 'var(--font-display)',
+  fontSize: wh(160),                  // FieldBaseStyle requires fontSize
+  fontWeight: 300,
+  letterSpacing: '-0.03em',
+});
+// ...
+<BoutiqueLogo
+  logo={logo}
+  boutiqueName={boutiqueName}
+  color={logoColor}
+  width={w(720)}
+  height={h(180)}
+  nameStyle={boutiqueNameStyle}        // ← required
+/>
+```
+
+`nameStyle` is spread last inside the text-fallback span (after the component's defaults and the caller's `style` prop), so the drawer's overrides win. SVG and raster modes ignore the prop — they render uploaded artwork, not text.
+
+For dual-mark templates (e.g. The Collab's `OUNASS × GUCCI`), thread a separate hook for the second mark using its own field path:
+
+```tsx
+const collabNameStyle = useFieldFormat('collabName', baseStyle);
+<BoutiqueLogo logo={collabLogo} boutiqueName={collabName} nameStyle={collabNameStyle} ... />
+```
+
 ### Typography palette — always via CSS variables, never hardcoded
 
 Typography is role-bound through CSS custom properties set on the Stage root. Templates reference the role, not the family — that way a Brand Kit change swaps the whole library without touching scene code, and the Arabic fallback (Noto Kufi) can cleanly prepend to the stack when locale flips to AR.
@@ -297,15 +328,39 @@ Two gotchas that have bitten every template port:
 
 The `path` string you pass is the dotted field path as it appears in `fields.ts` (e.g. `'kicker'`, `'ctaText'`, `'headlineLine1'`). It doubles as the override key in the project's stored overrides map — keep it stable.
 
-For `productList` subfields, use wildcard keys so one override applies to every row:
+**MANDATORY for productList templates: every editable per-product text sub-field needs a wildcard hook + spread.**
+
+Skipping these is the single most common silent bug in the codebase — the QC pass on 2026-04-25 caught ~28 instances across 9 templates. The Aa button on each product row's name/brand/price exists in the UI; without the wildcard hook, clicking it does nothing.
 
 ```tsx
+// At the top of the component, ONE hook per editable per-product subfield:
 const brandlineStyle = useFieldFormat('products.*.brandline', { ... });
-const nameStyle = useFieldFormat('products.*.name', { ... });
-const priceStyle = useFieldFormat('products.*.price', { ... });
+const nameStyle      = useFieldFormat('products.*.name',      { ... });
+const priceStyle     = useFieldFormat('products.*.price',     { ... });
+
+// At each row's render site, spread the resolved style LAST so it
+// wins over layout props but lets the drawer's overrides win over the
+// hook's base:
+{products.map((p) => (
+  <div key={p.id}>
+    <div style={{ marginBottom: wh(8), ...brandlineStyle }}>{p.brandline}</div>
+    <div style={{ marginBottom: wh(8), ...nameStyle      }}>{p.name}</div>
+    <div                              style={priceStyle}    >{composePrice(p.price, currency)}</div>
+  </div>
+))}
 ```
 
-The editor now surfaces these as global product controls (not per-row formatting buttons).
+Same wildcard convention applies to any productList-style field — `picks.*.name`, `items.*.brandline`, `plates.*.brand`, `pieceA.eyebrow` (when fields are top-level objects rather than an array, use the literal path). The path you pass MUST EXACTLY match the path declared in `fields.ts`.
+
+**Grep check before commit:**
+
+```bash
+# Every text path declared in fields.ts must have a useFieldFormat call somewhere in scene.tsx.
+# This greps every editable text path and warns if any has no matching hook.
+node -e "..."  # (sanity script; or eyeball-diff the two lists)
+```
+
+The editor surfaces these wildcard hooks as global product controls (one Aa button at the top of the product list); per-row Aa buttons write to the same wildcard path so overrides apply uniformly.
 
 ### Price composition
 
@@ -429,7 +484,11 @@ Before handing back, verify:
    ```
    Any hits ignore `safe.right` on 9:16 (120 base-px) and bleed into the IG like-stack.
 7. Every editable text field in `fields.ts` has a matching `useFieldFormat(path, base)` call in `scene.tsx`. Path spellings match exactly.
-8. Every price string renders via `composePrice(raw, useCurrencyForLocale())` — never `{product.price}` directly.
+   - **For productList sub-fields**, the hook uses the wildcard path: `useFieldFormat('products.*.<sub>', base)` (or `picks.*.X`, `items.*.X`, `plates.*.X`). The result must be spread into EVERY row that renders that subfield, not just the first.
+   - **For boutiqueName**, you MUST also thread the hook result through `<BoutiqueLogo nameStyle={…}>`. Skipping this leaves the boutique-name Aa drawer with nothing to write to.
+   - The result variable must be SPREAD into the rendered element's `style`, not just defined. The previous QC pass found ~12 cases where the hook ran but its result was never used.
+   - **Spread-order matters.** Any typography prop AFTER `...XxxStyle` in a style object is a bug — the marketer's drawer override loses. Keep layout/animation props BEFORE the spread, the hook spread LAST.
+8. Every price string renders via `composePrice(raw, useCurrencyForLocale())` — never `{product.price}` directly. Includes prices in productList rows, hero summaries, totals, and digit-slam animations.
 9. `colors` is destructured BEFORE any `useFieldFormat` call in every Act component (brand-color reactivity).
 10. `npx tsc --noEmit` clean.
 11. `npm run build` clean.

@@ -394,6 +394,37 @@ Some templates ship **both** a light and a dark palette — `schema.colors` is s
 
 When adding a new template, pick the closest bucket. If none fits, file for discussion before adding a 5th — the chip row is deliberately kept to one line on laptop widths.
 
+### 5.17 Per-product wildcard format hooks (MANDATORY, post-2026-04-25)
+
+Every editable per-product text field (productList sub-fields, top-level object sub-fields like `pieceA.name`) needs a `useFieldFormat('<list>.*.<sub>', baseStyle)` call AND the resolved style spread into every row that renders that subfield. Skipping this is the #1 cause of "Aa button does nothing" reports.
+
+```tsx
+// ✓ Right
+const productNameStyle = useFieldFormat('products.*.name', { fontFamily: '…', fontSize: wh(20), … });
+{products.map(p => <div style={{ marginBottom: wh(8), ...productNameStyle }}>{p.name}</div>)}
+
+// ✗ Wrong (silent bug)
+{products.map(p => <div style={{ fontFamily: 'var(--font-display)', fontSize: wh(20), … }}>{p.name}</div>)}
+```
+
+Path strings must match `fields.ts` exactly. Spread comes LAST so layout props don't override drawer typography. See `app/src/templates/the-stack/scene.tsx` for the canonical reference (5 wildcard hooks for plate sub-fields).
+
+### 5.18 BoutiqueLogo `nameStyle` thread (MANDATORY, post-2026-04-25)
+
+Every scene that renders `<BoutiqueLogo>` MUST thread `useFieldFormat('boutiqueName', baseStyle)` through the new `nameStyle?: CSSProperties` prop. Without it, the boutique-name Aa drawer overrides text fallback rendering with nothing. Component spreads `nameStyle` last inside the text-fallback span so drawer wins; SVG and raster modes ignore the prop.
+
+```tsx
+const boutiqueNameStyle = useFieldFormat('boutiqueName', {
+  fontFamily: 'var(--font-display)',
+  fontSize: wh(160),               // FieldBaseStyle requires fontSize
+  fontWeight: 300,
+  letterSpacing: '-0.03em',
+});
+<BoutiqueLogo logo={logo} boutiqueName={boutiqueName} color={logoColor} nameStyle={boutiqueNameStyle} … />
+```
+
+For dual-mark templates (e.g. The Collab `OUNASS × GUCCI`), thread a second hook (`collabName`, `collabLogo`, etc.) through the second `<BoutiqueLogo>`.
+
 **MAINTENANCE — update §5 when you:** introduce a new convention, deprecate an existing one, change the template anatomy, or add/remove a FieldDescriptor kind.
 
 ---
@@ -679,6 +710,34 @@ In the running preview:
    - Download MP4 → file downloads (in browser context — MCP just sees the click happen)
 
 If any of these fail, **don't mark the session done.** Update HANDOFF §9 with the new gotcha, fix it, re-run the checklist.
+
+---
+
+## 14b. Feature QC workflow (post-2026-04-25)
+
+Adopted after the deep-QC pass surfaced ~64 silent text-formatting bugs across 13 templates that the structural QC missed. Static analysis is shallow; behavior tests catch the silent ones.
+
+**The loop:**
+
+1. **Build** the feature (or change). All code in `app/`, all conventions per §5.
+2. **Add test cases** to [TEST_CASES.md](TEST_CASES.md) under the relevant feature section. Same PR. No exceptions — if there's no test case, it's not done.
+3. **Run a QC agent** by delegating to `Explore` or `general-purpose` with the relevant TEST_CASES section as the prompt. Template:
+
+   ```
+   You are doing behavior-level QC on the [FEATURE] of the Ounass
+   Cutroom app. Read TEST_CASES.md §[FEATURE] for the test cases. For
+   each case: state preconditions, perform the steps, observe the
+   result, and record PASS/FAIL with evidence (screenshot, console
+   log, file:line). Be exhaustive — do not skip cases. Report findings
+   as a markdown list.
+   ```
+
+4. **Read the QC report.** Fix every FAIL before merging. Don't merge yellow.
+5. **Update the test case** if the fix changed the expected behavior. A stale test case is worse than no test case.
+
+For multi-template / multi-feature changes, batch QC into 3-5 parallel agents covering different areas — that's how we verified the post-Wave-1-6 fix campaign on 2026-04-25.
+
+**Why this matters:** the structural QC run before the deep audit found 0 bugs in the templates. The behavior-tracing audit found 64. The structural one was answering "is the convention syntactically present?" The behavior one was answering "does the marketer's click on Aa actually do what they expect?" Both are useful; only the second proves a feature works.
 
 ---
 
