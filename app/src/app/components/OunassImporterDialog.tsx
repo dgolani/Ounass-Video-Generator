@@ -672,11 +672,17 @@ function ImageThumb({
   onClick: () => void;
   large?: boolean;
 }) {
+  // Broken-image state: when the CDN URL 404s (most common cause: the
+  // configured base URL is wrong for this Ounass deployment), the
+  // <img> onError fires. We swap to a placeholder so the marketer
+  // sees a visible "couldn't load" state instead of an empty box.
+  const [broken, setBroken] = useState(false);
   return (
     <button
       type="button"
       aria-pressed={selected}
       onClick={onClick}
+      title={url}
       style={{
         position: 'relative',
         padding: 0,
@@ -690,22 +696,42 @@ function ImageThumb({
         transition: 'border-color 140ms',
       }}
     >
-      <img
-        src={url}
-        alt=""
-        style={{
-          width: '100%',
-          height: '100%',
-          objectFit: 'cover',
-          display: 'block',
-        }}
-        // Don't break the dialog if a CDN URL fails — show a soft
-        // placeholder bg + the image is just absent.
-        onError={(e) => {
-          (e.currentTarget as HTMLImageElement).style.opacity = '0';
-        }}
-      />
-      {selected && (
+      {broken ? (
+        <div
+          style={{
+            width: '100%',
+            height: '100%',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 4,
+            padding: 8,
+            color: 'var(--editor-text-dim)',
+            fontSize: 10,
+            letterSpacing: '0.06em',
+            textTransform: 'uppercase',
+            textAlign: 'center',
+          }}
+        >
+          <span aria-hidden style={{ fontSize: 18 }}>⚠</span>
+          <span>Couldn't load</span>
+        </div>
+      ) : (
+        <img
+          src={url}
+          alt=""
+          referrerPolicy="no-referrer"
+          style={{
+            width: '100%',
+            height: '100%',
+            objectFit: 'cover',
+            display: 'block',
+          }}
+          onError={() => setBroken(true)}
+        />
+      )}
+      {selected && !broken && (
         <span
           aria-hidden
           style={{
