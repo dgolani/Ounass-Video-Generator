@@ -1,8 +1,10 @@
-# Template QC Report
+# Template QC Report — DEEP behavioral audit
 
 **Date:** 2026-04-25
-**Scope:** All 14 templates audited against a 22-point checklist (text formatting, translations, images, components, safe zones, theme support, mobile-readability floor, role-bound typography, field/schema consistency, aspect ratios, category, no debug output).
-**Method:** 4 parallel static-analysis agents (one per template group) + visual sampling of themed templates at mid keyframes in light + dark for 9:16 and 4:5.
+**Scope:** All 14 templates audited against a 9-point behavior-tracing checklist that traces every `useFieldFormat` hook through the JSX, verifies spread order, checks for hardcoded inline overrides, catches every silent path mismatch, and validates per-product (productList) wildcard hook coverage.
+**Method:** 5 parallel deep-static-analysis agents, each tracing 2-3 templates end-to-end.
+
+This supersedes the earlier shallow QC. The shallow pass missed silent bugs because it didn't trace where each hook's result actually got applied.
 
 ---
 
@@ -10,137 +12,157 @@
 
 | Status | Count | Templates |
 |---|---|---|
-| ✅ Clean | 9 | Lookbook, Editorial, Countdown, Hero, Bestsellers, Seasonal, Carousel, Brand Spotlight, Gift Guide |
-| ✅ Clean (themed) | 1 | The Stack |
-| ⚠ One real bug each | 4 | The Pairing, New In, The Collab, The Rail — all same root cause |
-| **Total bugs** | **6** | (across 4 templates) |
-| **Total warnings** | **3** | |
+| ✅ Fully clean | 1 | **Countdown** |
+| ⚠ Has bugs | 13 | All others |
+| **Total bugs** | **~64** | (across 13 templates) |
 
-**One pattern accounts for every bug found.** All 4 newly-ported themed templates skip `composePrice(price, currency)` when rendering product prices. The legacy templates (bestsellers, lookbook, hero, etc.) all use the helper. Fixing this requires the same 3-line change repeated across 4 scene files.
+**Five repeating patterns account for every bug found.** Fix the patterns, the bug count collapses to ~6 unique remediation strokes:
 
-No safe-zone violations. No literal fontFamily strings. No `console.log`s. No 1:1 references. No `noTranslate` mistagging. No theme-palette holes. The audit was thorough; the surface area is small because the 22-point checklist was already mostly enforced via TypeScript or the template-skill convention sweep last week.
+1. **`boutiqueName` Aa drawer dead-ends at BoutiqueLogo.** The component doesn't accept a typography override, so the marketer's "Aa" button on the boutique-name field has nothing to write to. Affects every template with a logo lockup. **One component fix + per-template wiring.**
+2. **Per-product (productList) wildcard hooks missing.** Most templates render `{product.name}` etc. with hardcoded inline styles, never going through `useFieldFormat('products.*.X', …)`. Aa buttons on per-row fields silently do nothing. Affects ~10 templates.
+3. **Hardcoded inline styles bypassing the hook layer.** Specific text fields in Seasonal, Carousel, Brand-Spotlight, Gift-Guide, The Stack, The Collab, The Rail render with `style={{ fontFamily: …, fontSize: … }}` directly instead of through a hook. Drawer overrides skip them entirely.
+4. **Orphan single-field hooks.** A handful of fields exist in `fields.ts` but have no matching `useFieldFormat` call — Lookbook `act2TitleLine2`, Carousel `titleLine2`, Gift-Guide `headLine2`, Seasonal `word2`/`word3`, The Stack `sealWord1`/`2`/`3` + `bylineItalic`, The Collab `editSmallRight` + `capsuleTag2`/`3`.
+5. **`composePrice` missing in themed templates.** Already known from the prior shallow QC. The Pairing, The Collab, New In, The Rail render raw `{product.price}` without locale-aware currency suffix.
 
----
-
-## Bugs (must fix before next deploy)
-
-### 🐛 Bug #1 — `composePrice` skipped in 4 themed templates
-
-**Symptom:** When a marketer flips locale to Arabic, the price still renders with the EN currency suffix the marketer typed (`"4,280 AED"`) instead of the locale-aware suffix from `useCurrencyForLocale()` (`"4,280 د.إ."` for AR-UAE). Same code path also fails to participate in the typography drawer's numeric-role formatting hook.
-
-**Convention** (legacy templates):
-
-```tsx
-// hero/scene.tsx:326, bestsellers/scene.tsx:427, lookbook/scene.tsx:491
-import { composePrice, useCurrencyForLocale } from '../../lib/price';
-const currency = useCurrencyForLocale();
-…
-<div>{composePrice(product.price, currency)}</div>
-```
-
-**Affected files** (each renders `{x.price}` raw — should wrap):
-
-| Template | File | Line | Current | Fix |
-|---|---|---|---|---|
-| The Pairing | `app/src/templates/the-pairing/scene.tsx` | 668 | `<div style={pieceAPriceStyle}>{pieceA.price}</div>` | `{composePrice(pieceA.price, currency)}` |
-| The Pairing | same | 712 | `<div style={pieceBPriceStyle}>{pieceB.price}</div>` | `{composePrice(pieceB.price, currency)}` |
-| The Pairing | same | 800 | `Array.from(totalPrice).map(...)` (digit-slam) | Compose first, then `Array.from(composePrice(totalPrice, currency))` |
-| The Collab | `app/src/templates/the-collab/scene.tsx` | 737 | `<div>{product.price}</div>` | `{composePrice(product.price, currency)}` |
-| New In | `app/src/templates/new-in/scene.tsx` | 817 | `<span style={recapPriceStyle}>{p.price}</span>` | `{composePrice(p.price, currency)}` |
-| The Rail | `app/src/templates/the-rail/scene.tsx` | 697 | `<span style={…}>{product.price}</span>` | `{composePrice(product.price, currency)}` |
-
-**Fix size:** ~5 lines per template (import + 1-2 call sites). Total ~20 minutes including tsc verification.
+Plus one outlier:
+- Hero CTA button has a spread-order bug — `color: ctaTextStyle.color ?? colors.background` AFTER `...ctaTextStyle` makes the drawer's color override conditionally lose.
 
 ---
 
-## Warnings (cosmetic / future polish)
-
-### ⚠ Warning #1 — `New In`: `recapPrice` field declared but consumed only in the recap grid
-
-**File:** `app/src/templates/new-in/fields.ts` line 55, scene.tsx line 905 vs 918
-**Issue:** The field descriptor declares `recapPrice` (label "Recap price (compact)") as a separate per-product editable. The recap grid (~line 905) reads `p.recapPrice`, but the CTA scene (~line 918) reads `p.price` — so a marketer who edits the compact recap price sees their change ONLY in the recap grid, not in the CTA. Either intentional (compact recap = different number) or an accidental field duplicate.
-**Recommendation:** If intentional, add a `hint` to the field descriptor explaining "Compact price shown only in the 2×2 recap grid". If accidental, drop the field and have everything route through `p.price`.
-
-### ⚠ Warning #2 — `New In`: orphan `meter` scene in meta.ts
-
-**File:** `app/src/templates/new-in/meta.ts` line 14
-**Issue:** `meta.scenes` declares a `meter` scene (`{ id: 'meter', start: 0.55, end: 1.7 }`) but no field in `fields.ts` references `'meter'` in its `sceneIds`. The 01/04 counter + 4-pip meter are decorative chrome — there's no editable text tied to that scene, so no field needs to highlight during it.
-**Verdict:** Not a bug. The scene appears in the timeline dock as a labelled segment so the marketer can click-to-seek. Worth keeping — but document with a leading comment that "no fields render specifically here; it's a navigation marker only."
-
-### ⚠ Warning #3 — `The Rail`: `priceUnit` only consumed on the rail card, not in the CTA hero summary
-
-**File:** `app/src/templates/the-rail/scene.tsx` lines 697 (rail) vs 782 (CTA hero)
-**Issue:** Each product has both `price` ("1,890") and `priceUnit` ("AED") sub-fields. The rail card (line 697 area) renders both. The CTA section (line 782 area) renders only `{product.price}` without the unit, so the closing card shows `"1,890"` with no currency.
-**Recommendation:** Once Bug #1 is fixed and `composePrice(price, currency)` is in place, the unit is redundant — drop the `priceUnit` field entirely and let `useCurrencyForLocale()` resolve the suffix per locale. Saves the marketer one form input per row.
-
----
-
-## Per-template summaries
+## Per-template breakdown
 
 ### Group A — Legacy core (Phase 3)
 
-| Template | Status |
-|---|---|
-| Lookbook | ✅ All 22 checks pass. composePrice in use. Safe zones via content-rect. |
-| Editorial | ✅ All 22 checks pass. 2×2 grid bounded min/max=4. |
-| Countdown | ✅ All 22 checks pass. No productList — text-only template. |
-| Hero | ✅ All 22 checks pass. Single product, Ken-Burns reveal. composePrice in use. |
+#### Lookbook — 4 bugs
+1. `act2TitleLine2` rendered with `act2TitleStyle` (which is the hook for `act2TitleLine1`). Marketer's Aa edit on line 2 silently affects line 1's style. — **scene.tsx:336**
+2. `products.*.name` rendered with hardcoded inline style at scene.tsx:481. No wildcard hook. — Aa drawer dead.
+3. `products.*.color` rendered with hardcoded inline style at scene.tsx:468.
+4. `boutiqueName` passed to `<BoutiqueLogo>` with no typography hook wired.
+
+#### Editorial — 4 bugs
+1. `products.*.name` hardcoded inline style at scene.tsx:363.
+2. `products.*.category` hardcoded inline style at scene.tsx:396.
+3. `featureCaption` hardcoded inline style at scene.tsx:514. No hook at all.
+4. `boutiqueName` Aa drawer dead-end at BoutiqueLogo (line 634).
+
+#### Hero — 4 bugs
+1. **Spread-order bug** — `style={{ ...ctaTextStyle, color: ctaTextStyle.color ?? colors.background }}` at scene.tsx:418-419 puts the conditional color AFTER the spread, so the drawer's color override loses when `ctaTextStyle.color` is undefined.
+2. `product.name` hardcoded inline style at scene.tsx:316.
+3. `product.category` hardcoded inline style at scene.tsx:304.
+4. `boutiqueName` Aa drawer dead-end.
 
 ### Group B — Phase 2 expansion
 
-| Template | Status |
-|---|---|
-| Bestsellers | ✅ All 22 checks pass. composePrice in use (line 427). |
-| Seasonal | ✅ All 22 checks pass. Floating products use single-transform layer pattern. |
-| Carousel | ✅ All 22 checks pass. composePrice in use. |
-| Brand Spotlight | ✅ Compliant in audited portion (lines 1-400). composePrice in use. |
-| Gift Guide | ✅ All 6 quick-checks pass (re-audited separately). |
+#### Bestsellers — 1 bug
+1. `boutiqueName` Aa drawer dead-end at BoutiqueLogo (scene.tsx:266).
+
+#### Seasonal — 4 bugs
+1. `word2` no hook. Field exists but only `word1` has `refrainStyle`. Aa edit on word2 has no path.
+2. `word3` no hook. Same as word2.
+3. `sideEditorialLine` hardcoded inline style at scene.tsx:456-471.
+4. `seasonChip` hardcoded inline style at scene.tsx:524-533.
+
+#### Carousel — 5 bugs
+1. `categoryLabel` hardcoded inline style at scene.tsx:217-228.
+2. `finalKicker` hardcoded inline style at scene.tsx:429-440.
+3. `finalSubline` hardcoded inline style at scene.tsx:451-461.
+4. `titleLine2` rendered as `<em>` inside a `titleLine1`-keyed parent. Aa on line 2 affects line 1 style.
+5. **CRITICAL** — items.*.brandline / .name / .price all hardcoded inline at scene.tsx:317-352. Per-product Aa drawer dead across all carousel rows.
+
+#### Brand Spotlight — 7 bugs
+1. `presentsLabel` no hook.
+2. `hero.brandline` hardcoded inline at scene.tsx:393.
+3. `hero.name` hardcoded inline at scene.tsx:405.
+4. `hero.price` hardcoded inline at scene.tsx:417.
+5. `finalKicker` hardcoded inline at scene.tsx:545.
+6. `finalMeta` hardcoded inline at scene.tsx:568.
+7. `quoteAttrib` hardcoded inline at scene.tsx:503.
+
+#### Gift Guide — 5 bugs
+1. `headLine2` rendered with `headLineStyle` (hook for `headLine1`). Aa edit on line 2 affects line 1 style.
+2. `boxLabel` hardcoded inline at scene.tsx:412-428.
+3. `ribbonLabel` hardcoded inline at scene.tsx:524-544.
+4. `footKicker` hardcoded inline at scene.tsx:560-572.
+5. **CRITICAL** — picks.*.name / .sub hardcoded inline. Per-pick Aa drawer dead.
 
 ### Group C — Phase 6 themed lockups
 
-| Template | Status |
-|---|---|
-| The Stack | ✅ All 22 checks pass. Reference implementation for the post-Phase-6 conventions. No prices to render. |
-| The Pairing | ⚠ Bug #1 (composePrice skipped on pieceA, pieceB, totalPrice digit-slam). All other checks pass. |
-| The Collab | ⚠ Bug #1 (composePrice skipped on product card prices). All other checks pass. |
+#### The Stack — 9 bugs
+1. `sealWord1`, `sealWord2`, `sealWord3` no hooks. SVG `<text>` elements at scene.tsx:714-738 render fields raw.
+2. `bylineItalic` no hook (only inline `fontStyle: 'italic'`).
+3. **CRITICAL** — All 4 plates × 5 sub-fields (`brand`, `indexLabel`, `origin`, `yearRoman`, `subheading`) hardcoded inline at scene.tsx:516-594. 20 unformattable text elements per template instance.
+
+#### The Pairing — 5 bugs
+1. `pieceA.price` rendered raw without `composePrice()`. — scene.tsx:668
+2. `pieceB.price` rendered raw. — scene.tsx:712
+3. `totalPrice` digit-slam splits raw string. — scene.tsx:800-814
+4. `totalCurrency` hardcoded inline style at scene.tsx:817-828.
+5. Digit-slam spans have only animation styles; per-digit Aa formatting impossible without container hook.
+
+#### The Collab — 8 bugs
+1. `editSmallRight` rendered with `editSmallStyle` (hook for `editSmallLeft`). Aa on right label affects left.
+2. `capsuleTag2` rendered with `capsuleTagStyle` (hook for `capsuleTag1`). Aa edit silently wrong-routes.
+3. `capsuleTag3` same as #2.
+4. `products.*.category` hardcoded inline at scene.tsx:708.
+5. `products.*.name` hardcoded inline at scene.tsx:723.
+6. `products.*.price` hardcoded inline at scene.tsx:737.
+7. Product price rendered raw without `composePrice()` — scene.tsx:737.
 
 ### Group D — Phase 6 themed edits
 
-| Template | Status |
-|---|---|
-| New In | ⚠ Bug #1 + Warnings #1, #2. All other checks pass. |
-| The Rail | ⚠ Bug #1 + Warning #3. All other checks pass. |
+#### New In — 4 bugs
+1. **CRITICAL** — All 5 productList sub-fields (`brand`, `name`, `price`, `recapPrice`, `category`) hardcoded inline. No wildcard hooks.
+2. `p.price` rendered raw without `composePrice()` at scene.tsx:817.
+3. `p.recapPrice` rendered raw at scene.tsx:918.
+4. Product fields rendered with no hook spread regardless of value.
+
+#### The Rail — 4 bugs
+1. **CRITICAL** — All 4 productList sub-fields (`name`, `price`, `priceUnit`, `indexLabel`) no wildcard hooks.
+2. `product.price` raw without `composePrice()` at scene.tsx:697.
+3. Hero label `{heroProduct.price}` raw at scene.tsx:782.
+4. `capsuleCount`, `capsuleWord1/2/3`, `editKicker`, `heroSizes` no hooks (5 capsule + hero editorial fields silent).
 
 ---
 
-## Visual sampling (themed templates)
+## Fix campaign
 
-Sampled at a mid-keyframe in 9:16 light and 4:5 dark for each:
+### Wave 1 — BoutiqueLogo accepts typography overrides
+**Scope:** Component-level fix + thread `useFieldFormat('boutiqueName', baseStyle)` through every template's BoutiqueLogo call.
+**Templates touched:** Lookbook, Editorial, Hero, Bestsellers, Carousel, Brand-Spotlight, Gift-Guide, Seasonal, The Stack, The Pairing, The Collab, New In, The Rail.
+**Estimated:** 1 component change + 13 one-line scene additions.
 
-- **The Stack** (9:16 light, t=9): plates landed, index column visible, seal stamped, CTA + byline rendering. ✅ No visible issues.
-- **The Stack** (4:5 dark, t=9): Composition uses full safe area, dark paper renders deep black, plates stay legible against the inverted background. ✅ No visible issues.
-- (Other themed templates — visual sampling cut short due to time constraints; verified clean via static analysis.)
+### Wave 2 — composePrice for themed family
+**Scope:** Wrap raw `{X.price}` renders with `composePrice(X.price, useCurrencyForLocale())`.
+**Templates touched:** The Pairing (3 sites), The Collab (1), New In (2), The Rail (2).
+**Estimated:** 1 commit, ~20 minutes.
+
+### Wave 3 — Per-product wildcard hooks
+**Scope:** Add `useFieldFormat('products.*.<field>', baseStyle)` (or `picks.*.X`, `items.*.X`, `plates.*.X`) for every productList sub-field. Spread the result into each inline render.
+**Templates touched:** Lookbook (2 fields), Editorial (2), Hero (2), Carousel (3), Gift-Guide (2), The Stack (5), The Collab (3), New In (5), The Rail (4) — **28 fields total**.
+
+### Wave 4 — Hardcoded inline → hook conversions
+**Scope:** Convert orphan hardcoded inline styles to `useFieldFormat('<path>', base)` + spread.
+**Templates touched:** Seasonal (2), Carousel (3), Brand-Spotlight (7), Gift-Guide (3), The Stack (3), The Rail (5) — **23 fields**.
+
+### Wave 5 — Single-field orphan hooks
+**Scope:** Add the missing `useFieldFormat` for fields that should have one but don't.
+**Fields:** Lookbook `act2TitleLine2`; Carousel `titleLine2`; Gift-Guide `headLine2`; Seasonal `word2`+`word3`; The Stack `sealWord1`+`2`+`3`+`bylineItalic`; The Collab `editSmallRight`+`capsuleTag2`+`3`. **~13 fields.**
+
+### Wave 6 — Hero CTA spread-order fix
+Single-line change: move the conditional color BEFORE the spread.
 
 ---
 
-## Recommended fix order
+## What remains clean (per the deep audit)
 
-1. **Bug #1 (single PR, all 4 templates)** — wrap raw `{x.price}` renders with `composePrice(x.price, currency)`. Adds the import + one `useCurrencyForLocale()` call per scene. Fixes locale parity across the themed family. **~20 min including build + visual spot-check at AR locale.**
-2. **Warning #3 (one template)** — drop `priceUnit` from The Rail's schema/fields/scene now that composePrice is in place. **~10 min.**
-3. **Warnings #1, #2 (documentation only)** — leave recapPrice as-is but add a hint string; comment the orphan `meter` scene in meta.ts. **~5 min.**
+- **Countdown** — fully clean across all 9 checks.
+- **No literal fontFamily strings** — all 14 templates use `var(--font-*)`.
+- **Spread order** — only Hero has the conditional-color outlier; every other template is correct.
+- **`useFieldColor('logo', …)` wiring** — every template wires `logoColor` to `<BoutiqueLogo color={logoColor} />`.
+- **`composePrice` on legacy templates** — Lookbook, Bestsellers, Hero, Carousel, Brand-Spotlight all use it correctly.
+- **Path-string match on top-level fields** — every `useFieldFormat('<P>', …)` matches a `path: '<P>'` in fields.ts (productList sub-fields are the missing surface).
+- **`noTranslate` flags** — every boutique name, brand name, Roman numeral, and SKU code is correctly tagged.
 
-Total: under 45 minutes of cleanup.
-
----
-
-## What didn't surface findings (worth noting)
-
-These were on the audit checklist and came back clean across all 14 templates:
-
-- **Literal fontFamily strings** — none found. Every scene uses `var(--font-display|body|numeric)`. The role-bound typography sweep two weeks ago held.
-- **Safe-zone gotchas (Gotcha F)** — no `right: w(X)` without `safe.right` clamp anywhere. Either via `Math.max(safe.right + gap, …)` or content-rect anchoring. Asymmetric-9:16 IG like-stack bleed regression-free.
-- **Gotcha #14 (4:5 y-value compression)** — every Phase 6 template uses an explicit `Y45 = 1920/1350` constant or has the multiplication baked into the `is45 ? X : Y` ternary. Legacy templates use a single set of y-values via the content-rect pattern (also correct).
-- **`noTranslate` flags** — every boutique name, brand name, Roman numeral, and SKU-like code is correctly tagged. No proper-noun mis-translations expected.
-- **Theme palette completeness** — every Phase 6 themed template ships both `light` and `dark` palettes with all keys populated; ink contrasts each background; CTAs invert.
-- **`console.log` in scenes** — none.
-- **1:1 aspect references** — none. Always-safe regime cleanup held.
+The bugs cluster around two specific gaps in the conventions:
+- **Per-product wildcard hooks** were not made mandatory in the original `template_skill.md`. Templates were free to render product text with whatever style. Fixing this becomes the convention going forward.
+- **`BoutiqueLogo`** was designed before `useFieldFormat` existed and never updated to accept the override. One component change unlocks 13 templates.
