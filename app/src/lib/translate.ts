@@ -1,34 +1,31 @@
-// Chrome built-in Translator API wrapper.
+// EN→AR translation router.
 //
-// Chrome 138+ exposes a `Translator` global that runs Gemini Nano on-
-// device for translation. First use of a language pair triggers a one-
-// time ~22 MB download; subsequent calls are instant and offline. We
-// use it to fill `Project.localizedText.ar` when the marketer toggles
-// the editor into Arabic.
+// Two providers, in priority order:
 //
-// Browser support today (2026-04-25): Chrome stable + Edge. Safari and
-// Firefox don't ship the API. `getTranslatorState()` returns
-// `'unavailable'` on those — the editor's AR toggle still flips locale
-// (so RTL + Noto Kufi kicks in) but no auto-translate runs. Marketer
-// can still type Arabic by hand into the Properties panel; manual
-// edits write to `localizedText.ar` directly via the regular setter
-// path, so the same persistence loop works either way.
+//   1. **Chrome built-in `Translator` API** — runs Gemini Nano on-device
+//      in Chrome 138+ / Edge. Free, offline, fast (~5-30 ms per phrase).
+//      Requires the user to have either the API auto-shipped or the
+//      `chrome://flags/#translation-api` flag enabled, plus the
+//      "Optimization Guide On Device Model" component installed.
 //
-// Why a wrapper instead of inline calls:
-//   - Single shared `Translator` instance per session — avoids
-//     re-initialising the model on every batch.
-//   - Single `availability()` check at app start (pre-warm), reused
-//     by the toggle handler. Without this every AR click would hit
-//     the API again.
-//   - Graceful degradation surface: `getTranslatorState()` returns a
-//     discriminated state the UI can pattern-match for messaging
-//     ("Preparing Arabic… 14/22 MB", "Auto-translate works in
-//     Chrome 138+. Type Arabic manually for now.", etc.).
+//   2. **MyMemory REST API** — `https://api.mymemory.translated.net/get`.
+//      Free up to 50 000 words/day per IP (with email registered),
+//      1 000 words/day anonymous. Works in any browser (Safari, Firefox,
+//      older Chrome, Chrome without flags). Slower (~200-500 ms per
+//      call due to network), but no setup. Used as fallback when the
+//      Chrome built-in isn't available.
+//
+// We pick the first available provider at app start (Chrome → MyMemory
+// → unavailable) and stick with it for the session. Both expose the
+// same TranslatorInstance shape internally so the rest of the app
+// doesn't care which one is active. The status pill surfaces the
+// active provider so marketers can see whether they're on-device or
+// going through the cloud.
 
 /** State of the EN→AR translator on this device. Drives the AR toggle's
  *  loading indicators and disabled state. */
 export type TranslatorState =
-  | { kind: 'available' }
+  | { kind: 'available'; provider: 'chrome' | 'mymemory' }
   | { kind: 'downloadable' }
   | { kind: 'downloading'; progress: number /* 0-1 */ }
   | {
@@ -45,7 +42,9 @@ type TranslatorInstance = {
   destroy?: () => void;
 };
 
-type TranslatorGlobal = {
+// ── Chrome built-in provider ──────────────────────────────────────────
+
+type ChromeTranslatorGlobal = {
   availability(opts: {
     sourceLanguage: string;
     targetLanguage: string;
@@ -57,13 +56,61 @@ type TranslatorGlobal = {
   }): Promise<TranslatorInstance>;
 };
 
-function getTranslatorGlobal(): TranslatorGlobal | null {
-  // The API is exposed on `self` in the main thread + workers.
-  const g = (globalThis as { Translator?: TranslatorGlobal }).Translator;
+function getChromeTranslator(): ChromeTranslatorGlobal | null {
+  const g = (globalThis as { Translator?: ChromeTranslatorGlobal }).Translator;
   return typeof g === 'object' && g && typeof g.availability === 'function'
     ? g
     : null;
 }
+
+// ── MyMemory REST provider (fallback) ─────────────────────────────────
+
+/** Hit MyMemory's free GET endpoint.
+ *
+ *  Response shape (when 200 OK):
+ *    { responseData: { translatedText: string, match: number },
+ *      responseStatus: 200 | 403 | 429,
+ *      ... }
+ *
+ *  When the API rate-limits us (responseStatus 429) or the key is
+ *  invalid (403), `translatedText` typically contains an English
+ *  error message. We detect those and surface them as failures so
+ *  the caller can fall back to the original EN string. */
+async function myMemoryTranslate(text: string): Promise<string> {
+  // `de` (the email) is optional but unlocks the higher 50 k words/day
+  // quota. Leaving blank for now — the anonymous 1 000/day is plenty
+  // for editor preview use; we'd swap in a real address before a
+  // multi-tenant prod rollout.
+  const url = new URL('https://api.mymemory.translated.net/get');
+  url.searchParams.set('q', text);
+  url.searchParams.set('langpair', 'en|ar');
+  const res = await fetch(url.toString());
+  if (!res.ok) throw new Error(`MyMemory HTTP ${res.status}`);
+  const json = (await res.json()) as {
+    responseStatus?: number | string;
+    responseData?: { translatedText?: string };
+  };
+  const status = Number(json.responseStatus ?? 0);
+  if (status >= 400) {
+    throw new Error(
+      `MyMemory status ${status}: ${json.responseData?.translatedText ?? '(no detail)'}`,
+    );
+  }
+  const out = json.responseData?.translatedText;
+  if (!out) throw new Error('MyMemory returned no translatedText');
+  // MyMemory occasionally returns the EN string verbatim when its
+  // memory has no match — that's still a valid response (better than
+  // nothing) so we don't error.
+  return out;
+}
+
+function makeMyMemoryInstance(): TranslatorInstance {
+  return {
+    translate: myMemoryTranslate,
+  };
+}
+
+// ── Coordinator ───────────────────────────────────────────────────────
 
 let _state: TranslatorState = { kind: 'unavailable', reason: 'no-api' };
 let _instance: TranslatorInstance | null = null;
@@ -75,9 +122,6 @@ function setState(next: TranslatorState) {
   for (const fn of _stateListeners) fn(next);
 }
 
-/** Subscribe to state transitions (downloadable → downloading → available).
- *  Returns the unsubscribe function. The listener fires immediately with
- *  the current state. */
 export function subscribeTranslatorState(
   listener: (s: TranslatorState) => void,
 ): () => void {
@@ -90,68 +134,86 @@ export function getTranslatorState(): TranslatorState {
   return _state;
 }
 
-/** Pre-warm the translator. Called once on Editor mount.
+/** Pre-warm whichever provider works on this device. Called once on
+ *  Editor mount.
  *
- *  - If the API is missing → state stays `'unavailable'`. Cheap, exits.
- *  - If `available` → `Translator.create` is fast (no download).
- *  - If `downloadable` → triggers the ~22 MB language pack download in
- *    the background while the marketer continues to edit in EN.
+ *  Order:
+ *    1. Try Chrome built-in. If `availability` returns 'available'
+ *       or 'downloadable' / 'downloading', use it.
+ *    2. Otherwise (no API, or 'unavailable' for the pair, or create
+ *       fails), fall back to MyMemory — which is always available
+ *       as long as the network reaches the host.
  *
- *  Idempotent — repeat calls return the same in-flight promise. The
- *  first AR toggle awaits this promise instead of re-checking. */
+ *  Idempotent: repeat calls return the same in-flight promise. */
 export function prewarmTranslator(): Promise<TranslatorInstance | null> {
   if (_initPromise) return _initPromise;
   _initPromise = (async () => {
-    const T = getTranslatorGlobal();
+    const chrome = getChromeTranslator();
     console.log('[translate] prewarm start', {
-      hasApi: !!T,
+      hasChromeApi: !!chrome,
       ua: navigator.userAgent,
     });
-    if (!T) {
-      setState({ kind: 'unavailable', reason: 'no-api' });
-      return null;
-    }
-    try {
-      const avail = await T.availability({
-        sourceLanguage: 'en',
-        targetLanguage: 'ar',
-      });
-      console.log('[translate] availability =', avail);
-      if (avail === 'unavailable') {
-        setState({ kind: 'unavailable', reason: 'pair-not-supported' });
-        return null;
-      }
-      if (avail === 'downloadable' || avail === 'downloading') {
-        setState({ kind: 'downloading', progress: 0 });
-      }
-      const inst = await T.create({
-        sourceLanguage: 'en',
-        targetLanguage: 'ar',
-        monitor(m) {
-          m.addEventListener('downloadprogress', (e) => {
-            const ev = e as Event & { loaded?: number };
-            const loaded = typeof ev.loaded === 'number' ? ev.loaded : 0;
-            console.log(
-              '[translate] download progress',
-              `${(loaded * 100).toFixed(1)}%`,
-            );
-            setState({ kind: 'downloading', progress: loaded });
+
+    // ── Try Chrome built-in first ──
+    if (chrome) {
+      try {
+        const avail = await chrome.availability({
+          sourceLanguage: 'en',
+          targetLanguage: 'ar',
+        });
+        console.log('[translate] chrome availability =', avail);
+        if (avail !== 'unavailable') {
+          if (avail === 'downloadable' || avail === 'downloading') {
+            setState({ kind: 'downloading', progress: 0 });
+          }
+          const inst = await chrome.create({
+            sourceLanguage: 'en',
+            targetLanguage: 'ar',
+            monitor(m) {
+              m.addEventListener('downloadprogress', (e) => {
+                const ev = e as Event & { loaded?: number };
+                const loaded = typeof ev.loaded === 'number' ? ev.loaded : 0;
+                console.log(
+                  '[translate] download progress',
+                  `${(loaded * 100).toFixed(1)}%`,
+                );
+                setState({ kind: 'downloading', progress: loaded });
+              });
+            },
           });
-        },
-      });
-      _instance = inst;
-      console.log('[translate] ready');
-      setState({ kind: 'available' });
-      return inst;
+          _instance = inst;
+          console.log('[translate] chrome ready');
+          setState({ kind: 'available', provider: 'chrome' });
+          return inst;
+        }
+        console.log(
+          '[translate] chrome reported unavailable for en→ar; falling back to MyMemory',
+        );
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        console.warn(
+          '[translate] chrome init failed; falling back to MyMemory:',
+          msg,
+        );
+      }
+    }
+
+    // ── MyMemory fallback ──
+    // Quick connectivity probe: a single short translation. If it
+    // succeeds we mark the provider available; if it fails we go
+    // unavailable with the actual error in `detail` so the marketer
+    // sees a real message ("Failed to fetch" / "MyMemory HTTP 503").
+    try {
+      const probe = await myMemoryTranslate('Hello');
+      console.log('[translate] mymemory ready, probe =', probe);
+      _instance = makeMyMemoryInstance();
+      setState({ kind: 'available', provider: 'mymemory' });
+      return _instance;
     } catch (err) {
-      // Net failure, permission denied, model corrupt — fall back.
       const msg = err instanceof Error ? err.message : String(err);
-      console.warn('[translate] prewarm failed:', msg, err);
+      console.warn('[translate] mymemory probe failed:', msg);
       setState({ kind: 'unavailable', reason: 'error', detail: msg });
-      // Allow a future call to re-attempt — don't pin _initPromise to a
-      // failed result. Without this reset, clicking AR a second time
-      // after a transient failure would never retry.
-      _initPromise = null;
+      _initPromise = null; // allow future Retry to re-attempt
       return null;
     }
   })();
@@ -160,45 +222,38 @@ export function prewarmTranslator(): Promise<TranslatorInstance | null> {
 
 /** Manually re-attempt initialisation. Used by the "Retry" affordance
  *  in the editor's translate-status pill when the previous attempt
- *  errored. Resets the cached state and triggers a fresh prewarm. */
+ *  errored. Resets cached state and triggers a fresh prewarm. */
 export function retryTranslator(): Promise<TranslatorInstance | null> {
   console.log('[translate] manual retry');
   _instance = null;
   _initPromise = null;
-  setState({ kind: 'unavailable', reason: 'no-api' }); // reset before re-detect
+  setState({ kind: 'unavailable', reason: 'no-api' });
   return prewarmTranslator();
 }
 
 /** Translate a flat `Record<path, string>` from EN to AR. Returns a
  *  parallel record where each key maps to its translation; failed
  *  individual translations fall back to the original EN string so the
- *  scene still renders something legible.
- *
- *  Awaits `prewarmTranslator` if the instance isn't ready yet — so a
- *  click on the AR toggle while the language pack is mid-download
- *  works correctly: the call queues, resolves once the pack lands. */
+ *  scene still renders something legible. */
 export async function translateBatch(
   source: Record<string, string>,
 ): Promise<Record<string, string>> {
   const inst = _instance ?? (await prewarmTranslator());
   if (!inst) {
     console.warn('[translate] batch skipped — no instance');
-    return {}; // unavailable — caller falls back to manual entry
+    return {};
   }
 
   const paths = Object.keys(source);
   console.log(`[translate] batch start (${paths.length} fields)`);
   const t0 = performance.now();
   const out: Record<string, string> = {};
-  // Translate sequentially. The on-device model is fast (~5-30 ms per
-  // short phrase) but parallelising with Promise.all on a single
-  // instance has no throughput benefit and risks ordering oddities.
   for (const [path, text] of Object.entries(source)) {
     try {
       out[path] = await inst.translate(text);
     } catch (err) {
       console.warn(`[translate] failed for "${path}":`, err);
-      out[path] = text; // graceful: keep EN so layout doesn't break
+      out[path] = text;
     }
   }
   const dt = (performance.now() - t0).toFixed(0);

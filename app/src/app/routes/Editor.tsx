@@ -1502,6 +1502,14 @@ function TranslateStatusPill({
     label = 'Translating…';
     tooltip = 'Auto-translating editable text fields to Arabic.';
     tone = 'progress';
+  } else if (state.kind === 'available' && state.provider === 'mymemory') {
+    // We're on the cloud fallback — surface a quiet info indicator so
+    // the marketer knows translations are going through the network
+    // (and may be a touch slower than the on-device path).
+    label = 'Cloud translate';
+    tooltip =
+      'Auto-translation is using MyMemory (cloud). Chrome\'s on-device translator is unavailable in this browser, so each AR fill makes a small network call. Free up to 1 000 words/day; the daily counter resets at UTC midnight.';
+    tone = 'info';
   } else if (state.kind === 'unavailable') {
     label = 'Auto-translate off';
     if (state.reason === 'no-api') {
@@ -1524,7 +1532,9 @@ function TranslateStatusPill({
   const colors =
     tone === 'progress'
       ? { fg: '#1A1208', bg: 'var(--editor-accent)', border: 'var(--editor-accent)' }
-      : { fg: 'var(--editor-text-dim)', bg: 'var(--editor-panel-2)', border: 'var(--editor-border)' };
+      : tone === 'info'
+        ? { fg: 'var(--editor-text)', bg: 'var(--editor-panel-2)', border: 'var(--editor-border)' }
+        : { fg: 'var(--editor-text-dim)', bg: 'var(--editor-panel-2)', border: 'var(--editor-border)' };
 
   return (
     <div
@@ -1560,7 +1570,7 @@ function TranslateStatusPill({
           }}
         />
       )}
-      {tone === 'warn' && <span aria-hidden>ⓘ</span>}
+      {(tone === 'warn' || tone === 'info') && <span aria-hidden>ⓘ</span>}
       {label}
       {state.kind === 'unavailable' && state.reason === 'error' && (
         // Manual retry — fires a fresh availability check + create call.
