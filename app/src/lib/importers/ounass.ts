@@ -86,16 +86,27 @@ export function ounassSkuUrl(sku: string): string {
  *
  *  The `findbysku` API returns `media[].src` like
  *  `/2/1/219552822_grey_in.jpg?ts=1776254014.7642` — these are
- *  Magento-style hashed paths that need the storefront media CDN as
- *  prefix. Verified against the live response (April 2026): the
- *  resolved URLs at
- *  `https://www.ounass.ae/media/catalog/product/2/1/...jpg` render
- *  the production catalog images.
+ *  Magento-style hashed paths. The Ounass storefront's <img srcset>
+ *  reveals the actual CDN host: `ounass-ae.atgcdn.ae` (Al Tayer Group
+ *  CDN, region-tagged for the UAE storefront) under
+ *  `/pub/media/catalog/product/`. Verified against SKU 219552822
+ *  (April 2026) — both variants work:
+ *
+ *    https://ounass-ae.atgcdn.ae/pub/media/catalog/product/2/1/…jpg
+ *      → 200 OK, image/jpeg, full-resolution original.
+ *    https://ounass-ae.atgcdn.ae/small_light(of=webp,q=90)/pub/media/catalog/product/2/1/…jpg
+ *      → 200 OK, image/webp, transformed (smaller, faster).
+ *
+ *  We use the full-resolution path here because the imported image
+ *  ends up baked into the marketer's exported MP4 — quality wins over
+ *  payload size at that stage. Network preview uses the same URL;
+ *  Ounass's CDN serves it fast enough.
  *
  *  Exported so the constant is easy to swap if Ounass migrates the
- *  CDN later (or splits per-region). */
+ *  CDN later (or splits per-region — e.g. `ounass-sa.atgcdn.ae` for
+ *  Saudi Arabia). */
 export const OUNASS_IMAGE_BASE_URL =
-  'https://www.ounass.ae/media/catalog/product';
+  'https://ounass-ae.atgcdn.ae/pub/media/catalog/product';
 
 function resolveImageUrl(raw: string): string {
   let u = raw.trim();
