@@ -34,6 +34,15 @@ export type Project = {
    *  Light | Dark choice. Ignored for unthemed templates. `undefined`
    *  means "use template default" (light). */
   themeMode?: ThemeMode;
+  /** Cached non-English translations of this project's editable text
+   *  fields, keyed by FieldDescriptor.path → translated string. Filled
+   *  by the Chrome Translator API on the first AR toggle and reused on
+   *  subsequent toggles so re-flipping is instant. Manual edits while
+   *  the AR locale is active write back to the same map.
+   *
+   *  Today only `'ar'` is populated; the shape leaves room for other
+   *  locales without a migration. */
+  localizedText?: { ar?: Record<string, string> };
   createdAt: number;
   updatedAt: number;
 };

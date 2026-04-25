@@ -45,7 +45,7 @@ export const fields: FieldDescriptor[] = [
 
   { kind: 'section', label: 'Outro' },
   { kind: 'text', path: 'outroKicker', label: 'Kicker', sceneIds: ['act-4'], role: 'body' },
-  { kind: 'text', path: 'boutiqueName', label: 'Boutique name', sceneIds: ['act-4'], role: 'body' },
+  { kind: 'text', path: 'boutiqueName', label: 'Boutique name', sceneIds: ['act-4'], role: 'body', noTranslate: true },
   { kind: 'text', path: 'boutiqueTagline', label: 'Boutique tagline', sceneIds: ['act-4'], role: 'display' },
   { kind: 'text', path: 'ctaText', label: 'CTA text', sceneIds: ['act-4'], role: 'body' },
   { kind: 'text', path: 'ctaFooter', label: 'CTA footer', sceneIds: ['act-4'], role: 'body' },

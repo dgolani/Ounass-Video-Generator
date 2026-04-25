@@ -10,7 +10,7 @@ export const fields: FieldDescriptor[] = [
     hint: 'SVG preferred — the editor can tint it via the Aa button.',
     svgOnly: true,
   },
-  { kind: 'text', path: 'boutiqueName', label: 'Boutique name', sceneIds: ['lockup'] },
+  { kind: 'text', path: 'boutiqueName', label: 'Boutique name', sceneIds: ['lockup'], noTranslate: true },
 
   { kind: 'section', label: 'Collaborator' },
   {
@@ -21,7 +21,7 @@ export const fields: FieldDescriptor[] = [
     hint: 'SVG preferred — tintable via the Aa button. When absent, the collaborator name renders as a wordmark.',
     svgOnly: true,
   },
-  { kind: 'text', path: 'collabName', label: 'Collaborator name (fallback)', sceneIds: ['lockup'], role: 'display' },
+  { kind: 'text', path: 'collabName', label: 'Collaborator name (fallback)', sceneIds: ['lockup'], role: 'display', noTranslate: true },
 
   { kind: 'section', label: 'Background image' },
   {

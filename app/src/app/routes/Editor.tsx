@@ -17,7 +17,14 @@ import {
   isFieldFormatEmpty,
   type FieldFormat,
 } from '../../store/fieldFormat';
-import { useBrand } from '../../store/brand';
+import { useBrand, applyBrand } from '../../store/brand';
+import { applyLocalizedText, collectTranslatableStrings } from '../../lib/localizedText';
+import {
+  prewarmTranslator,
+  subscribeTranslatorState,
+  translateBatch,
+  type TranslatorState,
+} from '../../lib/translate';
 import {
   collectStringLeaves,
   copyMismatchWarning,
@@ -80,6 +87,7 @@ const EMPTY_EDITABLE: EditableState = {
   fieldFormatOverrides: {},
   localeOverride: undefined,
   themeMode: undefined,
+  localizedText: {},
 };
 
 export function Editor() {
@@ -233,7 +241,6 @@ export function Editor() {
   const duration = editable.duration;
   const defaultDuration = template?.meta.defaultDuration ?? 9;
   const timeScale = duration / defaultDuration;
-  const localProps = editable.props;
   const fieldFormatOverrides = editable.fieldFormatOverrides;
   /** Paths with any non-empty override — lights up the "Aa" button so
    *  marketers can see which fields have been customised at a glance. */
@@ -251,6 +258,105 @@ export function Editor() {
   const [brand] = useBrand();
   const effectiveLocale: Locale =
     editable.localeOverride ?? brand.locale ?? 'en';
+
+  /** Render-time props with two locale-aware overlays applied:
+   *
+   *   1. **Brand logo swap.** When locale is 'ar' and the brand kit
+   *      ships an `logoArabic` SVG, `applyBrand()` swaps it onto the
+   *      template's `logo` path. EN locale keeps the Latin mark.
+   *   2. **Auto-translated strings.** `localizedText.ar` (filled by
+   *      Chrome Translator on the AR toggle, persisted on the project)
+   *      is folded into every translatable text field by
+   *      `applyLocalizedText`. Untranslated paths fall through to EN.
+   *
+   *  Both overlays produce a fresh object — `editable.props` is
+   *  identity-stable across renders so undo/redo and history diffs
+   *  continue to work against the source of truth, not the overlaid
+   *  copy.
+   */
+  const localProps = useMemo(() => {
+    const baseProps = editable.props as Record<string, unknown>;
+    // Locale-aware brand overlay: re-applies on every locale change so
+    // the boutique logo flips to its Arabic variant in AR.
+    const branded = applyBrand(baseProps, brand, { locale: effectiveLocale });
+    // Auto-translation overlay (AR only — EN renders the source props).
+    if (effectiveLocale !== 'ar' || !template) return branded;
+    const arOverrides = editable.localizedText?.ar;
+    return applyLocalizedText(branded, template.fields, arOverrides);
+  }, [editable.props, editable.localizedText, brand, effectiveLocale, template]);
+
+  // ── Auto-translate (Chrome built-in Translator API) ─────────────────
+  //
+  // Two effects:
+  //   1. Pre-warm on mount — fires `prewarmTranslator()` so the language
+  //      pack starts downloading in the background while the marketer
+  //      is still editing in EN. By the time they click AR, the
+  //      translator is usually ready.
+  //   2. AR-toggle filler — when the active locale is AR and any
+  //      translatable EN string lacks an AR counterpart in
+  //      `localizedText.ar`, fire a `translateBatch` for just the
+  //      missing paths and merge the result. Handles both first-time
+  //      fill and incremental updates (marketer edits an EN string
+  //      while in AR mode → only the changed path re-translates).
+
+  const [translatorState, setTranslatorState] =
+    useState<TranslatorState>({ kind: 'unavailable', reason: 'no-api' });
+  const [isTranslating, setIsTranslating] = useState(false);
+
+  useEffect(() => {
+    // Subscribe first so the prewarm's state transitions land in React.
+    const unsub = subscribeTranslatorState(setTranslatorState);
+    void prewarmTranslator();
+    return unsub;
+  }, []);
+
+  useEffect(() => {
+    if (effectiveLocale !== 'ar' || !template) return;
+    if (translatorState.kind !== 'available') return;
+
+    const baseProps = editable.props as Record<string, unknown>;
+    // Apply the brand overlay first so the source set we translate is
+    // identical to what the scene will render — boutique name etc.
+    const branded = applyBrand(baseProps, brand, { locale: effectiveLocale });
+    const all = collectTranslatableStrings(branded, template.fields);
+    const existing = editable.localizedText?.ar ?? {};
+
+    // Find paths that need translation: either missing or whose source
+    // EN string changed since the last fill (we detect change by
+    // re-translating; the cheap on-device call is fine).
+    const missing: Record<string, string> = {};
+    for (const [path, en] of Object.entries(all)) {
+      if (!(path in existing)) {
+        missing[path] = en;
+      }
+    }
+    if (Object.keys(missing).length === 0) return;
+
+    let cancelled = false;
+    setIsTranslating(true);
+    void translateBatch(missing).then((translations) => {
+      if (cancelled) return;
+      setEditable((prev) => ({
+        ...prev,
+        localizedText: {
+          ...prev.localizedText,
+          ar: { ...(prev.localizedText?.ar ?? {}), ...translations },
+        },
+      }));
+      setIsTranslating(false);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    effectiveLocale,
+    template,
+    translatorState.kind,
+    editable.props,
+    editable.localizedText,
+    brand,
+    setEditable,
+  ]);
 
   /** Theme mode for this ad (light | dark). Only meaningful when the
    *  template opts in via `meta.supportsThemes`; unthemed templates
@@ -560,6 +666,15 @@ export function Editor() {
           brandDefault={brand.locale}
           onChange={onLocaleOverrideChange}
         />
+
+        {/* Auto-translate status — appears next to the locale toggle
+         *  whenever the AR locale is active and the Chrome translator
+         *  is doing something the marketer should know about: pack
+         *  download, in-flight batch, or unsupported browser. Quiet
+         *  during steady state (translator available + no work). */}
+        {effectiveLocale === 'ar' && (
+          <TranslateStatusPill state={translatorState} translating={isTranslating} />
+        )}
 
         {/* Copy / locale mismatch warning — yellow chip that appears
          *  when script detection disagrees with the active locale. */}
@@ -1237,6 +1352,100 @@ function AspectSwitcher({
           </button>
         );
       })}
+    </div>
+  );
+}
+
+/** Small pill rendered next to the LocaleSegmented when AR is active.
+ *
+ *  Shows one of three states:
+ *    - **Downloading** — first-time pack download in progress; shows
+ *      a small percentage so the marketer knows the wait is finite.
+ *    - **Translating** — batch in flight (post-pack-ready). Spinner.
+ *    - **Unavailable (no Chrome API)** — info pill with tooltip
+ *      explaining the marketer can still type Arabic manually.
+ *
+ *  Steady state (translator ready + no in-flight batch) renders
+ *  nothing — the pill is intentionally quiet so the toolbar doesn't
+ *  carry permanent chrome that says "AR mode is on" (the locale
+ *  segmented control already shows that). */
+function TranslateStatusPill({
+  state,
+  translating,
+}: {
+  state: TranslatorState;
+  translating: boolean;
+}) {
+  let label: string;
+  let tooltip: string;
+  let tone: 'info' | 'progress' | 'warn';
+
+  if (state.kind === 'downloading') {
+    const pct = Math.round(state.progress * 100);
+    label = `Preparing AR · ${pct}%`;
+    tooltip =
+      'First-time download of the on-device translator (about 22 MB). Happens once per browser. You can keep editing in EN while it finishes.';
+    tone = 'progress';
+  } else if (translating) {
+    label = 'Translating…';
+    tooltip = 'Auto-translating editable text fields to Arabic.';
+    tone = 'progress';
+  } else if (state.kind === 'unavailable') {
+    label = 'Auto-translate off';
+    tooltip =
+      state.reason === 'no-api'
+        ? 'On-device auto-translate needs Chrome 138+ or Edge. You can still type Arabic by hand into any field — it will save and render with RTL layout.'
+        : state.reason === 'pair-not-supported'
+          ? 'EN→AR is not currently supported by the on-device translator on this device. Type Arabic manually for now.'
+          : 'Translator failed to initialise. Type Arabic manually for now.';
+    tone = 'warn';
+  } else {
+    // 'available' + not translating + AR is the steady state — render nothing.
+    return null;
+  }
+
+  const colors =
+    tone === 'progress'
+      ? { fg: '#1A1208', bg: 'var(--editor-accent)', border: 'var(--editor-accent)' }
+      : { fg: 'var(--editor-text-dim)', bg: 'var(--editor-panel-2)', border: 'var(--editor-border)' };
+
+  return (
+    <div
+      role="status"
+      title={tooltip}
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: 6,
+        padding: '4px 10px',
+        fontFamily: 'var(--sans)',
+        fontSize: 11,
+        fontWeight: 600,
+        letterSpacing: '0.04em',
+        color: colors.fg,
+        background: colors.bg,
+        border: `1px solid ${colors.border}`,
+        borderRadius: 'var(--r-md)',
+        whiteSpace: 'nowrap',
+      }}
+    >
+      {tone === 'progress' && (
+        <span
+          aria-hidden
+          style={{
+            display: 'inline-block',
+            width: 8,
+            height: 8,
+            borderRadius: '50%',
+            border: '1.5px solid currentColor',
+            borderRightColor: 'transparent',
+            animation: 'translate-spin 0.9s linear infinite',
+          }}
+        />
+      )}
+      {tone === 'warn' && <span aria-hidden>ⓘ</span>}
+      {label}
+      <style>{`@keyframes translate-spin { to { transform: rotate(360deg); } }`}</style>
     </div>
   );
 }

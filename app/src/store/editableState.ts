@@ -28,6 +28,11 @@ export type EditableState = {
    *  choice. `undefined` = template default (light). Ignored for
    *  unthemed templates. */
   themeMode: ThemeMode | undefined;
+  /** Cached translations of editable text fields keyed by path. Filled
+   *  by Chrome Translator on the first AR toggle, reused thereafter so
+   *  re-flipping is instant. Manual edits while AR is active write to
+   *  this map directly (writing to props.kicker would clobber EN). */
+  localizedText: { ar?: Record<string, string> };
 };
 
 export function projectToEditable(p: Project): EditableState {
@@ -44,6 +49,7 @@ export function projectToEditable(p: Project): EditableState {
     fieldFormatOverrides: p.fieldFormatOverrides ?? {},
     localeOverride: p.localeOverride,
     themeMode: p.themeMode,
+    localizedText: p.localizedText ?? {},
   };
 }
 
@@ -62,7 +68,8 @@ export function editablesEqual(a: EditableState, b: EditableState): boolean {
     a.musicEndVideoTime === b.musicEndVideoTime &&
     a.fieldFormatOverrides === b.fieldFormatOverrides &&
     a.localeOverride === b.localeOverride &&
-    a.themeMode === b.themeMode
+    a.themeMode === b.themeMode &&
+    a.localizedText === b.localizedText
   );
 }
 
@@ -81,5 +88,6 @@ export function editableToPatch(e: EditableState): Partial<Project> {
     fieldFormatOverrides: e.fieldFormatOverrides,
     localeOverride: e.localeOverride,
     themeMode: e.themeMode,
+    localizedText: e.localizedText,
   };
 }

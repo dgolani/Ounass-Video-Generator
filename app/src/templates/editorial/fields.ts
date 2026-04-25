@@ -52,7 +52,7 @@ export const fields: FieldDescriptor[] = [
   { kind: 'section', label: 'Closing' },
   { kind: 'text', path: 'closingKicker', label: 'Kicker', sceneIds: ['closing'], role: 'body' },
   { kind: 'text', path: 'signatureText', label: 'Signature', sceneIds: ['closing'], role: 'display' },
-  { kind: 'text', path: 'boutiqueName', label: 'Boutique name', sceneIds: ['closing'], role: 'body' },
+  { kind: 'text', path: 'boutiqueName', label: 'Boutique name', sceneIds: ['closing'], role: 'body', noTranslate: true },
   { kind: 'text', path: 'ctaText', label: 'CTA text', sceneIds: ['closing'], role: 'body' },
   { kind: 'text', path: 'ctaFooter', label: 'CTA footer', sceneIds: ['closing'], role: 'body' },
 

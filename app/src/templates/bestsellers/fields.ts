@@ -9,7 +9,7 @@ export const fields: FieldDescriptor[] = [
     aspectRatio: 16 / 9,
     hint: 'Shown in the header in place of the text wordmark.',
   },
-  { kind: 'text', path: 'boutiqueName', label: 'Boutique name', role: 'body' },
+  { kind: 'text', path: 'boutiqueName', label: 'Boutique name', role: 'body', noTranslate: true },
   { kind: 'text', path: 'headerMeta', label: 'Header line (e.g. "The Edit · Spring")', role: 'body' },
 
   { kind: 'section', label: 'Opening' },

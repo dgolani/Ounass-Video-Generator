@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import ounassLogoRaw from '../assets/ounass-logo.svg?raw';
+import ounassLogoArabicRaw from '../assets/ounass-logo-arabic.svg?raw';
 import { sanitizeSvg, svgToDataURL } from '../lib/logo';
 import { DEFAULT_TYPOGRAPHY, type Typography } from '../engine/typography';
 import {
@@ -18,6 +19,11 @@ export type BrandKit = {
    *  component detects SVG and recolours it to match each template's
    *  palette. Legacy raster uploads still render (without recolour). */
   logo?: string;
+  /** Arabic-locale variant of the boutique logo. When present and the
+   *  active locale is `'ar'`, `applyBrand()` overlays this onto the
+   *  template's logo path instead of `logo`. Falls through to `logo` if
+   *  not set so single-locale boutiques keep working. */
+  logoArabic?: string;
   colors: {
     background: string;
     paper: string;
@@ -48,10 +54,15 @@ export type BrandKit = {
 /** Default boutique logo — the vendored Ounass SVG wordmark. Encoded
  *  once at module load so the brand kit ships with it preselected. */
 export const OUNASS_LOGO_DATA_URL = svgToDataURL(sanitizeSvg(ounassLogoRaw));
+/** Arabic-locale Ounass wordmark (وناس / ounas in Arabic). Same encoding
+ *  pipeline as the Latin mark — sanitised + base64 data URL. Picked up
+ *  by `applyBrand()` when the active locale is `'ar'`. */
+export const OUNASS_LOGO_ARABIC_DATA_URL = svgToDataURL(sanitizeSvg(ounassLogoArabicRaw));
 
 export const DEFAULT_BRAND: BrandKit = {
   boutiqueName: 'Ounass',
   logo: OUNASS_LOGO_DATA_URL,
+  logoArabic: OUNASS_LOGO_ARABIC_DATA_URL,
   colors: {
     background: '#0A0A0A',
     paper: '#F5F3EF',
@@ -151,13 +162,21 @@ export function useBrand(): [BrandKit, (next: BrandKit) => void] {
 export function applyBrand<P extends Record<string, unknown>>(
   defaults: P,
   brand: BrandKit,
+  /** Optional active locale. When `'ar'` and `brand.logoArabic` is
+   *  set, the Arabic logo variant is overlaid in place of the Latin
+   *  one. Omit (or pass `'en'`) to keep the existing behaviour. */
+  options: { locale?: Locale } = {},
 ): P {
   const out: Record<string, unknown> = structuredClone(defaults);
   if ('boutiqueName' in out && brand.boutiqueName) {
     out.boutiqueName = brand.boutiqueName;
   }
-  if ('logo' in out && brand.logo) {
-    out.logo = brand.logo;
+  if ('logo' in out) {
+    const localeAwareLogo =
+      options.locale === 'ar' && brand.logoArabic ? brand.logoArabic : brand.logo;
+    if (localeAwareLogo) {
+      out.logo = localeAwareLogo;
+    }
   }
   return out as P;
 }

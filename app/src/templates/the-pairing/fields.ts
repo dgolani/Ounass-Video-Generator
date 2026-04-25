@@ -10,7 +10,7 @@ export const fields: FieldDescriptor[] = [
     hint: 'SVG preferred — the editor can tint it via the Aa button.',
     svgOnly: true,
   },
-  { kind: 'text', path: 'boutiqueName', label: 'Boutique name', sceneIds: ['intro'] },
+  { kind: 'text', path: 'boutiqueName', label: 'Boutique name', sceneIds: ['intro'], noTranslate: true },
 
   { kind: 'section', label: 'Background image' },
   {

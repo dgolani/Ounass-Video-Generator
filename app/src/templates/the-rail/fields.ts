@@ -10,7 +10,7 @@ export const fields: FieldDescriptor[] = [
     hint: 'SVG preferred — the editor can tint it via the Aa button.',
     svgOnly: true,
   },
-  { kind: 'text', path: 'boutiqueName', label: 'Boutique name', sceneIds: ['intro'] },
+  { kind: 'text', path: 'boutiqueName', label: 'Boutique name', sceneIds: ['intro'], noTranslate: true },
 
   { kind: 'section', label: 'Background image' },
   {
@@ -43,12 +43,12 @@ export const fields: FieldDescriptor[] = [
     },
     productFields: [
       { path: 'name', label: 'Garment name', kind: 'text', role: 'display' },
-      { path: 'price', label: 'Price (number)', kind: 'text', role: 'numeric' },
-      { path: 'priceUnit', label: 'Price unit (e.g. AED)', kind: 'text', role: 'body' },
-      { path: 'indexLabel', label: 'Index (e.g. 06)', kind: 'text', role: 'body' },
+      { path: 'price', label: 'Price (number)', kind: 'text', role: 'numeric', noTranslate: true },
+      { path: 'priceUnit', label: 'Price unit (e.g. AED)', kind: 'text', role: 'body', noTranslate: true },
+      { path: 'indexLabel', label: 'Index (e.g. 06)', kind: 'text', role: 'body', noTranslate: true },
     ],
   },
-  { kind: 'text', path: 'heroIndex', label: 'Hero index (0-based)', sceneIds: ['hero-lift'], role: 'numeric' },
+  { kind: 'text', path: 'heroIndex', label: 'Hero index (0-based)', sceneIds: ['hero-lift'], role: 'numeric', noTranslate: true },
 
   { kind: 'section', label: 'Hero editorial label' },
   { kind: 'text', path: 'editKicker', label: 'Edit kicker (e.g. "Chosen For You")', sceneIds: ['hero-lift'], role: 'body' },

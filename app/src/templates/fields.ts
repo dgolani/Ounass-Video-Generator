@@ -30,6 +30,10 @@ export type ProductListSubField = {
   sceneIds?: string[];
   /** Typography role for the per-field Format drawer. See FieldRole. */
   role?: FieldRole;
+  /** When true, the auto-translate pass on AR locale skips this row. Use
+   *  for proper nouns (brand names like "Gucci"), price strings (already
+   *  routed through composePrice), Roman numerals, and SKU-like codes. */
+  noTranslate?: boolean;
 };
 
 export type FieldDescriptor =
@@ -44,6 +48,10 @@ export type FieldDescriptor =
       sceneIds?: string[];
       /** Typography role for the per-field Format drawer. See FieldRole. */
       role?: FieldRole;
+      /** When true, the auto-translate pass on AR locale skips this field.
+       *  Use for proper nouns (boutique names, Roman numerals, two-letter
+       *  codes) and any string that should render identically in EN and AR. */
+      noTranslate?: boolean;
     }
   | {
       kind: 'color';

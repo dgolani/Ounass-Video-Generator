@@ -9,7 +9,7 @@ export const fields: FieldDescriptor[] = [
     aspectRatio: 16 / 9,
     hint: 'Shown centred in the top bar.',
   },
-  { kind: 'text', path: 'boutiqueName', label: 'Boutique name', sceneIds: ['word-1', 'word-2', 'word-3', 'products'] },
+  { kind: 'text', path: 'boutiqueName', label: 'Boutique name', sceneIds: ['word-1', 'word-2', 'word-3', 'products'], noTranslate: true },
   { kind: 'text', path: 'sideEditorialLine', label: 'Side editorial line (e.g. "Vol. XII · SS26")', sceneIds: ['word-1', 'word-2', 'word-3', 'products'] },
 
   { kind: 'section', label: 'Typographic refrain' },

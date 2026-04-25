@@ -9,7 +9,7 @@ export const fields: FieldDescriptor[] = [
     aspectRatio: 16 / 9,
     hint: 'Shown in the top bar.',
   },
-  { kind: 'text', path: 'boutiqueName', label: 'Boutique name', sceneIds: ['opening', 'cycle', 'final'], role: 'body' },
+  { kind: 'text', path: 'boutiqueName', label: 'Boutique name', sceneIds: ['opening', 'cycle', 'final'], role: 'body', noTranslate: true },
   { kind: 'text', path: 'categoryLabel', label: 'Category label (top-right)', sceneIds: ['cycle'], role: 'body' },
 
   { kind: 'section', label: 'Opening title' },

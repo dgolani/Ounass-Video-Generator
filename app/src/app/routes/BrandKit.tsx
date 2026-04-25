@@ -703,6 +703,48 @@ export function BrandKitRoute() {
                 </div>
               ) : null}
             </Field>
+            {/* Arabic-locale variant of the boutique logo. Optional —
+             *  when present, scenes rendered with the AR locale toggle
+             *  receive this SVG instead of the Latin one. Same Aa
+             *  recolour pipeline as the EN logo. */}
+            <Field
+              label="Boutique logo (Arabic)"
+              hint="Optional. Used automatically when the project is in Arabic locale. Leave empty to keep the Latin logo on AR ads too."
+            >
+              <ImageDropZone
+                url={brand.logoArabic ?? ''}
+                aspectRatio={16 / 9}
+                size="large"
+                svgOnly
+                onImage={(dataURL) => update('logoArabic', dataURL)}
+                onClear={() => update('logoArabic', undefined)}
+              />
+              {brand.logoArabic ? (
+                <div
+                  style={{
+                    marginTop: 14,
+                    display: 'grid',
+                    gridTemplateColumns: '1fr 1fr',
+                    gap: 12,
+                  }}
+                >
+                  <LogoBgPreview
+                    label="Dark background"
+                    background="#0c0c0f"
+                    tone="dark"
+                    logoUrl={brand.logoArabic}
+                    boutiqueName={brand.boutiqueName}
+                  />
+                  <LogoBgPreview
+                    label="Light background"
+                    background="#f5f5f7"
+                    tone="light"
+                    logoUrl={brand.logoArabic}
+                    boutiqueName={brand.boutiqueName}
+                  />
+                </div>
+              ) : null}
+            </Field>
           </Stack>
         </div>
 

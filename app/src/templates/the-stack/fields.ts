@@ -10,7 +10,7 @@ export const fields: FieldDescriptor[] = [
     hint: 'SVG preferred — the editor can tint it via the Aa button.',
     svgOnly: true,
   },
-  { kind: 'text', path: 'boutiqueName', label: 'Boutique name', sceneIds: ['intro', 'seal'] },
+  { kind: 'text', path: 'boutiqueName', label: 'Boutique name', sceneIds: ['intro', 'seal'], noTranslate: true },
 
   { kind: 'section', label: 'Background image' },
   {
@@ -44,10 +44,10 @@ export const fields: FieldDescriptor[] = [
       subheading: 'SS CAMPAIGN',
     },
     productFields: [
-      { path: 'brand', label: 'Brand name', kind: 'text', role: 'display' },
-      { path: 'indexLabel', label: 'Index (e.g. 01)', kind: 'text', role: 'body' },
+      { path: 'brand', label: 'Brand name', kind: 'text', role: 'display', noTranslate: true },
+      { path: 'indexLabel', label: 'Index (e.g. 01)', kind: 'text', role: 'body', noTranslate: true },
       { path: 'origin', label: 'Origin city', kind: 'text', role: 'body' },
-      { path: 'yearRoman', label: 'Year (Roman)', kind: 'text', role: 'body' },
+      { path: 'yearRoman', label: 'Year (Roman)', kind: 'text', role: 'body', noTranslate: true },
       { path: 'subheading', label: 'Subheading', kind: 'text', role: 'body' },
     ],
   },

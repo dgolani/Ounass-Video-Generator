@@ -29,7 +29,7 @@ export const fields: FieldDescriptor[] = [
   { kind: 'text', path: 'product.price', label: 'Price', sceneIds: ['copy'], role: 'numeric' },
 
   { kind: 'section', label: 'CTA' },
-  { kind: 'text', path: 'boutiqueName', label: 'Boutique name', sceneIds: ['cta'], role: 'body' },
+  { kind: 'text', path: 'boutiqueName', label: 'Boutique name', sceneIds: ['cta'], role: 'body', noTranslate: true },
   { kind: 'text', path: 'ctaText', label: 'CTA text', sceneIds: ['cta'], role: 'body' },
   { kind: 'text', path: 'ctaFooter', label: 'CTA footer', sceneIds: ['cta'], role: 'body' },
 
