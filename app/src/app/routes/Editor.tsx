@@ -687,20 +687,53 @@ export function Editor() {
               brandDefault={brand.locale}
               onChange={onLocaleOverrideChange}
             />
-            {effectiveLocale === 'ar' && (
-              <TranslateStatusPill state={translatorState} translating={isTranslating} />
-            )}
+            {/* Permanently-reserved fixed-width well for the AR
+             *  translate-status pill. Always rendered (even on EN
+             *  locale) so the umbrella width is stable across every
+             *  toggle interaction — clicking EN↔AR, the pill cycling
+             *  through downloading/translating/steady, never shifts
+             *  the toolbar by a single pixel. Width is sized for the
+             *  longest pill text ("Preparing AR · 100%" ≈ 165px). */}
+            <div
+              aria-hidden={effectiveLocale !== 'ar'}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                minWidth: 168,
+                visibility: effectiveLocale === 'ar' ? 'visible' : 'hidden',
+              }}
+            >
+              <TranslateStatusPill
+                state={translatorState}
+                translating={isTranslating}
+              />
+            </div>
           </UmbrellaSlot>
         </SettingsUmbrella>
 
         <div style={{ flex: 1 }} />
 
         {/* Copy / locale mismatch warning — yellow chip that appears
-         *  when script detection disagrees with the active locale. */}
-        {copyWarning && (
+         *  when script detection disagrees with the active locale.
+         *
+         *  Rendered inside a permanent fixed-width slot so toggling
+         *  the warning on (e.g. clicking AR with EN copy still in the
+         *  fields) doesn't push the rest of the toolbar around. The
+         *  chip uses `visibility: hidden` rather than conditional
+         *  render when there's no warning — geometry stays identical
+         *  either way, only the pixels light up. */}
+        <div
+          aria-hidden={!copyWarning}
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            width: 160,
+            justifyContent: 'flex-end',
+          }}
+        >
           <div
             role="status"
-            title={copyWarning}
+            title={copyWarning ?? undefined}
             style={{
               display: 'flex',
               alignItems: 'center',
@@ -718,6 +751,7 @@ export function Editor() {
               overflow: 'hidden',
               textOverflow: 'ellipsis',
               whiteSpace: 'nowrap',
+              visibility: copyWarning ? 'visible' : 'hidden',
             }}
           >
             <span aria-hidden style={{ fontSize: 12 }}>
@@ -727,7 +761,7 @@ export function Editor() {
               Locale mismatch
             </span>
           </div>
-        )}
+        </div>
 
         {/* Undo/redo — SVG arrow icons, square 32px ghost buttons.
          *  Sit immediately before Export so destructive actions are
@@ -1148,6 +1182,12 @@ function LocaleSegmented({
               color: active ? 'var(--editor-text)' : 'var(--editor-text-dim)',
               border: 0,
               padding: '4px 10px',
+              // minWidth holds the button geometry steady so the bold-vs-
+              // medium fontWeight toggle below doesn't reflow the row by
+              // a couple of pixels each click. Sized for the bold "AR" /
+              // "EN" glyphs at 11px / serif fallback for AR.
+              minWidth: 32,
+              textAlign: 'center',
               fontFamily: opt.value === 'ar' ? 'var(--serif)' : 'var(--sans)',
               fontSize: 11,
               fontWeight: active ? 700 : 500,
