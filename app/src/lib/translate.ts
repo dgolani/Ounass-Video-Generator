@@ -31,7 +31,14 @@ export type TranslatorState =
   | { kind: 'available' }
   | { kind: 'downloadable' }
   | { kind: 'downloading'; progress: number /* 0-1 */ }
-  | { kind: 'unavailable'; reason: 'no-api' | 'pair-not-supported' | 'error' };
+  | {
+      kind: 'unavailable';
+      reason: 'no-api' | 'pair-not-supported' | 'error';
+      /** Captured error message when reason='error'. Surfaced in the
+       *  status pill tooltip so the marketer can see what blew up
+       *  ("Permission denied", "Model not yet downloaded", etc.). */
+      detail?: string;
+    };
 
 type TranslatorInstance = {
   translate(input: string): Promise<string>;
@@ -96,6 +103,10 @@ export function prewarmTranslator(): Promise<TranslatorInstance | null> {
   if (_initPromise) return _initPromise;
   _initPromise = (async () => {
     const T = getTranslatorGlobal();
+    console.log('[translate] prewarm start', {
+      hasApi: !!T,
+      ua: navigator.userAgent,
+    });
     if (!T) {
       setState({ kind: 'unavailable', reason: 'no-api' });
       return null;
@@ -105,6 +116,7 @@ export function prewarmTranslator(): Promise<TranslatorInstance | null> {
         sourceLanguage: 'en',
         targetLanguage: 'ar',
       });
+      console.log('[translate] availability =', avail);
       if (avail === 'unavailable') {
         setState({ kind: 'unavailable', reason: 'pair-not-supported' });
         return null;
@@ -119,21 +131,42 @@ export function prewarmTranslator(): Promise<TranslatorInstance | null> {
           m.addEventListener('downloadprogress', (e) => {
             const ev = e as Event & { loaded?: number };
             const loaded = typeof ev.loaded === 'number' ? ev.loaded : 0;
+            console.log(
+              '[translate] download progress',
+              `${(loaded * 100).toFixed(1)}%`,
+            );
             setState({ kind: 'downloading', progress: loaded });
           });
         },
       });
       _instance = inst;
+      console.log('[translate] ready');
       setState({ kind: 'available' });
       return inst;
     } catch (err) {
       // Net failure, permission denied, model corrupt — fall back.
-      console.warn('[translate] prewarm failed', err);
-      setState({ kind: 'unavailable', reason: 'error' });
+      const msg = err instanceof Error ? err.message : String(err);
+      console.warn('[translate] prewarm failed:', msg, err);
+      setState({ kind: 'unavailable', reason: 'error', detail: msg });
+      // Allow a future call to re-attempt — don't pin _initPromise to a
+      // failed result. Without this reset, clicking AR a second time
+      // after a transient failure would never retry.
+      _initPromise = null;
       return null;
     }
   })();
   return _initPromise;
+}
+
+/** Manually re-attempt initialisation. Used by the "Retry" affordance
+ *  in the editor's translate-status pill when the previous attempt
+ *  errored. Resets the cached state and triggers a fresh prewarm. */
+export function retryTranslator(): Promise<TranslatorInstance | null> {
+  console.log('[translate] manual retry');
+  _instance = null;
+  _initPromise = null;
+  setState({ kind: 'unavailable', reason: 'no-api' }); // reset before re-detect
+  return prewarmTranslator();
 }
 
 /** Translate a flat `Record<path, string>` from EN to AR. Returns a
@@ -148,8 +181,14 @@ export async function translateBatch(
   source: Record<string, string>,
 ): Promise<Record<string, string>> {
   const inst = _instance ?? (await prewarmTranslator());
-  if (!inst) return {}; // unavailable — caller falls back to manual entry
+  if (!inst) {
+    console.warn('[translate] batch skipped — no instance');
+    return {}; // unavailable — caller falls back to manual entry
+  }
 
+  const paths = Object.keys(source);
+  console.log(`[translate] batch start (${paths.length} fields)`);
+  const t0 = performance.now();
   const out: Record<string, string> = {};
   // Translate sequentially. The on-device model is fast (~5-30 ms per
   // short phrase) but parallelising with Promise.all on a single
@@ -162,6 +201,8 @@ export async function translateBatch(
       out[path] = text; // graceful: keep EN so layout doesn't break
     }
   }
+  const dt = (performance.now() - t0).toFixed(0);
+  console.log(`[translate] batch done in ${dt}ms`);
   return out;
 }
 

@@ -21,6 +21,7 @@ import { useBrand, applyBrand } from '../../store/brand';
 import { applyLocalizedText, collectTranslatableStrings } from '../../lib/localizedText';
 import {
   prewarmTranslator,
+  retryTranslator,
   subscribeTranslatorState,
   translateBatch,
   type TranslatorState,
@@ -1503,12 +1504,17 @@ function TranslateStatusPill({
     tone = 'progress';
   } else if (state.kind === 'unavailable') {
     label = 'Auto-translate off';
-    tooltip =
-      state.reason === 'no-api'
-        ? 'On-device auto-translate needs Chrome 138+ or Edge. You can still type Arabic by hand into any field — it will save and render with RTL layout.'
-        : state.reason === 'pair-not-supported'
-          ? 'EN→AR is not currently supported by the on-device translator on this device. Type Arabic manually for now.'
-          : 'Translator failed to initialise. Type Arabic manually for now.';
+    if (state.reason === 'no-api') {
+      tooltip =
+        'On-device auto-translate needs Chrome 138+ or Edge. You can still type Arabic by hand into any field — it will save and render with RTL layout.';
+    } else if (state.reason === 'pair-not-supported') {
+      tooltip =
+        'Chrome reports EN→AR is not supported on this device. The Gemini Nano model may not be installed yet — open chrome://on-device-internals to check, or wait for Chrome to download it. You can still type Arabic manually.';
+    } else {
+      tooltip = state.detail
+        ? `Translator failed: ${state.detail}. Click "Retry" to try again, or type Arabic manually.`
+        : 'Translator failed to initialise. Click "Retry" to try again, or type Arabic manually.';
+    }
     tone = 'warn';
   } else {
     // 'available' + not translating + AR is the steady state — render nothing.
@@ -1556,6 +1562,35 @@ function TranslateStatusPill({
       )}
       {tone === 'warn' && <span aria-hidden>ⓘ</span>}
       {label}
+      {state.kind === 'unavailable' && state.reason === 'error' && (
+        // Manual retry — fires a fresh availability check + create call.
+        // Useful when the first attempt errored transiently (e.g. the
+        // language pack hadn't finished downloading yet, or a permission
+        // prompt was dismissed).
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            void retryTranslator();
+          }}
+          style={{
+            marginLeft: 4,
+            padding: '1px 6px',
+            background: 'transparent',
+            border: '1px solid currentColor',
+            borderRadius: 3,
+            color: 'inherit',
+            font: 'inherit',
+            fontSize: 10,
+            fontWeight: 700,
+            letterSpacing: '0.06em',
+            textTransform: 'uppercase',
+            cursor: 'pointer',
+          }}
+        >
+          Retry
+        </button>
+      )}
       <style>{`@keyframes translate-spin { to { transform: rotate(360deg); } }`}</style>
     </div>
   );
