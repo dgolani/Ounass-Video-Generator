@@ -18,7 +18,7 @@ export const meta: TemplateMeta<BestsellersProps> = {
     { id: 'slot-3', label: 'N° 03', start: 4.2, end: 6.1 },
     { id: 'slot-4', label: 'N° 02', start: 6.1, end: 8.0 },
     { id: 'slot-5', label: 'N° 01', start: 8.0, end: 9.9 },
-    { id: 'cta', label: 'CTA hold', start: 9.9, end: 14.0 },
+    { id: 'cta', label: 'CTA hold', start: 10.1, end: 14.0 },
   ],
   defaultProps,
 };

@@ -23,8 +23,8 @@ export const fields: FieldDescriptor[] = [
     productRowSceneIds: ['slot-1', 'slot-2', 'slot-3', 'slot-4', 'slot-5'],
     imagePath: 'src',
     addLabel: '+ Add product',
-    minProducts: 3,
-    maxProducts: 10,
+    minProducts: 5,
+    maxProducts: 5,
     newProductTemplate: {
       src: '',
       rank: 1,
@@ -33,9 +33,9 @@ export const fields: FieldDescriptor[] = [
       price: '0 AED',
     },
     productFields: [
-      { path: 'brandline', label: 'Designer / brand', kind: 'text' },
+      { path: 'brandline', label: 'Designer / brand', kind: 'text', noTranslate: true },
       { path: 'name', label: 'Name', kind: 'text' },
-      { path: 'price', label: 'Price', kind: 'text' },
+      { path: 'price', label: 'Price', kind: 'text', noTranslate: true },
     ],
   },
 
