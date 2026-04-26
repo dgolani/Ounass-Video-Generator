@@ -11,7 +11,7 @@ export const fields: FieldDescriptor[] = [
   },
 
   { kind: 'section', label: 'Masthead' },
-  { kind: 'text', path: 'masthead', label: 'Masthead', sceneIds: ['masthead'], role: 'body' },
+  { kind: 'text', path: 'masthead', label: 'Masthead', sceneIds: ['masthead'], role: 'body', noTranslate: true },
   { kind: 'text', path: 'issueDate', label: 'Issue date', sceneIds: ['masthead'], role: 'body' },
 
   { kind: 'section', label: 'Headline' },
@@ -47,6 +47,7 @@ export const fields: FieldDescriptor[] = [
     label: 'Caption',
     multiline: true,
     sceneIds: ['feature'],
+    role: 'display',
   },
 
   { kind: 'section', label: 'Closing' },

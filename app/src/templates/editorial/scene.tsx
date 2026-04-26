@@ -546,7 +546,7 @@ function Signature({ props, T, s, safe, contentTop }: ActProps) {
 
   const ctaTextStyle = useFieldFormat('ctaText', {
     fontFamily: 'var(--font-body)',
-    fontSize: wh(22),
+    fontSize: wh(28),
     fontWeight: 700,
     letterSpacing: `${wh(4)}px`,
     textTransform: 'uppercase',
@@ -586,7 +586,7 @@ function Signature({ props, T, s, safe, contentTop }: ActProps) {
 
   const fadeIn = interpolate([T(7.4), T(8.0)], [0, 1], Easing.easeOutExpo)(t);
   const ctaIn = interpolate([T(8.1), T(8.6)], [0, 1], Easing.easeOutCubic)(t);
-  const underT = interpolate([T(8.5), T(9.1)], [0, 1], Easing.easeInOutCubic)(t);
+  const underT = interpolate([T(8.4), T(9.0)], [0, 1], Easing.easeInOutCubic)(t);
 
   // Signature stack anchored relative to the content rect top so the
   // rule + kicker + logo land proportionally on both aspects.
