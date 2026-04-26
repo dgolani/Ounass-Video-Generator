@@ -189,7 +189,7 @@ export function NewInScene({
   // multiplier on this base, so the relative sizing the marketer sets in
   // the Aa drawer is what carries through to the rendered wordmark.
   const boutiqueNameStyle = useFieldFormat('boutiqueName', {
-    fontFamily: 'Fraunces, serif',
+    fontFamily: 'var(--font-display)',
     fontSize: wh(72),
     fontWeight: 300,
     letterSpacing: '14px',
@@ -266,6 +266,15 @@ export function NewInScene({
 
   const bleedTop = is45 ? 683 : 680;
   const bleedFont = is45 ? 740 : 640;
+  // bleedWord hook placed here so wh(bleedFont) refers to the resolved value above.
+  const bleedWordStyle = useFieldFormat('bleedWord', {
+    fontFamily: 'var(--font-display)',
+    fontStyle: 'italic',
+    fontWeight: 300,
+    fontSize: wh(bleedFont),
+    letterSpacing: '-0.04em',
+    color: hexToRgba(colors.accent, 0.08),
+  });
   const metaStripTop = is45 ? 1351 : 1470;
   const metaStripWidth = is45 ? 1080 : 960;
 
@@ -518,18 +527,12 @@ export function NewInScene({
           position: 'absolute',
           top: h(bleedTop),
           left: w(-60),
-          fontFamily: 'var(--font-display)',
-          fontStyle: 'italic',
-          fontWeight: 300,
-          fontSize: wh(bleedFont),
-          lineHeight: 1,
-          letterSpacing: '-0.04em',
-          color: hexToRgba(colors.accent, 0.08),
           pointerEvents: 'none',
           userSelect: 'none',
           transform: `translateX(${w(bleedTx)}px)`,
           zIndex: 1,
           whiteSpace: 'nowrap',
+          ...bleedWordStyle,
         }}
       >
         {bleedWord}

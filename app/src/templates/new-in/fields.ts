@@ -49,7 +49,7 @@ export const fields: FieldDescriptor[] = [
     },
     productFields: [
       { path: 'category', label: 'Category chip (e.g. BLOUSE)', kind: 'text', role: 'body' },
-      { path: 'brand', label: 'Brand / designer', kind: 'text', role: 'display' },
+      { path: 'brand', label: 'Brand / designer', kind: 'text', role: 'display', noTranslate: true },
       { path: 'name', label: 'Product name', kind: 'text', role: 'display' },
       { path: 'price', label: 'Price (with currency)', kind: 'text', role: 'numeric' },
       { path: 'recapPrice', label: 'Recap price (compact)', kind: 'text', role: 'numeric' },
