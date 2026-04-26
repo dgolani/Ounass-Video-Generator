@@ -144,6 +144,15 @@ export function TheStackScene({
     textTransform: 'uppercase',
     color: colors.ink,
   });
+  const kickerSmallRightStyle = useFieldFormat('kickerSmallRight', {
+    fontFamily: 'var(--font-body)',
+    fontSize: wh(16),
+    fontWeight: 500,
+    letterSpacing: '0.3em',
+    textTransform: 'uppercase',
+    color: colors.ink,
+    opacity: 0.6,
+  });
   const ctaStyle = useFieldFormat('ctaText', {
     fontFamily: 'var(--font-body)',
     fontSize: wh(30),
@@ -176,7 +185,7 @@ export function TheStackScene({
   // boutique-name field). Spread into <BoutiqueLogo nameStyle={…}>
   // so it wins inside mode-3 (text fallback) only.
   const boutiqueNameStyle = useFieldFormat('boutiqueName', {
-    fontFamily: 'Fraunces, serif',
+    fontFamily: 'var(--font-display)',
     fontWeight: 300,
     fontSize: wh(is45 ? 102 : 72),
     letterSpacing: '14px',
@@ -536,7 +545,7 @@ export function TheStackScene({
             alignSelf: 'center',
           }}
         />
-        <span style={kickerSmallStyle}>{kickerSmallRight}</span>
+        <span style={kickerSmallRightStyle}>{kickerSmallRight}</span>
       </div>
 
       {/* Top rule — hairline between kicker and stack */}

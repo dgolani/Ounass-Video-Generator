@@ -46,7 +46,7 @@ export const fields: FieldDescriptor[] = [
     productFields: [
       { path: 'brand', label: 'Brand name', kind: 'text', role: 'display', noTranslate: true },
       { path: 'indexLabel', label: 'Index (e.g. 01)', kind: 'text', role: 'body', noTranslate: true },
-      { path: 'origin', label: 'Origin city', kind: 'text', role: 'body' },
+      { path: 'origin', label: 'Origin city', kind: 'text', role: 'body', noTranslate: true },
       { path: 'yearRoman', label: 'Year (Roman)', kind: 'text', role: 'body', noTranslate: true },
       { path: 'subheading', label: 'Subheading', kind: 'text', role: 'body' },
     ],
@@ -55,7 +55,7 @@ export const fields: FieldDescriptor[] = [
   { kind: 'section', label: 'Bronze foil seal' },
   { kind: 'text', path: 'sealWord1', label: 'Line 1 (italic)', sceneIds: ['seal'], role: 'display' },
   { kind: 'text', path: 'sealWord2', label: 'Line 2 (small caps)', sceneIds: ['seal'], role: 'body' },
-  { kind: 'text', path: 'sealWord3', label: 'Line 3 (boutique)', sceneIds: ['seal'], role: 'display' },
+  { kind: 'text', path: 'sealWord3', label: 'Line 3 (boutique)', sceneIds: ['seal'], role: 'display', noTranslate: true },
 
   { kind: 'section', label: 'CTA + byline' },
   { kind: 'text', path: 'ctaText', label: 'CTA button', sceneIds: ['cta'], role: 'body' },
