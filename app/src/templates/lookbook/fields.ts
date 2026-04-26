@@ -12,7 +12,7 @@ export const fields: FieldDescriptor[] = [
 
   { kind: 'section', label: 'Opening' },
   { kind: 'text', path: 'kicker', label: 'Kicker', sceneIds: ['act-1'], role: 'body' },
-  { kind: 'text', path: 'brand', label: 'Brand', sceneIds: ['act-1'], role: 'display' },
+  { kind: 'text', path: 'brand', label: 'Brand', sceneIds: ['act-1'], role: 'display', noTranslate: true },
   { kind: 'text', path: 'tagline', label: 'Tagline', sceneIds: ['act-1'], role: 'display' },
 
   { kind: 'section', label: 'Columns act' },

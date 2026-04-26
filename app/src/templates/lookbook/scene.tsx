@@ -390,6 +390,12 @@ function Act3Filmstrip({
     color: colors.background,
     letterSpacing: '-0.01em',
   });
+  const productPriceStyle = useFieldFormat('products.*.price', {
+    fontFamily: 'var(--font-numeric)',
+    fontWeight: 700,
+    fontSize: wh(28),
+    color: colors.background,
+  });
 
   const cycleStart = T(4.3);
   const perProduct = T(0.55);
@@ -497,12 +503,7 @@ function Act3Filmstrip({
             {product.name}
           </div>
           <div
-            style={{
-              fontFamily: 'var(--font-numeric)',
-              fontWeight: 700,
-              fontSize: wh(28),
-              color: colors.background,
-            }}
+            style={{ ...productPriceStyle }}
           >
             {composePrice(product.price, currency)}
           </div>
@@ -647,7 +648,7 @@ function Act4Outro({ props, T, s, safe, contentTop, contentLeft, contentRight }:
   const tagOp = interpolate([T(8.0), T(8.4)], [0, 1], Easing.easeOutCubic)(t);
   const ctaOp = interpolate([T(8.3), T(8.7)], [0, 1], Easing.easeOutCubic)(t);
   const ctaY = interpolate([T(8.3), T(8.7)], [wh(16), 0], Easing.easeOutCubic)(t);
-  const underT = interpolate([T(8.6), T(9.2)], [0, 1], Easing.easeInOutCubic)(t);
+  const underT = interpolate([T(8.6), T(9.0)], [0, 1], Easing.easeInOutCubic)(t);
 
   const slashTranslate = Math.max(W, H) * 2;
   const slash1X = (1 - wipeT) * -slashTranslate + wipeOutT * slashTranslate;
