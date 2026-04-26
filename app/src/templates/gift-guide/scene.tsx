@@ -156,7 +156,8 @@ export function GiftGuideScene({
     fontWeight: 700,
     letterSpacing: '0.5em',
     textTransform: 'uppercase',
-    color: 'rgba(0,0,0,0.60)',
+    color: colors.ink,
+    opacity: 0.6,
   });
   const pickNameStyle = useFieldFormat('picks.*.name', {
     fontFamily: 'var(--font-display)',

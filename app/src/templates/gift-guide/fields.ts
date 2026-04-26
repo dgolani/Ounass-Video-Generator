@@ -36,8 +36,8 @@ export const fields: FieldDescriptor[] = [
       sub: 'UNDER 10K AED',
     },
     productFields: [
-      { path: 'name', label: 'Name', kind: 'text', sceneIds: ['picks', 'sparkles'] },
-      { path: 'sub', label: 'Sub line', kind: 'text', sceneIds: ['picks', 'sparkles'] },
+      { path: 'name', label: 'Name', kind: 'text', sceneIds: ['picks', 'sparkles'], role: 'display' },
+      { path: 'sub', label: 'Sub line', kind: 'text', sceneIds: ['picks', 'sparkles'], noTranslate: true },
     ],
   },
 
