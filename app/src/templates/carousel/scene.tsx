@@ -157,6 +157,7 @@ export function CarouselScene({
     fontSize: wh(28),
     letterSpacing: '0.15em',
     textTransform: 'uppercase',
+    color: colors.ink,
   });
   const itemNameStyle = useFieldFormat('items.*.name', {
     fontFamily: 'var(--font-body)',
@@ -186,6 +187,13 @@ export function CarouselScene({
     fontSize: wh(28),
     fontWeight: 300,
     letterSpacing: '-0.03em',
+  });
+  const finalStatStyle = useFieldFormat('finalStat', {
+    fontFamily: 'var(--font-display)',
+    fontStyle: 'italic',
+    fontSize: wh(58),
+    color: colors.accent,
+    letterSpacing: '-0.02em',
   });
   const logoColor = useFieldColor('logo', lightText);
 
@@ -304,8 +312,8 @@ export function CarouselScene({
         <div style={{ marginBottom: h(22), ...titleKickerStyle }}>
           {titleKicker}
         </div>
-        <div style={{ ...titleLineStyle }}>
-          {titleLine1}
+        <div>
+          <span style={{ ...titleLineStyle }}>{titleLine1}</span>
           <br />
           <em style={{ ...titleLine2Style }}>{titleLine2}</em>
         </div>
@@ -460,13 +468,7 @@ export function CarouselScene({
             }}
           />
           <div
-            style={{
-              fontFamily: 'var(--font-display)',
-              fontStyle: 'italic',
-              fontSize: wh(58),
-              color: colors.accent,
-              letterSpacing: '-0.02em',
-            }}
+            style={{ ...finalStatStyle }}
           >
             {finalStat}
           </div>
