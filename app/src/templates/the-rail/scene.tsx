@@ -167,11 +167,20 @@ export function TheRailScene({
     color: colors.ink,
     opacity: 0.6,
   });
+  const bylineItalicStyle = useFieldFormat('bylineItalic', {
+    fontFamily: 'var(--font-display)',
+    fontStyle: 'italic',
+    fontWeight: 300,
+    fontSize: wh(is45 ? 20 : 26),
+    letterSpacing: '0.02em',
+    color: colors.ink,
+    opacity: 0.6,
+  });
   // BoutiqueLogo's text fallback derives its size from width/height; the
   // base size below is just so the editor's sizeScale multiplier has a
   // sensible anchor when marketers tweak the wordmark in the Aa drawer.
   const boutiqueNameStyle = useFieldFormat('boutiqueName', {
-    fontFamily: 'Fraunces, serif',
+    fontFamily: 'var(--font-display)',
     fontSize: wh(is45 ? 68 : 72),
     fontWeight: 300,
     letterSpacing: '14px',
@@ -845,9 +854,6 @@ export function TheRailScene({
             <span style={{ ...productPriceStyle }}>
               {composePrice(heroProduct.price, currency)}
             </span>{' '}
-            <span style={{ ...productPriceUnitStyle }}>
-              {heroProduct.priceUnit}
-            </span>{' '}
             · {heroSizes}
           </div>
         </div>
@@ -957,7 +963,7 @@ export function TheRailScene({
         }}
       >
         {bylineStart}{' '}
-        <em style={{ fontStyle: 'italic' }}>{bylineItalic}</em>
+        <em style={{ ...bylineItalicStyle }}>{bylineItalic}</em>
       </div>
 
       {/* safe-zone reference — keeps linter honest (safe.right used) */}

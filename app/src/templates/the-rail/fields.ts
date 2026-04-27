@@ -55,10 +55,10 @@ export const fields: FieldDescriptor[] = [
   { kind: 'text', path: 'heroSizes', label: 'Sizes (e.g. "Size S M L")', sceneIds: ['hero-lift'], role: 'body' },
 
   { kind: 'section', label: 'Capsule line (9:16 only)' },
-  { kind: 'text', path: 'capsuleCount', label: 'Capsule count', sceneIds: ['capsule'], role: 'display' },
+  { kind: 'text', path: 'capsuleCount', label: 'Capsule count', sceneIds: ['capsule'], role: 'display', noTranslate: true },
   { kind: 'text', path: 'capsuleWord1', label: 'Word 1 (e.g. Pieces)', sceneIds: ['capsule'], role: 'body' },
   { kind: 'text', path: 'capsuleWord2', label: 'Word 2 (e.g. April Rail)', sceneIds: ['capsule'], role: 'body' },
-  { kind: 'text', path: 'capsuleWord3', label: 'Word 3 (e.g. Ounass.ae)', sceneIds: ['capsule'], role: 'body' },
+  { kind: 'text', path: 'capsuleWord3', label: 'Word 3 (e.g. Ounass.ae)', sceneIds: ['capsule'], role: 'body', noTranslate: true },
 
   { kind: 'section', label: 'CTA + byline' },
   { kind: 'text', path: 'ctaText', label: 'CTA button', sceneIds: ['cta'], role: 'body' },
