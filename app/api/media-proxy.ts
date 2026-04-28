@@ -65,7 +65,13 @@ export default async function handler(req: Request): Promise<Response> {
 
   let upstream: Response;
   try {
-    upstream = await fetch(target, { redirect: 'follow' });
+    // Forward the verb. HEAD lets the editor's compatibility probe
+    // ask "would this URL export OK?" without us pulling the whole
+    // file — cheap, fast, no bandwidth wasted.
+    upstream = await fetch(target, {
+      method: req.method === 'HEAD' ? 'HEAD' : 'GET',
+      redirect: 'follow',
+    });
   } catch (e) {
     return new Response('proxy fetch error: ' + String(e), { status: 502 });
   }
@@ -81,7 +87,7 @@ export default async function handler(req: Request): Promise<Response> {
   // assets so a shared cache is fine.
   headers.set('Cache-Control', 'public, max-age=300, s-maxage=3600');
 
-  return new Response(upstream.body, {
+  return new Response(req.method === 'HEAD' ? null : upstream.body, {
     status: upstream.status,
     headers,
   });

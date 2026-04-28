@@ -36,3 +36,80 @@ export function isVideoUrl(url: string | undefined | null): boolean {
   if (VIDEO_HOST_RE.test(path)) return true;
   return false;
 }
+
+/** Does this video URL survive the export pipeline (canvas needs CORS
+ *  to read pixels)?
+ *
+ *   'direct' — host serves Access-Control-Allow-Origin → exports cleanly
+ *   'proxy'  — host doesn't, but our `/api/media-proxy` allow-lists
+ *              this host → exports cleanly via the same-origin proxy
+ *   'skip'   — neither path works → export will fall back to skipping
+ *              the video (black backdrop in the rendered MP4)
+ *   'na'     — URL isn't a video (image / data URL / blank), no probe
+ *              needed
+ *
+ *  Mirrors the runtime decision tree in `export.ts:prepareVideosForExport`.
+ *  Pure HTTP probes — uses HEAD so no body is downloaded.
+ */
+export type VideoExportability = 'direct' | 'proxy' | 'skip' | 'na';
+
+const exportProbeCache = new Map<string, VideoExportability>();
+
+export async function checkVideoExportable(
+  url: string | undefined | null,
+  options: { signal?: AbortSignal } = {},
+): Promise<VideoExportability> {
+  if (!url) return 'na';
+  if (url.startsWith('data:') || url.startsWith('blob:')) return 'direct';
+  if (!/^https?:\/\//i.test(url)) return 'na';
+  if (!isVideoUrl(url)) return 'na';
+
+  const cached = exportProbeCache.get(url);
+  if (cached) return cached;
+
+  const { signal } = options;
+
+  // (1) Direct CORS probe.
+  try {
+    const r = await fetch(url, {
+      method: 'HEAD',
+      mode: 'cors',
+      credentials: 'omit',
+      signal,
+    });
+    if (r.ok) {
+      exportProbeCache.set(url, 'direct');
+      return 'direct';
+    }
+  } catch {
+    // CORS preflight or network failure — fall through to proxy probe.
+  }
+
+  if (signal?.aborted) throw new DOMException('aborted', 'AbortError');
+
+  // (2) Same-origin proxy probe.
+  try {
+    const r = await fetch(`/api/media-proxy?url=${encodeURIComponent(url)}`, {
+      method: 'HEAD',
+      mode: 'cors',
+      credentials: 'omit',
+      signal,
+    });
+    if (r.ok) {
+      exportProbeCache.set(url, 'proxy');
+      return 'proxy';
+    }
+  } catch {
+    // proxy unreachable too
+  }
+
+  exportProbeCache.set(url, 'skip');
+  return 'skip';
+}
+
+/** Forget any cached probe for this URL — call after the user pastes
+ *  a new URL into a field so the next probe runs fresh. */
+export function clearVideoProbeCache(url?: string): void {
+  if (url) exportProbeCache.delete(url);
+  else exportProbeCache.clear();
+}

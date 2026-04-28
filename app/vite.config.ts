@@ -33,15 +33,27 @@ function mediaProxyPlugin(): Plugin {
             res.end('host not allowed');
             return;
           }
-          const upstream = await fetch(target, { redirect: 'follow' });
+          // Forward the client's verb. HEAD requests are used by the
+          // editor's compatibility probe (lib/media.ts:checkVideoExportable)
+          // to test export-time reachability without pulling the whole
+          // file — cheap, fast, no bandwidth wasted.
+          const method = (req.method || 'GET').toUpperCase();
+          const upstream = await fetch(target, {
+            method: method === 'HEAD' ? 'HEAD' : 'GET',
+            redirect: 'follow',
+          });
           res.statusCode = upstream.status;
           res.setHeader('Access-Control-Allow-Origin', '*');
           const ct = upstream.headers.get('content-type');
           if (ct) res.setHeader('Content-Type', ct);
           const cl = upstream.headers.get('content-length');
           if (cl) res.setHeader('Content-Length', cl);
-          const buf = Buffer.from(await upstream.arrayBuffer());
-          res.end(buf);
+          if (method === 'HEAD' || !upstream.body) {
+            res.end();
+          } else {
+            const buf = Buffer.from(await upstream.arrayBuffer());
+            res.end(buf);
+          }
         } catch (e) {
           res.statusCode = 502;
           res.end('proxy error: ' + String(e));

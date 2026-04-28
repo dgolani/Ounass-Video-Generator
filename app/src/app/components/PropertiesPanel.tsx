@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   Button,
   ColorField,
@@ -21,7 +21,11 @@ import {
   sanitizeSvg,
   svgToDataURL,
 } from '../../lib/logo';
-import { isVideoUrl } from '../../lib/media';
+import {
+  checkVideoExportable,
+  isVideoUrl,
+  type VideoExportability,
+} from '../../lib/media';
 import { uid } from '../../lib/uid';
 import { mapOunassProductToFields } from '../../lib/importers/ounass';
 import { OunassImporterDialog } from './OunassImporterDialog';
@@ -694,8 +698,116 @@ function VideoUrlField({
       >
         Videos autoplay muted and loop. Host on a CDN — no upload limit.
       </div>
+      {showsHostedVideo ? <VideoExportStatus url={url} /> : null}
     </div>
   );
+}
+
+/** Inline status badge that probes a hosted video URL and reports
+ *  whether the MP4 export will include the video, ahead of the user
+ *  clicking Render. Mirrors the runtime decision tree in
+ *  `export.ts:prepareVideosForExport` so what the marketer sees here
+ *  is exactly what export will do.
+ *
+ *  Three resolved states:
+ *   ✓ green  — exports cleanly via direct CORS or our proxy
+ *   ⚠ amber  — proxy can't reach the host either; export skips it
+ *              and falls back to a black backdrop
+ *   ⏳ probing — initial check in flight (cached after first run)
+ */
+function VideoExportStatus({ url }: { url: string }) {
+  const [state, setState] = useState<VideoExportability | 'pending'>('pending');
+
+  useEffect(() => {
+    let alive = true;
+    const ctrl = new AbortController();
+    setState('pending');
+    // Tiny delay so we don't fire a probe on every keystroke while
+    // the marketer is still typing the URL.
+    const timer = setTimeout(() => {
+      checkVideoExportable(url, { signal: ctrl.signal })
+        .then((res) => {
+          if (alive) setState(res);
+        })
+        .catch(() => {
+          if (alive) setState('skip');
+        });
+    }, 350);
+    return () => {
+      alive = false;
+      ctrl.abort();
+      clearTimeout(timer);
+    };
+  }, [url]);
+
+  const styles = videoExportBadgeStyles(state);
+  return (
+    <div
+      style={{
+        marginTop: 6,
+        display: 'flex',
+        alignItems: 'flex-start',
+        gap: 6,
+        padding: '5px 8px',
+        borderRadius: 'var(--r-sm)',
+        background: styles.bg,
+        border: `1px solid ${styles.border}`,
+        fontFamily: 'var(--sans)',
+        fontSize: 10,
+        lineHeight: 1.35,
+        color: styles.fg,
+        letterSpacing: '0.01em',
+      }}
+    >
+      <span aria-hidden style={{ flex: 'none' }}>{styles.icon}</span>
+      <span>{styles.message}</span>
+    </div>
+  );
+}
+
+function videoExportBadgeStyles(state: VideoExportability | 'pending'): {
+  icon: string;
+  message: string;
+  fg: string;
+  bg: string;
+  border: string;
+} {
+  if (state === 'pending') {
+    return {
+      icon: '…',
+      message: 'Checking export compatibility…',
+      fg: 'var(--editor-text-dim)',
+      bg: 'rgba(255,255,255,0.03)',
+      border: 'var(--editor-border)',
+    };
+  }
+  if (state === 'direct') {
+    return {
+      icon: '✓',
+      message: 'Will export to MP4 (host serves CORS).',
+      fg: '#7ec394',
+      bg: 'rgba(126,195,148,0.08)',
+      border: 'rgba(126,195,148,0.35)',
+    };
+  }
+  if (state === 'proxy') {
+    return {
+      icon: '✓',
+      message: 'Will export to MP4 (via same-origin proxy).',
+      fg: '#7ec394',
+      bg: 'rgba(126,195,148,0.08)',
+      border: 'rgba(126,195,148,0.35)',
+    };
+  }
+  // skip
+  return {
+    icon: '⚠',
+    message:
+      'Editor preview only — this URL won\'t bake into the MP4 export. The host doesn\'t serve CORS and isn\'t in the proxy allow-list. Try a Pexels CDN URL or another supported host.',
+    fg: '#d8a96b',
+    bg: 'rgba(216,169,107,0.08)',
+    border: 'rgba(216,169,107,0.35)',
+  };
 }
 
 export function ImageDropZone({
