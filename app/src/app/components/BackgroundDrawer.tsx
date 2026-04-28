@@ -7,6 +7,7 @@
 import {
   useCallback,
   useEffect,
+  useLayoutEffect,
   useRef,
   useState,
   type CSSProperties,
@@ -51,13 +52,23 @@ export function BackgroundDrawer({
   const [entered, setEntered] = useState(false);
 
   // Mount/unmount with transition so the slide-in/out animates.
-  useEffect(() => {
+  // Mirrors MusicLibraryDrawer's effect exactly: useLayoutEffect to
+  // commit the `present` flag before paint, then a NESTED double
+  // requestAnimationFrame so the browser has a chance to paint the
+  // initial off-screen position before we flip `entered` true.
+  // Without the double rAF the browser collapses the initial render
+  // and the entry transform skip-renders past the off-screen state,
+  // killing the slide animation.
+  useLayoutEffect(() => {
     if (open) {
       setPresent(true);
-      requestAnimationFrame(() => setEntered(true));
-    } else {
-      setEntered(false);
+      const r = requestAnimationFrame(() => {
+        requestAnimationFrame(() => setEntered(true));
+      });
+      return () => cancelAnimationFrame(r);
     }
+    setEntered(false);
+    return undefined;
   }, [open]);
 
   const onAsideTransitionEnd = useCallback(

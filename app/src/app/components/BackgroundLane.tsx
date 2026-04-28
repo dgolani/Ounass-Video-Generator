@@ -1,29 +1,31 @@
-// Project-background timeline lane — visual + drag/trim parity with
-// the music lane. Renders directly above the music row in
-// EditorTimelineDock; always present as long as the dock has space
-// for it.
+// Project-background timeline lane — same gestural model as the
+// music lane.
 //
 // Three states:
 //   - No background → "Add background" button (opens BackgroundDrawer).
-//   - Image background → flat stripe spanning the full duration
-//     (no drag — image is static).
+//   - Image background → flat stripe spanning the full duration; no
+//     drag (image is static; click to re-open the drawer).
 //   - Video background → bordered clip from `anchor` to `end` on the
-//     project timeline. Same gestures as the music lane:
-//       * Body drag (quick) → moves both endpoints (preserves length).
-//       * Body drag (long-press, ≥320ms held still) → scrubs the
-//         visible source frame by adjusting `trimStartSec` only;
-//         anchor/end stay put. Mirrors music's long-press scrub.
-//       * Left handle → drags `anchor` AND shifts `trimStartSec`
-//         by the same delta (keeps the visible source frame in
-//         place, exactly like music's left trim handle).
-//       * Right handle → drags `endVideoTime` only.
+//     project timeline. Body gestures match the music lane EXACTLY:
+//
+//       - Quick click / drag on the body → no-op (so the marketer
+//         doesn't accidentally slide the clip while trying to scrub).
+//       - Long-press body (≥260ms held within 22px) → enters scrub
+//         mode. From there, drag updates `trimStartSec` only — anchor
+//         and end stay put. Useful when the source is longer than
+//         the on-timeline window: scrub through the source to choose
+//         which portion plays.
+//       - Left handle → drags `anchor` AND shifts `trimStartSec` by
+//         the same delta so the visible source frame stays put.
+//       - Right handle → drags `endVideoTime` only.
 
 import {
+  useCallback,
   useEffect,
   useRef,
   useState,
   type CSSProperties,
-  type PointerEvent,
+  type PointerEvent as ReactPointerEvent,
 } from 'react';
 import type { ProjectBackground } from '../../store/types';
 
@@ -34,13 +36,14 @@ const BG_BRONZE = '#B87253';
 const BG_BRONZE_DIM = 'rgba(184, 114, 83, 0.28)';
 /** Minimum clip width on the timeline (in seconds). */
 const MIN_CLIP_SEC = 0.25;
-/** How long the marketer must hold the body still before a body drag
- *  becomes a long-press scrub instead of a slide. Matches the music
- *  lane's threshold. */
-const LONG_PRESS_MS = 320;
-/** Movement (px) past which a press counts as a slide rather than
- *  a long-press scrub. */
-const LONG_PRESS_SLOP_PX = 4;
+/** Long-press window before body becomes a scrub gesture. Mirrors the
+ *  music lane's `LONG_PRESS_MOVE_MS` so muscle memory transfers. */
+const LONG_PRESS_MOVE_MS = 260;
+/** Slop px before a press cancels into "marketer is moving the
+ *  pointer, not pressing". Mirrors the music lane's
+ *  `LONG_PRESS_MOVE_SLOP_PX`. Generous so normal hand jitter doesn't
+ *  cancel the long-press. */
+const LONG_PRESS_MOVE_SLOP_PX = 22;
 
 type Props = {
   background: ProjectBackground | undefined;
@@ -55,8 +58,8 @@ type Props = {
   /** Called when the marketer clicks the "Add background" CTA inside
    *  the empty lane. Parent opens the BackgroundDrawer. */
   onAddClick: () => void;
-  /** Called when the marketer clicks the existing clip's gear / label
-   *  area to re-open the drawer. */
+  /** Called when the marketer clicks the existing clip's label area
+   *  (a click without a long-press). Parent opens the drawer. */
   onEditClick: () => void;
 };
 
@@ -181,23 +184,30 @@ function ImageStripe({ onClick }: { onClick: () => void }) {
   );
 }
 
-// ── Video branch — draggable clip with trim handles ─────────────
+// ── Video branch — long-press scrub + trim handles ──────────────
 
 type VideoBg = Extract<ProjectBackground, { kind: 'video' }>;
 
-type DragState =
-  | null
-  | {
-      mode: 'body';
-      startX: number;
-      anchor0: number;
-      end0: number;
-      /** Source-time offset at press, captured for long-press scrub. */
-      trim0: number;
-    }
-  | { mode: 'scrub'; startX: number; trim0: number }
-  | { mode: 'trimL'; startX: number; anchor0: number; trim0: number }
-  | { mode: 'trimR'; startX: number; end0: number };
+/** Pending long-press state — between pointerdown and either timer-fires
+ *  (→ scrub) or pointer-moves-past-slop / pointerup (→ no-op click). */
+type PendingLongPress = {
+  pointerId: number;
+  startX: number;
+  startY: number;
+  timer: number;
+};
+
+/** Active scrub state — only set after the long-press timer fires. */
+type ScrubState = {
+  pointerId: number;
+  startX: number;
+  trim0: number;
+};
+
+/** Active trim state — set on handle pointerdown. */
+type TrimState =
+  | { kind: 'left'; pointerId: number; startX: number; anchor0: number; trim0: number }
+  | { kind: 'right'; pointerId: number; startX: number; end0: number };
 
 function VideoClip({
   background,
@@ -215,10 +225,25 @@ function VideoClip({
   onLabelClick: () => void;
 }) {
   void videoClipStartSec; // reserved — could constrain anchor to ≥ this in future
-  const [dragging, setDragging] = useState<DragState>(null);
-  const dragRef = useRef<DragState>(null);
-  dragRef.current = dragging;
-  const longPressTimerRef = useRef<number | null>(null);
+
+  const [scrubbing, setScrubbing] = useState(false);
+  const pendingRef = useRef<PendingLongPress | null>(null);
+  const scrubRef = useRef<ScrubState | null>(null);
+  const trimRef = useRef<TrimState | null>(null);
+  /** Window pointer-event session shared by body, scrub, and handles
+   *  so the drag continues even when the pointer leaves the clip's
+   *  bounding box (mirrors how the music lane handles this). */
+  const sessionRef = useRef<{
+    pointerId: number;
+    onMove: (e: PointerEvent) => void;
+    onUp: (e: PointerEvent) => void;
+  } | null>(null);
+
+  // Always read the LATEST background through a ref so the move
+  // handlers always see fresh anchor/end/trim/dim values rather than
+  // a stale closure capture.
+  const bgRef = useRef(background);
+  bgRef.current = background;
 
   const left = background.anchorVideoTime * pxPerSec;
   const width = Math.max(
@@ -226,127 +251,181 @@ function VideoClip({
     (background.endVideoTime - background.anchorVideoTime) * pxPerSec,
   );
 
+  const detachSession = useCallback(() => {
+    const s = sessionRef.current;
+    if (!s) return;
+    window.removeEventListener('pointermove', s.onMove, true);
+    window.removeEventListener('pointerup', s.onUp, true);
+    window.removeEventListener('pointercancel', s.onUp, true);
+    sessionRef.current = null;
+  }, []);
+
+  // ── Body pointerdown — long-press setup ─────────────────────
+  const onBodyPointerDown = useCallback(
+    (e: ReactPointerEvent<HTMLDivElement>) => {
+      if (e.button !== 0) return;
+      // Don't intercept presses on the trim handles or the label
+      // button — they have their own handlers.
+      const t = e.target as HTMLElement;
+      if (t.closest('[data-bg-handle]')) return;
+      if (t.closest('[data-bg-label]')) return;
+      e.preventDefault();
+      e.stopPropagation();
+      detachSession();
+
+      const pointerId = e.pointerId;
+      const startX = e.clientX;
+      const startY = e.clientY;
+
+      pendingRef.current = {
+        pointerId,
+        startX,
+        startY,
+        timer: window.setTimeout(() => {
+          // Long-press fired without exceeding the slop — flip into
+          // scrub mode. Capture the current trim as the baseline so
+          // subsequent moves are deltas from press position.
+          pendingRef.current = null;
+          scrubRef.current = {
+            pointerId,
+            startX,
+            trim0: bgRef.current.trimStartSec,
+          };
+          setScrubbing(true);
+        }, LONG_PRESS_MOVE_MS),
+      };
+
+      const onWinMove = (ev: PointerEvent) => {
+        if (ev.pointerId !== pointerId) return;
+        // Pending long-press → check slop; if exceeded, cancel.
+        const pending = pendingRef.current;
+        if (pending) {
+          const dx = ev.clientX - pending.startX;
+          const dy = ev.clientY - pending.startY;
+          if (Math.hypot(dx, dy) > LONG_PRESS_MOVE_SLOP_PX) {
+            window.clearTimeout(pending.timer);
+            pendingRef.current = null;
+          }
+          return;
+        }
+        // Active scrub → move trim by dx.
+        const sc = scrubRef.current;
+        if (sc) {
+          ev.preventDefault();
+          const dx = ev.clientX - sc.startX;
+          const dt = dx / pxPerSec;
+          const nextTrim = Math.max(0, sc.trim0 + dt);
+          onChange({ ...bgRef.current, trimStartSec: nextTrim });
+        }
+      };
+
+      const onWinUp = (ev: PointerEvent) => {
+        if (ev.pointerId !== pointerId) return;
+        const pending = pendingRef.current;
+        if (pending) {
+          window.clearTimeout(pending.timer);
+          pendingRef.current = null;
+        }
+        if (scrubRef.current) {
+          scrubRef.current = null;
+          setScrubbing(false);
+        }
+        detachSession();
+      };
+
+      window.addEventListener('pointermove', onWinMove, true);
+      window.addEventListener('pointerup', onWinUp, true);
+      window.addEventListener('pointercancel', onWinUp, true);
+      sessionRef.current = { pointerId, onMove: onWinMove, onUp: onWinUp };
+    },
+    [detachSession, onChange, pxPerSec],
+  );
+
+  // ── Trim handles ───────────────────────────────────────────
+  const onHandlePointerDown = useCallback(
+    (e: ReactPointerEvent<HTMLDivElement>, kind: 'left' | 'right') => {
+      if (e.button !== 0) return;
+      e.preventDefault();
+      e.stopPropagation();
+      detachSession();
+
+      const pointerId = e.pointerId;
+      const startX = e.clientX;
+      trimRef.current =
+        kind === 'left'
+          ? {
+              kind: 'left',
+              pointerId,
+              startX,
+              anchor0: bgRef.current.anchorVideoTime,
+              trim0: bgRef.current.trimStartSec,
+            }
+          : {
+              kind: 'right',
+              pointerId,
+              startX,
+              end0: bgRef.current.endVideoTime,
+            };
+
+      const onWinMove = (ev: PointerEvent) => {
+        if (ev.pointerId !== pointerId) return;
+        const tr = trimRef.current;
+        if (!tr) return;
+        ev.preventDefault();
+        const dx = ev.clientX - tr.startX;
+        const dt = dx / pxPerSec;
+        if (tr.kind === 'left') {
+          const minAnchor = 0;
+          const maxAnchor = bgRef.current.endVideoTime - MIN_CLIP_SEC;
+          const nextAnchor = Math.min(
+            maxAnchor,
+            Math.max(minAnchor, tr.anchor0 + dt),
+          );
+          const trimDelta = nextAnchor - tr.anchor0;
+          const nextTrim = Math.max(0, tr.trim0 + trimDelta);
+          onChange({
+            ...bgRef.current,
+            anchorVideoTime: nextAnchor,
+            trimStartSec: nextTrim,
+          });
+        } else {
+          const minEnd = bgRef.current.anchorVideoTime + MIN_CLIP_SEC;
+          const maxEnd = duration;
+          const nextEnd = Math.min(maxEnd, Math.max(minEnd, tr.end0 + dt));
+          onChange({ ...bgRef.current, endVideoTime: nextEnd });
+        }
+      };
+
+      const onWinUp = (ev: PointerEvent) => {
+        if (ev.pointerId !== pointerId) return;
+        trimRef.current = null;
+        detachSession();
+      };
+
+      window.addEventListener('pointermove', onWinMove, true);
+      window.addEventListener('pointerup', onWinUp, true);
+      window.addEventListener('pointercancel', onWinUp, true);
+      sessionRef.current = { pointerId, onMove: onWinMove, onUp: onWinUp };
+    },
+    [detachSession, duration, onChange, pxPerSec],
+  );
+
   // Cleanup on unmount.
   useEffect(() => {
     return () => {
-      if (longPressTimerRef.current != null) window.clearTimeout(longPressTimerRef.current);
+      if (pendingRef.current) {
+        window.clearTimeout(pendingRef.current.timer);
+        pendingRef.current = null;
+      }
+      detachSession();
     };
-  }, []);
-
-  const beginDrag = (e: PointerEvent<HTMLDivElement>, state: DragState) => {
-    e.stopPropagation();
-    e.preventDefault();
-    (e.currentTarget as HTMLDivElement).setPointerCapture(e.pointerId);
-    setDragging(state);
-  };
-
-  const onBodyPointerDown = (e: PointerEvent<HTMLDivElement>) => {
-    const startX = e.clientX;
-    const anchor0 = background.anchorVideoTime;
-    const end0 = background.endVideoTime;
-    const trim0 = background.trimStartSec;
-    beginDrag(e, { mode: 'body', startX, anchor0, end0, trim0 });
-
-    // Schedule the long-press trigger. If the marketer hasn't moved
-    // past LONG_PRESS_SLOP_PX before LONG_PRESS_MS elapses, flip the
-    // drag mode to 'scrub' (adjust trimStartSec only).
-    if (longPressTimerRef.current != null) window.clearTimeout(longPressTimerRef.current);
-    longPressTimerRef.current = window.setTimeout(() => {
-      const cur = dragRef.current;
-      if (cur && cur.mode === 'body') {
-        setDragging({ mode: 'scrub', startX, trim0 });
-      }
-    }, LONG_PRESS_MS);
-  };
-
-  const onPointerMove = (e: PointerEvent<HTMLDivElement>) => {
-    const cur = dragRef.current;
-    if (!cur) return;
-    const dx = e.clientX - cur.startX;
-    const dt = dx / pxPerSec;
-
-    if (cur.mode === 'body') {
-      // If the marketer has moved past the slop while the long-press
-      // timer is still pending, this is a slide — cancel the timer.
-      if (Math.abs(dx) > LONG_PRESS_SLOP_PX && longPressTimerRef.current != null) {
-        window.clearTimeout(longPressTimerRef.current);
-        longPressTimerRef.current = null;
-      }
-      const len = cur.end0 - cur.anchor0;
-      const maxAnchor = Math.max(0, duration - len);
-      const nextAnchor = Math.min(maxAnchor, Math.max(0, cur.anchor0 + dt));
-      const nextEnd = nextAnchor + len;
-      onChange({
-        ...background,
-        anchorVideoTime: nextAnchor,
-        endVideoTime: nextEnd,
-      });
-      return;
-    }
-
-    if (cur.mode === 'scrub') {
-      // Long-press scrub: anchor + end stay put; only trimStartSec
-      // moves. Positive drag (right) increases trim, scrubbing forward
-      // through the source. Lower bound is 0 (can't go below source
-      // start); upper bound is unbounded — the marketer can scrub
-      // past the end of the clip's natural source span.
-      const nextTrim = Math.max(0, cur.trim0 + dt);
-      onChange({
-        ...background,
-        trimStartSec: nextTrim,
-      });
-      return;
-    }
-
-    if (cur.mode === 'trimL') {
-      const minAnchor = 0;
-      const maxAnchor = background.endVideoTime - MIN_CLIP_SEC;
-      const nextAnchor = Math.min(maxAnchor, Math.max(minAnchor, cur.anchor0 + dt));
-      const trimDelta = nextAnchor - cur.anchor0;
-      const nextTrim = Math.max(0, cur.trim0 + trimDelta);
-      onChange({
-        ...background,
-        anchorVideoTime: nextAnchor,
-        trimStartSec: nextTrim,
-      });
-      return;
-    }
-
-    if (cur.mode === 'trimR') {
-      const minEnd = background.anchorVideoTime + MIN_CLIP_SEC;
-      const maxEnd = duration;
-      const nextEnd = Math.min(maxEnd, Math.max(minEnd, cur.end0 + dt));
-      onChange({
-        ...background,
-        endVideoTime: nextEnd,
-      });
-      return;
-    }
-  };
-
-  const endDrag = () => {
-    setDragging(null);
-    if (longPressTimerRef.current != null) {
-      window.clearTimeout(longPressTimerRef.current);
-      longPressTimerRef.current = null;
-    }
-  };
-
-  const cursor =
-    dragging?.mode === 'body'
-      ? 'grabbing'
-      : dragging?.mode === 'scrub'
-        ? 'col-resize'
-        : 'grab';
+  }, [detachSession]);
 
   return (
     <div
       data-timeline-no-seek
       data-bg-video-clip
       onPointerDown={onBodyPointerDown}
-      onPointerMove={onPointerMove}
-      onPointerUp={endDrag}
-      onPointerCancel={endDrag}
       style={{
         position: 'absolute',
         left,
@@ -356,49 +435,30 @@ function VideoClip({
         borderRadius: 'var(--r-md)',
         boxSizing: 'border-box',
         border: `2px solid ${BG_BRONZE}`,
-        boxShadow:
-          dragging?.mode === 'scrub'
-            ? '0 0 0 1px rgba(0,0,0,0.5), 0 0 22px rgba(184,114,83,0.45), 0 6px 18px rgba(0,0,0,0.45)'
-            : '0 0 0 1px rgba(0,0,0,0.5), 0 6px 18px rgba(0,0,0,0.45)',
-        background: dragging
+        boxShadow: scrubbing
+          ? '0 0 0 1px rgba(0,0,0,0.5), 0 0 22px rgba(184,114,83,0.45), 0 6px 18px rgba(0,0,0,0.45)'
+          : '0 0 0 1px rgba(0,0,0,0.5), 0 6px 18px rgba(0,0,0,0.45)',
+        background: scrubbing
           ? `linear-gradient(180deg, ${BG_BRONZE_DIM} 0%, rgba(120,75,55,0.18) 100%)`
           : `linear-gradient(180deg, rgba(184,114,83,0.22) 0%, rgba(120,75,55,0.12) 100%)`,
         touchAction: 'none',
         zIndex: 2,
-        cursor,
+        cursor: scrubbing ? 'col-resize' : 'pointer',
         transition: 'box-shadow 0.15s ease',
       }}
     >
       <Handle
         side="left"
-        onPointerDown={(e) =>
-          beginDrag(e, {
-            mode: 'trimL',
-            startX: e.clientX,
-            anchor0: background.anchorVideoTime,
-            trim0: background.trimStartSec,
-          })
-        }
-        onPointerMove={onPointerMove}
-        onPointerUp={endDrag}
-        onPointerCancel={endDrag}
+        onPointerDown={(e) => onHandlePointerDown(e, 'left')}
       />
       <Handle
         side="right"
-        onPointerDown={(e) =>
-          beginDrag(e, {
-            mode: 'trimR',
-            startX: e.clientX,
-            end0: background.endVideoTime,
-          })
-        }
-        onPointerMove={onPointerMove}
-        onPointerUp={endDrag}
-        onPointerCancel={endDrag}
+        onPointerDown={(e) => onHandlePointerDown(e, 'right')}
       />
       <button
         type="button"
         data-timeline-no-seek
+        data-bg-label
         onPointerDown={(e) => e.stopPropagation()}
         onClick={(e) => {
           e.preventDefault();
@@ -425,9 +485,12 @@ function VideoClip({
           whiteSpace: 'nowrap',
           overflow: 'hidden',
           textOverflow: 'ellipsis',
-          // Drag still works because the click only fires on a clean
-          // press without movement. Pointer move events bubble to
-          // the parent's onPointerMove via React's event propagation.
+          // Long-press scrub bypasses this button via the body's
+          // pointerdown handler (which short-circuits if the press
+          // hits a `[data-bg-label]` element). The only way to reach
+          // onClick is a quick tap with no movement — that opens the
+          // drawer for editing.
+          pointerEvents: scrubbing ? 'none' : 'auto',
         }}
       >
         Background video · {(background.endVideoTime - background.anchorVideoTime).toFixed(1)}s
@@ -439,15 +502,9 @@ function VideoClip({
 function Handle({
   side,
   onPointerDown,
-  onPointerMove,
-  onPointerUp,
-  onPointerCancel,
 }: {
   side: 'left' | 'right';
-  onPointerDown: (e: PointerEvent<HTMLDivElement>) => void;
-  onPointerMove: (e: PointerEvent<HTMLDivElement>) => void;
-  onPointerUp: (e: PointerEvent<HTMLDivElement>) => void;
-  onPointerCancel: (e: PointerEvent<HTMLDivElement>) => void;
+  onPointerDown: (e: ReactPointerEvent<HTMLDivElement>) => void;
 }) {
   const wrapperStyle: CSSProperties = {
     position: 'absolute',
@@ -464,10 +521,8 @@ function Handle({
   };
   return (
     <div
+      data-bg-handle
       onPointerDown={onPointerDown}
-      onPointerMove={onPointerMove}
-      onPointerUp={onPointerUp}
-      onPointerCancel={onPointerCancel}
       title={side === 'left' ? 'Trim from start' : 'Trim from end'}
       style={wrapperStyle}
     >
@@ -484,3 +539,4 @@ function Handle({
     </div>
   );
 }
+
