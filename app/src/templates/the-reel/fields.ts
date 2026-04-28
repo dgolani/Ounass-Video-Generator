@@ -72,7 +72,7 @@ export const fields: FieldDescriptor[] = [
     path: 'productImage',
     label: 'Phone screen product image',
     aspectRatio: 1 / 2,
-    hint: 'The product photo that fills the phone screen. Swipes in from the right after the phone settles. Portrait orientation works best (it crops to the phone screen aspect).',
+    hint: 'Fills the phone screen. Portrait works best.',
   },
 
   { kind: 'section', label: 'Scene 3 — USP flashes' },
