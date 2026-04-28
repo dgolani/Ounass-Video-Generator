@@ -10,16 +10,6 @@ export const fields: FieldDescriptor[] = [
     hint: 'Optional — used in the closing signature. Transparent PNG recommended.',
   },
 
-  { kind: 'section', label: 'Background' },
-  {
-    kind: 'image',
-    path: 'backgroundImage',
-    label: 'Custom backdrop',
-    aspectRatio: 9 / 16,
-    acceptVideo: true,
-    hint: 'Upload an image, or paste a hosted video URL (mp4 / webm / mov) below. Videos autoplay muted and loop. Replaces the template backdrop entirely.',
-  },
-
   { kind: 'section', label: 'Masthead' },
   { kind: 'text', path: 'masthead', label: 'Masthead', sceneIds: ['masthead'], role: 'body', noTranslate: true },
   { kind: 'text', path: 'issueDate', label: 'Issue date', sceneIds: ['masthead'], role: 'body' },

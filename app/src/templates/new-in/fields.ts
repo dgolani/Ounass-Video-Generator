@@ -12,16 +12,6 @@ export const fields: FieldDescriptor[] = [
   },
   { kind: 'text', path: 'boutiqueName', label: 'Boutique name', sceneIds: ['intro'], noTranslate: true },
 
-  { kind: 'section', label: 'Background image' },
-  {
-    kind: 'image',
-    path: 'backgroundImage',
-    label: 'Custom backdrop',
-    aspectRatio: 9 / 16,
-    acceptVideo: true,
-    hint: 'Upload an image, or paste a hosted video URL (mp4 / webm / mov) below. Videos autoplay muted and loop. Replaces the paper gradient entirely in BOTH light and dark modes.',
-  },
-
   { kind: 'section', label: 'Header' },
   { kind: 'text', path: 'kicker', label: 'Kicker (e.g. "ARRIVED · THIS WEEK")', sceneIds: ['intro'], role: 'body' },
   { kind: 'text', path: 'dateLine', label: 'Date line (e.g. "24 April | Spring Arrivals")', sceneIds: ['intro'], role: 'display' },

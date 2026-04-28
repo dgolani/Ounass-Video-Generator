@@ -10,16 +10,6 @@ export const fields: FieldDescriptor[] = [
     hint: 'Optional — shown in the CTA act. Transparent PNG recommended.',
   },
 
-  { kind: 'section', label: 'Background' },
-  {
-    kind: 'image',
-    path: 'backgroundImage',
-    label: 'Custom backdrop',
-    aspectRatio: 9 / 16,
-    acceptVideo: true,
-    hint: 'Upload an image, or paste a hosted video URL (mp4 / webm / mov) below. Videos autoplay muted and loop. Replaces the template backdrop entirely.',
-  },
-
   { kind: 'section', label: 'Hook' },
   { kind: 'text', path: 'kicker', label: 'Kicker', sceneIds: ['hook'], role: 'body' },
   { kind: 'text', path: 'headline', label: 'Headline', sceneIds: ['hook'], role: 'display' },

@@ -18,26 +18,6 @@ export const fields: FieldDescriptor[] = [
     sceneIds: ['s1', 's4'],
   },
 
-  { kind: 'section', label: 'Background video' },
-  {
-    kind: 'image',
-    path: 'videoSrc',
-    label: 'Background video URL',
-    aspectRatio: 9 / 16,
-    acceptVideo: true,
-    hint: 'Paste a hosted video URL (mp4 / webm / mov). Plays full-bleed, muted, looped. A still image works too.',
-  },
-  {
-    kind: 'slider',
-    path: 'videoDim',
-    label: 'Video dim',
-    min: 0,
-    max: 0.85,
-    step: 0.01,
-    precision: 2,
-    hint: 'Black overlay opacity layered over the video. Raise it for legibility when the footage is bright; lower it to let the video breathe.',
-  },
-
   { kind: 'section', label: 'Scene 1 — Wordmark' },
   {
     kind: 'text',

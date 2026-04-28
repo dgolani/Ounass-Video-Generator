@@ -12,16 +12,6 @@ export const fields: FieldDescriptor[] = [
   { kind: 'text', path: 'boutiqueName', label: 'Boutique name', sceneIds: ['opening', 'cycle', 'final'], role: 'body', noTranslate: true },
   { kind: 'text', path: 'categoryLabel', label: 'Category label (top-right)', sceneIds: ['cycle'], role: 'body' },
 
-  { kind: 'section', label: 'Background' },
-  {
-    kind: 'image',
-    path: 'backgroundImage',
-    label: 'Custom backdrop',
-    aspectRatio: 9 / 16,
-    acceptVideo: true,
-    hint: 'Upload an image, or paste a hosted video URL (mp4 / webm / mov) below. Videos autoplay muted and loop. Replaces the template backdrop entirely.',
-  },
-
   { kind: 'section', label: 'Opening title' },
   { kind: 'text', path: 'titleKicker', label: 'Kicker', sceneIds: ['opening'], role: 'body' },
   { kind: 'text', path: 'titleLine1', label: 'Headline — line 1', sceneIds: ['opening'], role: 'display' },
