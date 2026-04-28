@@ -775,25 +775,16 @@ function videoExportBadgeStyles(state: VideoExportability | 'pending'): {
   if (state === 'pending') {
     return {
       icon: '…',
-      message: 'Checking export compatibility…',
+      message: 'Checking…',
       fg: 'var(--editor-text-dim)',
       bg: 'rgba(255,255,255,0.03)',
       border: 'var(--editor-border)',
     };
   }
-  if (state === 'direct') {
+  if (state === 'direct' || state === 'proxy') {
     return {
       icon: '✓',
-      message: 'Will export to MP4 (host serves CORS).',
-      fg: '#7ec394',
-      bg: 'rgba(126,195,148,0.08)',
-      border: 'rgba(126,195,148,0.35)',
-    };
-  }
-  if (state === 'proxy') {
-    return {
-      icon: '✓',
-      message: 'Will export to MP4 (via same-origin proxy).',
+      message: 'Will export to MP4.',
       fg: '#7ec394',
       bg: 'rgba(126,195,148,0.08)',
       border: 'rgba(126,195,148,0.35)',
@@ -802,8 +793,7 @@ function videoExportBadgeStyles(state: VideoExportability | 'pending'): {
   // skip
   return {
     icon: '⚠',
-    message:
-      'Editor preview only — this URL won\'t bake into the MP4 export. The host doesn\'t serve CORS and isn\'t in the proxy allow-list. Try a Pexels CDN URL or another supported host.',
+    message: "Won't export — try another host.",
     fg: '#d8a96b',
     bg: 'rgba(216,169,107,0.08)',
     border: 'rgba(216,169,107,0.35)',

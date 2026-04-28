@@ -25,7 +25,7 @@ export const fields: FieldDescriptor[] = [
     label: 'Background video URL',
     aspectRatio: 9 / 16,
     acceptVideo: true,
-    hint: 'Paste a hosted video URL (mp4 / webm / mov). The video plays full-bleed, muted, looped behind every scene. A still image works too if you want a frozen backdrop. For MP4 export the host must serve CORS headers — Pexels and most major CDNs work; if the host doesn\'t, the editor will still play the video but the export will fall back to a black backdrop.',
+    hint: 'Paste a hosted video URL (mp4 / webm / mov). Plays full-bleed, muted, looped. A still image works too.',
   },
   {
     kind: 'slider',
