@@ -104,10 +104,8 @@ export async function exportVideoToMP4({
   //      video layer is missing in the rendered frames.
   // All swaps are reverted in the finally block so the editor returns
   // to its original state regardless of how export ended.
-  const videoRestorations: Array<() => void> = await prepareVideosForExport(
-    canvasEl,
-    abort,
-  );
+  const { restorations: videoRestorations, seekFrame: seekVideosToTime } =
+    await prepareVideosForExport(canvasEl, abort);
 
   try {
     // Embed any fonts currently used on the page so the rasterized
@@ -129,6 +127,16 @@ export async function exportVideoToMP4({
       abort();
       const t = Math.min(duration, i / fps);
       controller.setTime(t);
+
+      // Seek every <video> to the matching timeline position. Without
+      // this, each video keeps playing at wall-clock real-time during
+      // the export — wall-clock is slower than the rendering loop, so
+      // the captured frames sample many seconds of source video into
+      // each output second, producing the "super-fast" playback the
+      // marketer reported. Seeking deterministically + waiting for
+      // `seeked` makes the video frame match the timeline exactly,
+      // so the exported MP4 plays the source at 1× speed.
+      await seekVideosToTime(t);
 
       // Two RAFs: ensures React commits + browser paints before we capture.
       await new Promise<void>((resolve) =>
@@ -274,16 +282,39 @@ export async function exportVideoToMP4({
   }
 }
 
-/** Walk the export tree, find every cross-origin `<video>`, and
- *  prepare it for canvas rasterization. Returns an array of restore
- *  callbacks that the caller MUST run in `finally` to put the editor
- *  back to its original state. See the comment in exportVideoToMP4
- *  for the strategy. */
+/** Walk the export tree, find every `<video>`, and prepare it for
+ *  canvas rasterization:
+ *
+ *   1. CORS dance — swap external sources to a same-origin blob URL
+ *      (or fall back to skipping if neither direct fetch nor proxy
+ *      reaches the host). Without this, the canvas is tainted and
+ *      `toDataURL()` refuses to read pixels.
+ *
+ *   2. Pause autoplay — the editor sets `autoPlay loop muted playsInline`
+ *      on the element, so it's playing at wall-clock real-time. We need
+ *      it stopped so we can deterministically seek per frame.
+ *
+ *  Returns:
+ *   - `restorations`: callbacks the caller MUST run in `finally` to
+ *     return the editor to its original state.
+ *   - `seekFrame(t)`: at each export frame, call this with the
+ *     timeline second; it seeks every video to `t mod duration`
+ *     (videos loop) and resolves once the seek lands. Without this,
+ *     videos drift forward at wall-clock speed during the rendering
+ *     loop and play back several × too fast in the exported MP4.
+ */
 async function prepareVideosForExport(
   root: HTMLElement,
   abort: () => void,
-): Promise<Array<() => void>> {
+): Promise<{
+  restorations: Array<() => void>;
+  seekFrame: (t: number) => Promise<void>;
+}> {
   const restorations: Array<() => void> = [];
+  /** Videos whose CORS dance succeeded — these get seeked per-frame.
+   *  Skipped videos (`data-export-ignore="true"`) aren't included here
+   *  since they don't participate in the rasterized frame anyway. */
+  const seekableVideos: HTMLVideoElement[] = [];
   const videos = Array.from(root.querySelectorAll('video'));
   for (const v of videos) {
     abort();
@@ -363,10 +394,14 @@ async function prepareVideosForExport(
         setTimeout(() => err(), 12000);
       });
 
-      // Resume playback so the frame the rasterizer captures is fresh.
-      if (!prevPaused) {
-        v.play().catch(() => {});
-      }
+      // Keep the video paused during export — the seekFrame loop
+      // below will advance it deterministically per output frame so
+      // playback in the rendered MP4 matches source 1:1. Without
+      // this pause, the element keeps drifting at wall-clock real-
+      // time and the captured frames sample many seconds of source
+      // into each output second.
+      v.pause();
+      seekableVideos.push(v);
 
       restorations.push(() => {
         URL.revokeObjectURL(blobUrl);
@@ -390,7 +425,48 @@ async function prepareVideosForExport(
       });
     }
   }
-  return restorations;
+
+  const seekFrame = async (t: number): Promise<void> => {
+    if (seekableVideos.length === 0) return;
+    await Promise.all(seekableVideos.map((v) => seekVideoTo(v, t)));
+  };
+
+  return { restorations, seekFrame };
+}
+
+/** Seek a paused `<video>` to the given timeline second (looped to
+ *  fit within the source duration) and resolve once the new frame is
+ *  decoded. Used by the export loop so each rasterized frame samples
+ *  a deterministic source frame. */
+async function seekVideoTo(v: HTMLVideoElement, time: number): Promise<void> {
+  const duration = Number.isFinite(v.duration) && v.duration > 0 ? v.duration : 0;
+  if (!duration) return;
+  // Loop the source — the editor's <video> has `loop` set, and the
+  // export should mirror that behaviour for projects whose timeline
+  // is longer than the source clip.
+  const target = ((time % duration) + duration) % duration;
+  if (Math.abs(v.currentTime - target) < 0.005) return;
+  await new Promise<void>((resolve) => {
+    let done = false;
+    const finish = () => {
+      if (done) return;
+      done = true;
+      v.removeEventListener('seeked', finish);
+      v.removeEventListener('error', finish);
+      resolve();
+    };
+    v.addEventListener('seeked', finish, { once: true });
+    v.addEventListener('error', finish, { once: true });
+    try {
+      v.currentTime = target;
+    } catch {
+      finish();
+      return;
+    }
+    // Safety: if `seeked` never fires (decoder hiccup), don't stall
+    // the export loop forever.
+    setTimeout(finish, 1500);
+  });
 }
 
 /** Trigger a browser download of a Blob. */
