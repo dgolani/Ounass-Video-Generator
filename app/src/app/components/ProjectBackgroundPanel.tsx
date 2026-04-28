@@ -30,6 +30,18 @@ type Props = {
 export function ProjectBackgroundPanel({ background, onChange, duration }: Props) {
   const mode: Mode = background?.kind ?? 'none';
 
+  // Remember the most-recent state of each kind so toggling modes
+  // doesn't wipe the marketer's progress. Pasting a video URL,
+  // switching to Image, then back to Video should restore the URL.
+  // Same for an uploaded image. Only `project.background` (the active
+  // one) is persisted; these refs hold the parked-aside other half.
+  const lastImageRef = useRef<Extract<ProjectBackground, { kind: 'image' }> | null>(null);
+  const lastVideoRef = useRef<Extract<ProjectBackground, { kind: 'video' }> | null>(null);
+  useEffect(() => {
+    if (background?.kind === 'image') lastImageRef.current = background;
+    else if (background?.kind === 'video') lastVideoRef.current = background;
+  }, [background]);
+
   const setMode = (next: Mode) => {
     if (next === 'none') {
       onChange(undefined);
@@ -37,17 +49,22 @@ export function ProjectBackgroundPanel({ background, onChange, duration }: Props
     }
     if (next === mode) return;
     if (next === 'image') {
-      onChange({ kind: 'image', src: '', dim: 0 });
+      onChange(
+        lastImageRef.current ?? { kind: 'image', src: '', dim: 0 },
+      );
       return;
     }
-    onChange({
-      kind: 'video',
-      src: '',
-      dim: 0.24,
-      anchorVideoTime: 0,
-      trimStartSec: 0,
-      endVideoTime: duration,
-    });
+    // 'video'
+    onChange(
+      lastVideoRef.current ?? {
+        kind: 'video',
+        src: '',
+        dim: 0.24,
+        anchorVideoTime: 0,
+        trimStartSec: 0,
+        endVideoTime: duration,
+      },
+    );
   };
 
   return (

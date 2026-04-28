@@ -7,11 +7,17 @@
 // CORS proxy + per-frame seek dance to get usable exports, and
 // duplicated the same UI across 6 templates. Lifting the background
 // to project level lets us:
-//   - render it as a sibling of the rasterized canvas (data-export-ignore)
-//     so html-to-image never paints it onto the export canvas
+//   - render it as a sibling of the rasterized canvas (data-export-ignore
+//     for the export-pipeline rasterizer; freely rasterizable for the
+//     filmstrip-thumbnail rasterizer)
 //   - hand it to ffmpeg as a separate input at encode time (Phase 3)
 //   - mirror the music-layer's anchor/trim/end semantics for video
-//     (Phase 2: drag + trim on the timeline like a music track)
+//
+// To make the editor's filmstrip thumbnails capture the bg video too,
+// we eagerly fetch hosted video URLs into a same-origin blob URL the
+// moment the marketer pastes them. Cross-origin video can't be read
+// from canvas (taints it); blob URLs are same-origin so the canvas
+// painter can read pixels cleanly.
 //
 // This module exports:
 //   - ProjectBackgroundContext: the React context templates read from
@@ -19,13 +25,16 @@
 //     (or undefined). Templates use this to know whether to render
 //     their own opaque backdrop or fall through to transparent.
 //   - <ProjectBackgroundLayer>: renders <video> or <img> sized to fill
-//     the canvas. Marked data-export-ignore so the rasterizer skips it.
-//
-// Templates that previously rendered a `<MediaBackground>` for
-// `props.backgroundImage` should now check `useProjectBackground()`
-// and short-circuit their own backdrop when a project bg is set.
+//     the canvas. Marked data-export-ignore on the video element so
+//     the export-side rasterizer skips it.
 
-import { createContext, useContext, type CSSProperties } from 'react';
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  type CSSProperties,
+} from 'react';
 import type { ProjectBackground } from '../store/types';
 import { useTimeline } from './timeline';
 
@@ -54,78 +63,150 @@ type LayerProps = {
   height: number;
 };
 
+const BASE_STYLE: CSSProperties = {
+  position: 'absolute',
+  inset: 0,
+  width: '100%',
+  height: '100%',
+  objectFit: 'cover',
+  zIndex: 0,
+  pointerEvents: 'none',
+};
+
 /** The actual DOM node that paints the bg into the editor preview.
- *  Marked `data-export-ignore="true"` so the existing rasterizer
- *  filter (export.ts) skips it during MP4 frame capture. The bg
- *  reappears in the export via ffmpeg-side composition (Phase 3). */
+ *  The video element carries `data-export-ignore="true"` so the
+ *  export-pipeline's rasterizer filter skips it (the export pipeline
+ *  composites bg via ffmpeg instead). The filmstrip-thumbnail
+ *  rasterizer runs WITHOUT a filter, so it captures the bg too —
+ *  provided the source is canvas-readable (data URL, blob URL, or
+ *  CORS-friendly external URL). */
 export function ProjectBackgroundLayer({ background, width, height }: LayerProps) {
-  const { time } = useTimeline();
-  const baseStyle: CSSProperties = {
-    position: 'absolute',
-    inset: 0,
-    width: '100%',
-    height: '100%',
-    objectFit: 'cover',
-    zIndex: 0,
-    pointerEvents: 'none',
-  };
-  // Reference width/height to satisfy strict-no-unused — also
-  // useful in the future for downscaling when the canvas is huge.
   void width;
   void height;
 
-  // Image branch: the <img> bakes into the rasterized PNG (data URL is
-  // same-origin, no canvas taint). The dim layer is also painted into
-  // the PNG. So the exported MP4's frames already include image+dim;
-  // ffmpeg encodes the PNG sequence as-is, no overlay needed.
   if (background.kind === 'image') {
-    return (
-      <>
-        <img
-          data-project-bg-image="true"
-          src={background.src}
-          alt=""
-          style={baseStyle}
-        />
-        {background.dim > 0 ? (
-          <div
-            data-project-bg-dim="true"
-            style={{
-              ...baseStyle,
-              background: '#000',
-              opacity: background.dim,
-              objectFit: undefined,
-              zIndex: 0,
-            }}
-          />
-        ) : null}
-      </>
-    );
+    return <ImageBackground background={background} />;
   }
+  return <VideoBackground background={background} />;
+}
 
-  // Video branch: the <video> is `data-export-ignore` because cross-
-  // origin video taints the canvas. The export pipeline (export.ts)
-  // fetches the video file separately and overlays the PNG sequence
-  // on top of it via ffmpeg, so the rendered MP4 still composites
-  // bg_video + dim + scene chrome correctly.
-  //
-  // The dim layer is NOT data-export-ignore — it rasterizes into the
-  // PNG as a translucent black plane. When ffmpeg overlays the PNG on
-  // bg_video, the dim's alpha blends with the underlying video (=
-  // darkens it), and scene chrome (opaque on top of dim in the PNG)
-  // wins over both. Mirrors what the editor preview shows.
-  //
-  // Anchor / trim / end honour the (Phase-2 forthcoming) timeline
-  // drag UI: inside [anchor, end] the video plays from
-  // `(t - anchor) + trimStartSec` of source; outside that window we
-  // hide the layer (and ffmpeg's `enable=between(t,…)` mirrors it).
+// ── Image branch ────────────────────────────────────────────────
+
+function ImageBackground({
+  background,
+}: {
+  background: Extract<ProjectBackground, { kind: 'image' }>;
+}) {
+  return (
+    <>
+      <img
+        data-project-bg-image="true"
+        src={background.src}
+        alt=""
+        style={BASE_STYLE}
+      />
+      {background.dim > 0 ? (
+        <div
+          data-project-bg-dim="true"
+          style={{
+            ...BASE_STYLE,
+            background: '#000',
+            opacity: background.dim,
+            objectFit: undefined,
+          }}
+        />
+      ) : null}
+    </>
+  );
+}
+
+// ── Video branch ────────────────────────────────────────────────
+
+function VideoBackground({
+  background,
+}: {
+  background: Extract<ProjectBackground, { kind: 'video' }>;
+}) {
+  const { time } = useTimeline();
+  /** The URL we actually feed to <video src=…>. Starts as the raw
+   *  source so the editor preview is responsive while we async-fetch
+   *  a same-origin blob URL behind the scenes. */
+  const [renderSrc, setRenderSrc] = useState<string>(background.src);
+
+  // Eagerly fetch hosted video URLs into a same-origin blob URL so
+  // the filmstrip thumbnailer can read pixels from the <video>
+  // element. data: + blob: URLs are already same-origin → skip.
+  useEffect(() => {
+    setRenderSrc(background.src);
+    if (!background.src) return;
+    if (background.src.startsWith('data:') || background.src.startsWith('blob:')) {
+      return;
+    }
+    if (!/^https?:\/\//i.test(background.src)) return;
+
+    const ctrl = new AbortController();
+    let createdBlobUrl: string | null = null;
+    let cancelled = false;
+
+    (async () => {
+      let blob: Blob | null = null;
+      // (1) Try direct fetch — works on CORS-friendly hosts.
+      try {
+        const r = await fetch(background.src, {
+          mode: 'cors',
+          credentials: 'omit',
+          signal: ctrl.signal,
+        });
+        if (r.ok) blob = await r.blob();
+      } catch { /* fall through */ }
+      // (2) Same-origin proxy fallback — covers Pexels & other
+      //     allow-listed hosts whose direct CORS isn't enabled.
+      if (!blob && !cancelled) {
+        try {
+          const r2 = await fetch(
+            `/api/media-proxy?url=${encodeURIComponent(background.src)}`,
+            { mode: 'cors', credentials: 'omit', signal: ctrl.signal },
+          );
+          if (r2.ok) blob = await r2.blob();
+        } catch { /* fall through */ }
+      }
+      if (cancelled) return;
+      if (blob) {
+        createdBlobUrl = URL.createObjectURL(blob);
+        setRenderSrc(createdBlobUrl);
+      }
+      // If both paths fail, leave renderSrc on the original URL —
+      // the video still plays in the editor (cross-origin playback
+      // is fine), it just won't appear in canvas-painted thumbnails.
+    })();
+
+    return () => {
+      cancelled = true;
+      ctrl.abort();
+      if (createdBlobUrl) URL.revokeObjectURL(createdBlobUrl);
+    };
+  }, [background.src]);
+
   const visible = time >= background.anchorVideoTime && time < background.endVideoTime;
+  // Only mark the element as anonymous-CORS once the source is
+  // same-origin (data: or blob:). On the brief initial render before
+  // the blob fetch completes, renderSrc is still the original hosted
+  // URL — setting crossOrigin there would BLOCK playback for hosts
+  // that don't return CORS headers (Pexels, etc.). When we fall back
+  // to playing the original URL, leaving crossOrigin off gives us
+  // playback at the cost of not being able to canvas-paint it (which
+  // is acceptable: the export pipeline goes through ffmpeg, and the
+  // filmstrip thumbnailer just doesn't include the bg in that case).
+  const isSameOriginSrc =
+    renderSrc.startsWith('blob:') || renderSrc.startsWith('data:');
+
   return (
     <>
       <video
         data-export-ignore="true"
         data-project-bg-video="true"
-        src={background.src}
+        src={renderSrc}
+        crossOrigin={isSameOriginSrc ? 'anonymous' : undefined}
         autoPlay
         loop
         muted
@@ -133,7 +214,7 @@ export function ProjectBackgroundLayer({ background, width, height }: LayerProps
         controls={false}
         aria-hidden="true"
         style={{
-          ...baseStyle,
+          ...BASE_STYLE,
           opacity: visible ? 1 : 0,
         }}
       />
@@ -141,11 +222,10 @@ export function ProjectBackgroundLayer({ background, width, height }: LayerProps
         <div
           data-project-bg-dim="true"
           style={{
-            ...baseStyle,
+            ...BASE_STYLE,
             background: '#000',
             opacity: visible ? background.dim : 0,
             objectFit: undefined,
-            zIndex: 0,
           }}
         />
       ) : null}
