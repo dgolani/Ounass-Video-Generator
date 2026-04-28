@@ -103,7 +103,7 @@ export function CarouselScene({
   const titleLineStyle = useFieldFormat('titleLine1', {
     fontFamily: 'var(--font-display)',
     fontStyle: 'italic',
-    fontSize: wh(150),
+    fontSize: wh(120),
     fontWeight: 300,
     lineHeight: 0.95,
     letterSpacing: '-0.03em',
@@ -112,7 +112,7 @@ export function CarouselScene({
   const titleLine2Style = useFieldFormat('titleLine2', {
     fontFamily: 'var(--font-display)',
     fontStyle: 'italic',
-    fontSize: wh(150),
+    fontSize: wh(120),
     fontWeight: 300,
     lineHeight: 0.95,
     letterSpacing: '-0.03em',
@@ -255,8 +255,8 @@ export function CarouselScene({
         }}
       />
 
-      {/* Top bar — logo + category label. Anchored inside the content
-       *  rect so both edges respect safe.right on 9:16. */}
+      {/* Top bar — logo only, centered. Category label moved into the
+       *  title block below the photos (per 2026-04-28 layout request). */}
       <div
         style={{
           position: 'absolute',
@@ -266,7 +266,7 @@ export function CarouselScene({
           height: h(120),
           display: 'flex',
           alignItems: 'center',
-          justifyContent: 'space-between',
+          justifyContent: 'center',
           paddingLeft: w(64),
           paddingRight: w(64),
           boxSizing: 'border-box',
@@ -285,20 +285,15 @@ export function CarouselScene({
           letterSpacing="0.5em"
           nameStyle={boutiqueNameStyle}
         />
-        <div
-          style={{
-            ...categoryLabelStyle,
-          }}
-        >
-          {categoryLabel}
-        </div>
       </div>
 
-      {/* Title block — below the top bar, inside the content rect. */}
+      {/* Title block — anchored below the carousel photos so the centered
+       *  Ounass wordmark up top has the spotlight. Category label, kicker,
+       *  and the two italic display lines stack here. */}
       <div
         style={{
           position: 'absolute',
-          top: contentTop + h(150),
+          bottom: safe.bottom + h(60),
           left: contentLeft,
           right: width - contentRight,
           textAlign: 'center',
@@ -309,7 +304,10 @@ export function CarouselScene({
           boxSizing: 'border-box',
         }}
       >
-        <div style={{ marginBottom: h(22), ...titleKickerStyle }}>
+        <div style={{ marginBottom: h(10), ...categoryLabelStyle }}>
+          {categoryLabel}
+        </div>
+        <div style={{ marginBottom: h(18), ...titleKickerStyle }}>
           {titleKicker}
         </div>
         <div>
@@ -323,7 +321,7 @@ export function CarouselScene({
       <div
         style={{
           position: 'absolute',
-          top: h(620),
+          top: h(380),
           left: 0,
           right: 0,
           height: h(900),
