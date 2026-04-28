@@ -8,6 +8,7 @@
 // initial bundle stays small.
 
 import type { StageController } from '../engine';
+import type { ProjectBackground } from '../store/types';
 
 // Bundle ffmpeg core with the app. `?url` gives us stable same-origin
 // URLs for the web worker to load. We use the **ESM** variant
@@ -43,6 +44,17 @@ export type ExportOptions = {
   musicTrimStartSec?: number;
   /** Video timeline second where music should be silent after (≤ duration) */
   musicEndVideoTime?: number;
+  /** Project-level full-bleed background (image OR hosted video URL).
+   *  - `kind: 'image'` → no special handling; the image already bakes
+   *    into the rasterized PNG sequence.
+   *  - `kind: 'video'` → pipeline fetches the video (direct, then via
+   *    /api/media-proxy) and uses ffmpeg's overlay filter to paint
+   *    the PNG sequence on top of it, with anchor + trim + end
+   *    honoured via filter_complex. Sidesteps the canvas-tainting
+   *    CORS problem — the rasterized PNGs never contain video frames.
+   *  - undefined → no project bg; encode the PNG sequence as today.
+   */
+  projectBackground?: ProjectBackground;
   onProgress?: (p: ExportProgress) => void;
   signal?: AbortSignal;
 };
@@ -60,6 +72,7 @@ export async function exportVideoToMP4({
   musicAnchorVideoTime = 0,
   musicTrimStartSec = 0,
   musicEndVideoTime = 0,
+  projectBackground,
   onProgress = () => {},
   signal,
 }: ExportOptions): Promise<Blob> {
@@ -173,6 +186,11 @@ export async function exportVideoToMP4({
 
     const vol = Math.min(1, Math.max(0, audioVolume));
     const useAudio = Boolean(audioUrl?.trim()) && vol >= 0.001;
+    const useBgVideo = !!(
+      projectBackground &&
+      projectBackground.kind === 'video' &&
+      projectBackground.src.trim().length > 0
+    );
 
     if (useAudio && audioUrl) {
       onProgress({ stage: 'loading_audio', message: 'Loading music…' });
@@ -181,13 +199,63 @@ export async function exportVideoToMP4({
       abort();
     }
 
-    // Encode to MP4. libx264 + yuv420p = maximum platform compatibility
-    // (IG / TikTok / YouTube / native players). Optional AAC bed from bgm.mp3.
-    onProgress({
-      stage: 'encoding',
-      message: useAudio ? 'Encoding MP4 (video + music)…' : 'Encoding MP4…',
-    });
+    if (useBgVideo && projectBackground && projectBackground.kind === 'video') {
+      onProgress({ stage: 'loading', message: 'Loading background video…' });
+      const bgData = await fetchProxiedMedia(
+        projectBackground.src,
+        fetchFile,
+      );
+      await ffmpeg.writeFile('bg.mp4', bgData);
+      abort();
+    }
 
+    // Encode to MP4. libx264 + yuv420p = maximum platform compatibility
+    // (IG / TikTok / YouTube / native players). Optional AAC music bed
+    // from bgm.mp3, optional looped background video from bg.mp4.
+    const encodingMessage = useBgVideo
+      ? useAudio
+        ? 'Encoding MP4 (video + bg video + music)…'
+        : 'Encoding MP4 (video + bg video)…'
+      : useAudio
+        ? 'Encoding MP4 (video + music)…'
+        : 'Encoding MP4…';
+    onProgress({ stage: 'encoding', message: encodingMessage });
+
+    // Inputs in order: PNG sequence, [bg.mp4], [bgm.mp3]. Track each
+    // input's index so the filter_complex labels stay in sync as the
+    // optional inputs come and go.
+    const args: string[] = [];
+    args.push('-framerate', String(fps), '-i', 'f-%05d.png');
+    let nextInputIdx = 1;
+    let bgIdx = -1;
+    let audIdx = -1;
+    if (useBgVideo) {
+      args.push('-stream_loop', '-1', '-i', 'bg.mp4');
+      bgIdx = nextInputIdx++;
+    }
+    if (useAudio) {
+      args.push('-stream_loop', '-1', '-i', 'bgm.mp3');
+      audIdx = nextInputIdx++;
+    }
+
+    // Build filter_complex parts.
+    const filterParts: string[] = [];
+    let videoMapLabel = '0:v'; // PNG sequence by default
+    if (useBgVideo) {
+      // Scale + crop the bg video to canvas dimensions, force same SAR
+      // as the PNG, then overlay the PNG sequence on top. PNGs already
+      // have the dim layer baked in (translucent black plane in the
+      // alpha channel), so the alpha-blend during overlay darkens the
+      // bg video where the dim is, and scene chrome wins where it's
+      // opaque on top.
+      filterParts.push(
+        `[${bgIdx}:v]scale=${width}:${height}:force_original_aspect_ratio=increase,crop=${width}:${height},setsar=1[bg]`,
+      );
+      filterParts.push(`[bg][0:v]overlay=0:0:format=auto[v]`);
+      videoMapLabel = '[v]';
+    }
+
+    let audioMapLabel: string | null = null;
     if (useAudio) {
       const volStr = vol.toFixed(4);
       const trim = Math.min(120, Math.max(0, musicTrimStartSec));
@@ -204,62 +272,42 @@ export async function exportVideoToMP4({
       const tailPad = end < duration - 0.03;
       const base =
         trim > 0.0005
-          ? `[1:a]atrim=start=${trimStr},asetpts=PTS-STARTPTS,volume=${volStr},adelay=${delayArg}`
-          : `[1:a]volume=${volStr},adelay=${delayArg}`;
-      const filter = tailPad
-        ? `${base},afade=t=out:st=${fadeSt.toFixed(3)}:d=0.08,apad=whole_len=${wholeSamples}[aout]`
-        : `${base}[aout]`;
-      await ffmpeg.exec([
-        '-framerate',
-        String(fps),
-        '-i',
-        'f-%05d.png',
-        '-stream_loop',
-        '-1',
-        '-i',
-        'bgm.mp3',
-        '-filter_complex',
-        filter,
-        '-map',
-        '0:v',
-        '-map',
-        '[aout]',
-        '-c:v',
-        'libx264',
-        '-pix_fmt',
-        'yuv420p',
-        '-preset',
-        'fast',
-        '-crf',
-        String(crf),
-        '-c:a',
-        'aac',
-        '-b:a',
-        '192k',
-        '-movflags',
-        '+faststart',
-        '-shortest',
-        'out.mp4',
-      ]);
-    } else {
-      await ffmpeg.exec([
-        '-framerate',
-        String(fps),
-        '-i',
-        'f-%05d.png',
-        '-c:v',
-        'libx264',
-        '-pix_fmt',
-        'yuv420p',
-        '-preset',
-        'fast',
-        '-crf',
-        String(crf),
-        '-movflags',
-        '+faststart',
-        'out.mp4',
-      ]);
+          ? `[${audIdx}:a]atrim=start=${trimStr},asetpts=PTS-STARTPTS,volume=${volStr},adelay=${delayArg}`
+          : `[${audIdx}:a]volume=${volStr},adelay=${delayArg}`;
+      filterParts.push(
+        tailPad
+          ? `${base},afade=t=out:st=${fadeSt.toFixed(3)}:d=0.08,apad=whole_len=${wholeSamples}[aout]`
+          : `${base}[aout]`,
+      );
+      audioMapLabel = '[aout]';
     }
+
+    if (filterParts.length > 0) {
+      args.push('-filter_complex', filterParts.join(';'));
+    }
+
+    args.push('-map', videoMapLabel);
+    if (audioMapLabel) args.push('-map', audioMapLabel);
+
+    args.push(
+      '-c:v', 'libx264',
+      '-pix_fmt', 'yuv420p',
+      '-preset', 'fast',
+      '-crf', String(crf),
+    );
+    if (audioMapLabel) {
+      args.push('-c:a', 'aac', '-b:a', '192k');
+    }
+    args.push('-movflags', '+faststart');
+
+    // Stop encoding when the PNG sequence ends — the looped bg video
+    // and music would otherwise drag past the project duration.
+    if (useAudio || useBgVideo) {
+      args.push('-shortest');
+    }
+    args.push('out.mp4');
+
+    await ffmpeg.exec(args);
     abort();
 
     const data = await ffmpeg.readFile('out.mp4');
@@ -467,6 +515,46 @@ async function seekVideoTo(v: HTMLVideoElement, time: number): Promise<void> {
     // the export loop forever.
     setTimeout(finish, 1500);
   });
+}
+
+/** Fetch a media file (typically a hosted video) with the same
+ *  fallback strategy the editor uses for its compatibility probe:
+ *  try the host directly first, then fall through to our same-origin
+ *  proxy at `/api/media-proxy?url=…`. The proxy has an allow-list of
+ *  hostnames (Pexels, Cloudinary, Coverr, etc.) and adds the CORS
+ *  headers that the host doesn't.
+ *
+ *  Returns the file bytes as a Uint8Array suitable for `ffmpeg.writeFile`.
+ *  Throws with a marketer-readable message if neither path works. */
+async function fetchProxiedMedia(
+  url: string,
+  fetchFile: (input: Blob | string) => Promise<Uint8Array>,
+): Promise<Uint8Array> {
+  // (1) Direct fetch.
+  try {
+    const r = await fetch(url, { mode: 'cors', credentials: 'omit' });
+    if (r.ok) {
+      return new Uint8Array(await r.arrayBuffer());
+    }
+  } catch {
+    // fall through
+  }
+  // (2) Same-origin proxy fallback. Re-uses the same allow-list the
+  // editor's preview probe uses so behaviour stays consistent.
+  try {
+    const r = await fetch(
+      `/api/media-proxy?url=${encodeURIComponent(url)}`,
+      { mode: 'cors', credentials: 'omit' },
+    );
+    if (r.ok) {
+      return new Uint8Array(await r.arrayBuffer());
+    }
+  } catch {
+    // fall through
+  }
+  // (3) Last-ditch: hand the URL to ffmpeg.fetchFile which uses the
+  // same fetch underneath but errors more loudly.
+  return fetchFile(url);
 }
 
 /** Trigger a browser download of a Blob. */

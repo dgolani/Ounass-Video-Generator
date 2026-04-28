@@ -8,6 +8,8 @@ import {
 import type { StageController } from '../../engine';
 import { getMusicTrack, resolveAudioUrl } from '../../lib/musicLibrary';
 
+import type { ProjectBackground } from '../../store/types';
+
 type Props = {
   open: boolean;
   onClose: () => void;
@@ -29,6 +31,11 @@ type Props = {
   /** Inline toggle to flip the editor's safe-zone state before export
    *  without closing the modal. */
   onToggleSafeZones: () => void;
+  /** Project-level background (image OR video). For video, the export
+   *  pipeline fetches the file and overlays the rasterized PNG
+   *  sequence on top via ffmpeg. For image, no special handling — the
+   *  image bakes into the rasterized PNG already. */
+  projectBackground?: ProjectBackground;
 };
 
 type Phase = 'idle' | 'running' | 'done' | 'error';
@@ -49,6 +56,7 @@ export function ExportModal({
   musicEndVideoTime,
   safeZonesOn,
   onToggleSafeZones,
+  projectBackground,
 }: Props) {
   const exportMusicTrack = getMusicTrack(backgroundTrackId);
 
@@ -104,6 +112,7 @@ export function ExportModal({
         musicAnchorVideoTime,
         musicTrimStartSec,
         musicEndVideoTime,
+        projectBackground,
         onProgress: setProgress,
         signal: abort.signal,
       });

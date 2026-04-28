@@ -1004,6 +1004,7 @@ export function Editor() {
         musicEndVideoTime={editable.musicEndVideoTime}
         safeZonesOn={showSafeZones}
         onToggleSafeZones={() => setShowSafeZones((v) => !v)}
+        projectBackground={editable.background}
       />
     </div>
   );

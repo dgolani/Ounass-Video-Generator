@@ -74,18 +74,22 @@ export function ProjectBackgroundLayer({ background, width, height }: LayerProps
   void width;
   void height;
 
+  // Image branch: the <img> bakes into the rasterized PNG (data URL is
+  // same-origin, no canvas taint). The dim layer is also painted into
+  // the PNG. So the exported MP4's frames already include image+dim;
+  // ffmpeg encodes the PNG sequence as-is, no overlay needed.
   if (background.kind === 'image') {
     return (
       <>
         <img
-          data-export-ignore="true"
+          data-project-bg-image="true"
           src={background.src}
           alt=""
           style={baseStyle}
         />
         {background.dim > 0 ? (
           <div
-            data-export-ignore="true"
+            data-project-bg-dim="true"
             style={{
               ...baseStyle,
               background: '#000',
@@ -99,15 +103,28 @@ export function ProjectBackgroundLayer({ background, width, height }: LayerProps
     );
   }
 
-  // Video — honour anchor/trim/end so the timeline UI (Phase 2) can
-  // drag + trim it. Inside [anchor, end], the video plays starting
-  // from `(t - anchor) + trimStartSec` of source. Outside that
-  // window, hide the layer.
+  // Video branch: the <video> is `data-export-ignore` because cross-
+  // origin video taints the canvas. The export pipeline (export.ts)
+  // fetches the video file separately and overlays the PNG sequence
+  // on top of it via ffmpeg, so the rendered MP4 still composites
+  // bg_video + dim + scene chrome correctly.
+  //
+  // The dim layer is NOT data-export-ignore — it rasterizes into the
+  // PNG as a translucent black plane. When ffmpeg overlays the PNG on
+  // bg_video, the dim's alpha blends with the underlying video (=
+  // darkens it), and scene chrome (opaque on top of dim in the PNG)
+  // wins over both. Mirrors what the editor preview shows.
+  //
+  // Anchor / trim / end honour the (Phase-2 forthcoming) timeline
+  // drag UI: inside [anchor, end] the video plays from
+  // `(t - anchor) + trimStartSec` of source; outside that window we
+  // hide the layer (and ffmpeg's `enable=between(t,…)` mirrors it).
   const visible = time >= background.anchorVideoTime && time < background.endVideoTime;
   return (
     <>
       <video
         data-export-ignore="true"
+        data-project-bg-video="true"
         src={background.src}
         autoPlay
         loop
@@ -122,7 +139,7 @@ export function ProjectBackgroundLayer({ background, width, height }: LayerProps
       />
       {background.dim > 0 ? (
         <div
-          data-export-ignore="true"
+          data-project-bg-dim="true"
           style={{
             ...baseStyle,
             background: '#000',
