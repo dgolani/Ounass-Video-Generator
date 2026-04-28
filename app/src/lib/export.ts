@@ -309,39 +309,116 @@ export async function exportVideoToMP4({
  *  try the host directly first, then fall through to our same-origin
  *  proxy at `/api/media-proxy?url=…`. The proxy has an allow-list of
  *  hostnames (Pexels, Cloudinary, Coverr, etc.) and adds the CORS
- *  headers that the host doesn't.
+ *  headers + browser-like UA the host needs.
+ *
+ *  Each path's bytes are validated (Content-Type for fetch, magic
+ *  bytes after the read) so we don't write a Cloudflare error page
+ *  to ffmpeg's FS as `bg.mp4` and watch the encoder hang trying to
+ *  demux HTML.
  *
  *  Returns the file bytes as a Uint8Array suitable for `ffmpeg.writeFile`.
- *  Throws with a marketer-readable message if neither path works. */
+ *  Throws with a marketer-readable message if neither path produces
+ *  a valid video. */
 async function fetchProxiedMedia(
   url: string,
   fetchFile: (input: Blob | string) => Promise<Uint8Array>,
 ): Promise<Uint8Array> {
+  const errors: string[] = [];
+
   // (1) Direct fetch.
   try {
     const r = await fetch(url, { mode: 'cors', credentials: 'omit' });
     if (r.ok) {
-      return new Uint8Array(await r.arrayBuffer());
+      const ct = r.headers.get('content-type') || '';
+      if (ct && !ct.toLowerCase().startsWith('video/') && !ct.toLowerCase().startsWith('application/octet-stream')) {
+        errors.push(`direct fetch returned non-video content-type "${ct}"`);
+      } else {
+        const bytes = new Uint8Array(await r.arrayBuffer());
+        if (looksLikeVideoBytes(bytes)) return bytes;
+        errors.push(`direct fetch returned ${bytes.length} bytes that don't look like a video container`);
+      }
+    } else {
+      errors.push(`direct fetch returned HTTP ${r.status}`);
     }
-  } catch {
-    // fall through
+  } catch (e) {
+    errors.push(`direct fetch threw: ${e instanceof Error ? e.message : String(e)}`);
   }
-  // (2) Same-origin proxy fallback. Re-uses the same allow-list the
-  // editor's preview probe uses so behaviour stays consistent.
+
+  // (2) Same-origin proxy fallback. Vite middleware locally,
+  // Vercel edge function in production. Both add a browser-like
+  // UA which gets us past Cloudflare's bot protection on Pexels
+  // and similar.
   try {
     const r = await fetch(
       `/api/media-proxy?url=${encodeURIComponent(url)}`,
       { mode: 'cors', credentials: 'omit' },
     );
     if (r.ok) {
-      return new Uint8Array(await r.arrayBuffer());
+      const ct = r.headers.get('content-type') || '';
+      if (ct && !ct.toLowerCase().startsWith('video/') && !ct.toLowerCase().startsWith('application/octet-stream')) {
+        errors.push(`proxy returned non-video content-type "${ct}"`);
+      } else {
+        const bytes = new Uint8Array(await r.arrayBuffer());
+        if (looksLikeVideoBytes(bytes)) return bytes;
+        errors.push(`proxy returned ${bytes.length} bytes that don't look like a video container`);
+      }
+    } else {
+      errors.push(`proxy returned HTTP ${r.status}`);
     }
-  } catch {
-    // fall through
+  } catch (e) {
+    errors.push(`proxy threw: ${e instanceof Error ? e.message : String(e)}`);
   }
-  // (3) Last-ditch: hand the URL to ffmpeg.fetchFile which uses the
-  // same fetch underneath but errors more loudly.
-  return fetchFile(url);
+
+  // (3) Last-ditch: hand the URL to ffmpeg.fetchFile (uses the same
+  // fetch underneath, but the failure message is clearer if it errors).
+  try {
+    const bytes = await fetchFile(url);
+    if (looksLikeVideoBytes(bytes)) return bytes;
+    errors.push(`fetchFile returned ${bytes.length} bytes that don't look like a video container`);
+  } catch (e) {
+    errors.push(`fetchFile threw: ${e instanceof Error ? e.message : String(e)}`);
+  }
+
+  throw new Error(
+    `Background video could not be fetched. Tried direct, proxy, and ffmpeg fetch.\n  ${errors.join('\n  ')}\n\nIf the host is Cloudflare-protected (e.g. Pexels), restart the Vite dev server so the proxy middleware loads, or switch to a CORS-friendly URL (videos.pexels.com/video-files/..., Cloudinary, etc.).`,
+  );
+}
+
+/** Quick magic-byte check that the bytes look like a recognisable
+ *  video container. mp4 has "ftyp" at byte offset 4–8; webm has the
+ *  EBML signature at offset 0. Anything else (HTML, JSON, an empty
+ *  body, a Cloudflare challenge page) gets rejected before it
+ *  reaches ffmpeg. */
+function looksLikeVideoBytes(bytes: Uint8Array): boolean {
+  if (bytes.length < 12) return false;
+  // mp4 / mov / m4v — the "ftyp" tag at offset 4
+  if (
+    bytes[4] === 0x66 && // 'f'
+    bytes[5] === 0x74 && // 't'
+    bytes[6] === 0x79 && // 'y'
+    bytes[7] === 0x70 // 'p'
+  ) {
+    return true;
+  }
+  // webm / mkv — EBML header at offset 0
+  if (
+    bytes[0] === 0x1a &&
+    bytes[1] === 0x45 &&
+    bytes[2] === 0xdf &&
+    bytes[3] === 0xa3
+  ) {
+    return true;
+  }
+  // Ogg — "OggS" at offset 0
+  if (
+    bytes[0] === 0x4f && // 'O'
+    bytes[1] === 0x67 && // 'g'
+    bytes[2] === 0x67 && // 'g'
+    bytes[3] === 0x53 // 'S'
+  ) {
+    return true;
+  }
+  return false;
 }
 
 /** Trigger a browser download of a Blob. */

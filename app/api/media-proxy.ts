@@ -68,9 +68,18 @@ export default async function handler(req: Request): Promise<Response> {
     // Forward the verb. HEAD lets the editor's compatibility probe
     // ask "would this URL export OK?" without us pulling the whole
     // file — cheap, fast, no bandwidth wasted.
+    //
+    // Browser-like User-Agent + Accept so Cloudflare-fronted CDNs
+    // (Pexels, etc.) don't 503 us with their bot-protection page.
     upstream = await fetch(target, {
       method: req.method === 'HEAD' ? 'HEAD' : 'GET',
       redirect: 'follow',
+      headers: {
+        'User-Agent':
+          'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36',
+        Accept: 'video/*,*/*;q=0.8',
+        'Accept-Language': 'en-US,en;q=0.9',
+      },
     });
   } catch (e) {
     return new Response('proxy fetch error: ' + String(e), { status: 502 });

@@ -37,10 +37,21 @@ function mediaProxyPlugin(): Plugin {
           // editor's compatibility probe (lib/media.ts:checkVideoExportable)
           // to test export-time reachability without pulling the whole
           // file — cheap, fast, no bandwidth wasted.
+          //
+          // Spoof a real-browser User-Agent + Accept. Pexels (and many
+          // other CDNs) front their video URLs with Cloudflare bot
+          // protection; Node's default UA gets a 503 from cf-bm. With
+          // browser-like headers the request flows through.
           const method = (req.method || 'GET').toUpperCase();
           const upstream = await fetch(target, {
             method: method === 'HEAD' ? 'HEAD' : 'GET',
             redirect: 'follow',
+            headers: {
+              'User-Agent':
+                'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36',
+              Accept: 'video/*,*/*;q=0.8',
+              'Accept-Language': 'en-US,en;q=0.9',
+            },
           });
           res.statusCode = upstream.status;
           res.setHeader('Access-Control-Allow-Origin', '*');
