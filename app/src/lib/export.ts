@@ -193,14 +193,26 @@ export async function exportVideoToMP4({
     // Encode to MP4. libx264 + yuv420p = maximum platform compatibility
     // (IG / TikTok / YouTube / native players). Optional AAC music bed
     // from bgm.mp3, optional looped background video from bg.mp4.
-    const encodingMessage = useBgVideo
+    const encodingBaseMessage = useBgVideo
       ? useAudio
-        ? 'Encoding MP4 (video + bg video + music)…'
-        : 'Encoding MP4 (video + bg video)…'
+        ? 'Encoding MP4 (video + bg video + music)'
+        : 'Encoding MP4 (video + bg video)'
       : useAudio
-        ? 'Encoding MP4 (video + music)…'
-        : 'Encoding MP4…';
-    onProgress({ stage: 'encoding', message: encodingMessage });
+        ? 'Encoding MP4 (video + music)'
+        : 'Encoding MP4';
+    onProgress({ stage: 'encoding', message: `${encodingBaseMessage}…` });
+
+    // ffmpeg.wasm fires a `progress` event with `progress` ∈ [0, 1]
+    // and `time` (current encode position in microseconds). Wire it
+    // through so the UI shows a moving progress bar during the
+    // encode step instead of a frozen "Encoding…" message that the
+    // marketer can't tell apart from a hang.
+    const onFfmpegProgress = ({ progress }: { progress: number; time: number }) => {
+      if (!Number.isFinite(progress)) return;
+      const pct = Math.min(100, Math.max(0, Math.round(progress * 100)));
+      onProgress({ stage: 'encoding', message: `${encodingBaseMessage} ${pct}%` });
+    };
+    ffmpeg.on('progress', onFfmpegProgress);
 
     // Inputs in order: PNG sequence, [bg.mp4], [bgm.mp3]. Track each
     // input's index so the filter_complex labels stay in sync as the
@@ -229,10 +241,18 @@ export async function exportVideoToMP4({
       // alpha channel), so the alpha-blend during overlay darkens the
       // bg video where the dim is, and scene chrome wins where it's
       // opaque on top.
+      //
+      // `eof_action=endall` is critical: without it, when the PNG
+      // sequence ends, overlay's default is to repeat the last PNG
+      // frame indefinitely on top of the looping bg (-stream_loop -1).
+      // Result: output stream [v] never terminates, ffmpeg encodes
+      // forever, the UI hangs at "Encoding MP4…". With `endall`, [v]
+      // ends as soon as either input EOFs, so -shortest produces a
+      // proper-length file.
       filterParts.push(
         `[${bgIdx}:v]scale=${width}:${height}:force_original_aspect_ratio=increase,crop=${width}:${height},setsar=1[bg]`,
       );
-      filterParts.push(`[bg][0:v]overlay=0:0:format=auto[v]`);
+      filterParts.push(`[bg][0:v]overlay=0:0:format=auto:eof_action=endall[v]`);
       videoMapLabel = '[v]';
     }
 
@@ -288,7 +308,11 @@ export async function exportVideoToMP4({
     }
     args.push('out.mp4');
 
-    await ffmpeg.exec(args);
+    try {
+      await ffmpeg.exec(args);
+    } finally {
+      ffmpeg.off('progress', onFfmpegProgress);
+    }
     abort();
 
     const data = await ffmpeg.readFile('out.mp4');
