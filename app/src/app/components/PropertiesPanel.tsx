@@ -184,6 +184,75 @@ export function PropertiesPanel({
           );
         }
 
+        if (field.kind === 'slider') {
+          const num = typeof current === 'number' && Number.isFinite(current)
+            ? current
+            : (field.min + field.max) / 2;
+          const clamped = Math.max(field.min, Math.min(field.max, num));
+          const decimals = field.precision ?? (field.step && field.step < 1 ? 2 : 0);
+          return (
+            <div key={i} style={{ marginTop: 16 }}>
+              <Field label={field.label} hint={field.hint}>
+                <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                  <input
+                    type="range"
+                    min={field.min}
+                    max={field.max}
+                    step={field.step ?? 0.01}
+                    value={clamped}
+                    onChange={(e) => set(parseFloat(e.target.value))}
+                    style={{ flex: 1, accentColor: 'var(--editor-accent)' }}
+                  />
+                  <span
+                    style={{
+                      minWidth: 44,
+                      textAlign: 'right',
+                      fontFamily: 'var(--mono)',
+                      fontSize: 11,
+                      color: 'var(--editor-text-dim)',
+                    }}
+                  >
+                    {clamped.toFixed(decimals)}
+                  </span>
+                </div>
+              </Field>
+            </div>
+          );
+        }
+
+        if (field.kind === 'select') {
+          const value = typeof current === 'string' ? current : '';
+          return (
+            <div key={i} style={{ marginTop: 16 }}>
+              <Field label={field.label} hint={field.hint}>
+                <select
+                  value={value}
+                  onChange={(e) => set(e.target.value)}
+                  style={{
+                    width: '100%',
+                    boxSizing: 'border-box',
+                    padding: '7px 10px',
+                    fontSize: 12,
+                    fontFamily: 'var(--sans)',
+                    color: 'var(--editor-text)',
+                    background: 'var(--editor-panel-2)',
+                    border: '1px solid var(--editor-border)',
+                    borderRadius: 'var(--r-sm)',
+                    outline: 'none',
+                    cursor: 'pointer',
+                  }}
+                >
+                  {field.options.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+            </div>
+          );
+        }
+
         if (field.kind === 'image') {
           const url = typeof current === 'string' ? current : '';
           const showFormatBtn = !!onOpenFormatField && (field.path === 'logo' || field.svgOnly === true);

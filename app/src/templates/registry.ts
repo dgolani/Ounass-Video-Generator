@@ -19,6 +19,7 @@ import * as thePairing from './the-pairing';
 import * as newIn from './new-in';
 import * as theCollab from './the-collab';
 import * as theRail from './the-rail';
+import * as theReel from './the-reel';
 
 export type SceneComponentProps = {
   props: any;
@@ -105,6 +106,11 @@ const entries: Record<string, TemplateEntry> = {
     meta: theRail.meta as unknown as TemplateMeta<unknown>,
     fields: theRail.fields,
     Scene: theRail.TheRailScene as unknown as ComponentType<SceneComponentProps>,
+  },
+  [theReel.meta.id]: {
+    meta: theReel.meta as unknown as TemplateMeta<unknown>,
+    fields: theReel.fields,
+    Scene: theReel.ReelScene as unknown as ComponentType<SceneComponentProps>,
   },
 };
 

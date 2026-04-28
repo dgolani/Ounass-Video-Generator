@@ -82,6 +82,24 @@ export type FieldDescriptor =
       acceptVideo?: boolean;
     }
   | {
+      kind: 'slider';
+      path: string;
+      label: string;
+      min: number;
+      max: number;
+      step?: number;
+      hint?: string;
+      /** Two decimals shown in the value badge. Useful for 0–1 ratios. */
+      precision?: number;
+    }
+  | {
+      kind: 'select';
+      path: string;
+      label: string;
+      options: { value: string; label: string }[];
+      hint?: string;
+    }
+  | {
       kind: 'productList';
       path: string;
       label: string;
