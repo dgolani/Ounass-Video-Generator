@@ -13,7 +13,8 @@ import { getMusicTrack, resolveAudioUrl } from '../../lib/musicLibrary';
 import { probeAudioDurationSec } from '../../lib/audioProbe';
 import { MAX_TIMELINE_EXTENT_SEC, timelineContentUpperSec } from '../../lib/timelineBounds';
 import { MusicLibraryDrawer } from './MusicLibraryDrawer';
-import type { Project } from '../../store/types';
+import { BackgroundLane } from './BackgroundLane';
+import type { Project, ProjectBackground } from '../../store/types';
 import type { SceneOutline } from '../../templates/types';
 
 const PX_PER_SEC = 42;
@@ -52,6 +53,7 @@ type Patch = Partial<
     | 'musicEndVideoTime'
     | 'duration'
     | 'videoClipStartSec'
+    | 'background'
   >
 >;
 
@@ -71,6 +73,13 @@ type Props = {
   musicAnchorVideoTime: number;
   musicTrimStartSec: number;
   musicEndVideoTime: number;
+  /** Project-level background (image OR hosted video URL). When the
+   *  marketer sets a video, the timeline shows a draggable / trim-
+   *  enabled clip lane above the music row, with anchor + trim + end
+   *  semantics matching the music lane's semantics. Image kind shows
+   *  a flat stripe (no drag — image is always-on). `undefined` hides
+   *  the lane entirely. */
+  background?: ProjectBackground;
   onPatch: (patch: Patch) => void;
   onPlayPause: () => void;
   onReset: () => void;
@@ -228,6 +237,7 @@ export function EditorTimelineDock({
   musicAnchorVideoTime,
   musicTrimStartSec,
   musicEndVideoTime,
+  background,
   onPatch,
   onPlayPause,
   onReset,
@@ -2037,6 +2047,16 @@ export function EditorTimelineDock({
                   </div>
                 </div>
               </div>
+
+              {background ? (
+                <BackgroundLane
+                  background={background}
+                  duration={duration}
+                  pxPerSec={pxPerSec}
+                  laneWidthPx={displayTrackW}
+                  onChange={(next) => onPatch({ background: next })}
+                />
+              ) : null}
 
               <div
                 data-timeline-no-seek

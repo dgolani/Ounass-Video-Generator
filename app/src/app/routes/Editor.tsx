@@ -931,6 +931,7 @@ export function Editor() {
             musicAnchorVideoTime={editable.musicAnchorVideoTime}
             musicTrimStartSec={editable.musicTrimStartSec}
             musicEndVideoTime={editable.musicEndVideoTime}
+            background={editable.background}
             onPatch={onTimelinePatch}
             onPlayPause={controller.togglePlay}
             onReset={controller.reset}
