@@ -253,7 +253,6 @@ export function BackgroundDrawer({
           {mode === 'image' && background?.kind === 'image' ? (
             <ImageBgSection
               src={background.src}
-              dim={background.dim}
               onChange={(patch) => onChange({ ...background, ...patch })}
             />
           ) : null}
@@ -337,12 +336,10 @@ function ModeToggle({
 
 function ImageBgSection({
   src,
-  dim,
   onChange,
 }: {
   src: string;
-  dim: number;
-  onChange: (patch: { src?: string; dim?: number }) => void;
+  onChange: (patch: { src?: string }) => void;
 }) {
   return (
     <>
@@ -354,7 +351,16 @@ function ImageBgSection({
         aspectRatio={9 / 16}
         size="large"
       />
-      <DimSlider value={dim} onChange={(v) => onChange({ dim: v })} />
+      <div
+        style={{
+          fontFamily: 'var(--sans)',
+          fontSize: 11,
+          color: 'var(--editor-text-dim)',
+          letterSpacing: '0.01em',
+        }}
+      >
+        Tweak the dim from the settings icon next to the timeline.
+      </div>
     </>
   );
 }
@@ -396,12 +402,13 @@ function VideoBgSection({
           letterSpacing: '0.01em',
         }}
       >
-        Plays muted + looped. Drag / trim on the timeline.
+        Plays muted + looped. Drag / trim on the timeline. Tweak the
+        dim and source-file in-point from the settings icon next to
+        the timeline.
       </div>
       {background.src && isVideoUrl(background.src) ? (
         <ExportStatusBadge url={background.src} />
       ) : null}
-      <DimSlider value={background.dim} onChange={(v) => onChange({ dim: v })} />
     </>
   );
 }
@@ -419,41 +426,6 @@ function SectionLabel({ children }: { children: string }) {
       }}
     >
       {children}
-    </div>
-  );
-}
-
-function DimSlider({ value, onChange }: { value: number; onChange: (v: number) => void }) {
-  return (
-    <div style={{ marginTop: 4 }}>
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'baseline',
-          justifyContent: 'space-between',
-          marginBottom: 6,
-        }}
-      >
-        <SectionLabel>Dim</SectionLabel>
-        <span
-          style={{
-            fontFamily: 'var(--mono)',
-            fontSize: 11,
-            color: 'var(--editor-text-dim)',
-          }}
-        >
-          {value.toFixed(2)}
-        </span>
-      </div>
-      <input
-        type="range"
-        min={0}
-        max={0.85}
-        step={0.01}
-        value={Math.max(0, Math.min(0.85, value))}
-        onChange={(e) => onChange(parseFloat(e.target.value))}
-        style={{ width: '100%', accentColor: 'var(--editor-accent)' }}
-      />
     </div>
   );
 }

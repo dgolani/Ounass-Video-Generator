@@ -15,6 +15,7 @@ import { MAX_TIMELINE_EXTENT_SEC, timelineContentUpperSec } from '../../lib/time
 import { MusicLibraryDrawer } from './MusicLibraryDrawer';
 import { BackgroundLane } from './BackgroundLane';
 import { BackgroundDrawer } from './BackgroundDrawer';
+import { BackgroundSettingsButton } from './BackgroundSettingsPopover';
 import type { Project, ProjectBackground } from '../../store/types';
 import type { SceneOutline } from '../../templates/types';
 
@@ -258,9 +259,13 @@ export function EditorTimelineDock({
   const [audioMenuOpen, setAudioMenuOpen] = useState(false);
   const [bgDrawerOpen, setBgDrawerOpen] = useState(false);
   const [soundPanelOpen, setSoundPanelOpen] = useState(false);
+  const [bgPanelOpen, setBgPanelOpen] = useState(false);
   const audioMenuTriggerRef = useRef<HTMLButtonElement | null>(null);
   const soundPanelRef = useRef<HTMLDivElement | null>(null);
   const soundTriggerRef = useRef<HTMLButtonElement | null>(null);
+  const bgPanelRef = useRef<HTMLDivElement | null>(null);
+  const bgTriggerRef = useRef<HTMLButtonElement | null>(null);
+  const [bgPanelBox, setBgPanelBox] = useState<{ top: number; left: number } | null>(null);
 
   type Drag =
     | {
@@ -412,6 +417,79 @@ export function EditorTimelineDock({
       window.removeEventListener('scroll', placeSoundPanel, true);
     };
   }, [soundPanelOpen, placeSoundPanel, musicVolume, musicTrimStartSec, backgroundTrackId]);
+
+  // Mirror of placeSoundPanel for the project-bg settings popover.
+  // Both popovers anchor to their trigger button's bottom edge and
+  // flip above when there's no room below; positioning code is
+  // duplicated rather than abstracted because it's a small one-off
+  // and the local-state references differ.
+  const placeBgPanel = useCallback(() => {
+    const trig = bgTriggerRef.current;
+    if (!trig || !bgPanelOpen) return;
+    const rect = trig.getBoundingClientRect();
+    const panel = bgPanelRef.current;
+    const h = panel ? panel.getBoundingClientRect().height : 240;
+    const gap = 10;
+    const margin = 10;
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    const spaceBelow = vh - rect.bottom - gap - margin;
+    const spaceAbove = rect.top - gap - margin;
+    const placeBelow = spaceBelow >= Math.min(h, 220) || spaceBelow >= spaceAbove;
+    let top: number;
+    if (placeBelow) {
+      top = Math.min(rect.bottom + gap, vh - margin - h);
+      top = Math.max(margin, top);
+    } else {
+      top = Math.max(margin, rect.top - gap - h);
+    }
+    let left = rect.right - SOUND_PANEL_W;
+    left = Math.min(Math.max(margin, left), vw - SOUND_PANEL_W - margin);
+    setBgPanelBox({ top, left });
+  }, [bgPanelOpen]);
+
+  useLayoutEffect(() => {
+    if (!bgPanelOpen) {
+      setBgPanelBox(null);
+      return;
+    }
+    placeBgPanel();
+    let ro: ResizeObserver | null = null;
+    const raf = requestAnimationFrame(() => {
+      placeBgPanel();
+      const p = bgPanelRef.current;
+      if (p) {
+        ro = new ResizeObserver(() => placeBgPanel());
+        ro.observe(p);
+      }
+    });
+    window.addEventListener('resize', placeBgPanel);
+    window.addEventListener('scroll', placeBgPanel, true);
+    return () => {
+      cancelAnimationFrame(raf);
+      ro?.disconnect();
+      window.removeEventListener('resize', placeBgPanel);
+      window.removeEventListener('scroll', placeBgPanel, true);
+    };
+  }, [bgPanelOpen, placeBgPanel, background]);
+
+  // Outside-click closes the bg panel (audio mix has the same).
+  useEffect(() => {
+    if (!bgPanelOpen) return;
+    const onDown = (e: MouseEvent) => {
+      const n = e.target as Node;
+      if (bgPanelRef.current?.contains(n)) return;
+      if (bgTriggerRef.current?.contains(n)) return;
+      setBgPanelOpen(false);
+    };
+    document.addEventListener('mousedown', onDown);
+    return () => document.removeEventListener('mousedown', onDown);
+  }, [bgPanelOpen]);
+
+  // Auto-close when bg is removed.
+  useEffect(() => {
+    if (!background) setBgPanelOpen(false);
+  }, [background]);
 
   useEffect(() => {
     if (!soundPanelOpen) return;
@@ -1626,6 +1704,17 @@ export function EditorTimelineDock({
                   )
                 : null}
             </div>
+          ) : null}
+          {background ? (
+            <BackgroundSettingsButton
+              triggerRef={bgTriggerRef}
+              panelRef={bgPanelRef}
+              open={bgPanelOpen}
+              onToggle={() => setBgPanelOpen((o) => !o)}
+              panelBox={bgPanelBox}
+              background={background}
+              onChange={(next) => onPatch({ background: next })}
+            />
           ) : null}
         </div>
       </div>
