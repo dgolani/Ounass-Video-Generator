@@ -26,13 +26,46 @@ function doubleRaf() {
   );
 }
 
-/** Ensure the stage has committed the new time before we rasterize (RAF alone is not enough in React 18/19). */
+/** Ensure the stage has committed the new time before we rasterize (RAF alone is not enough in React 18/19).
+ *  Also waits for any project-bg `<video>` elements to finish seeking
+ *  to the source frame matching the new timeline position — otherwise
+ *  the filmstrip captures a stale video frame from the previous
+ *  source time, producing the "ghost frames" the marketer reported. */
 async function settleFrameAfterSeek(setTime: (t: number) => void, t: number) {
   flushSync(() => {
     setTime(t);
   });
   await doubleRaf();
   await new Promise<void>((r) => setTimeout(r, 48));
+  await waitForMediaSettled();
+}
+
+/** Resolve once every visible `<video data-project-bg-video>` is no
+ *  longer in the `seeking=true` state. Has a 600ms safety timeout
+ *  per video so a stuck decode doesn't stall the entire filmstrip. */
+async function waitForMediaSettled(): Promise<void> {
+  const videos = Array.from(
+    document.querySelectorAll<HTMLVideoElement>('video[data-project-bg-video]'),
+  );
+  if (videos.length === 0) return;
+  await Promise.all(
+    videos.map((v) => {
+      if (!v.seeking) return Promise.resolve();
+      return new Promise<void>((resolve) => {
+        let done = false;
+        const finish = () => {
+          if (done) return;
+          done = true;
+          v.removeEventListener('seeked', finish);
+          v.removeEventListener('error', finish);
+          resolve();
+        };
+        v.addEventListener('seeked', finish, { once: true });
+        v.addEventListener('error', finish, { once: true });
+        setTimeout(finish, 600);
+      });
+    }),
+  );
 }
 
 /** Stage can be 0×0 for a few frames while the flex layout settles — rasterizers need real bounds. */
