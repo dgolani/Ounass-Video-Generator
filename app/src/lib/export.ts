@@ -92,6 +92,23 @@ export async function exportVideoToMP4({
   const wasPlaying = controller.playing;
   controller.setPlaying(false);
 
+  // Pre-process cross-origin <video> sources so canvas rasterization
+  // doesn't taint the export canvas. For each external video URL:
+  //   1. Try fetch(url) — if the host supports CORS, we get a blob,
+  //      convert it to a same-origin blob: URL, swap it onto the
+  //      element with crossOrigin="anonymous". The canvas paint of
+  //      that frame is now allowed.
+  //   2. If fetch fails (CORS-restricted host like Pexels' /download/
+  //      endpoint), tag the element `data-export-ignore="true"` so
+  //      the rasterizer skips it. The export still succeeds; the
+  //      video layer is missing in the rendered frames.
+  // All swaps are reverted in the finally block so the editor returns
+  // to its original state regardless of how export ended.
+  const videoRestorations: Array<() => void> = await prepareVideosForExport(
+    canvasEl,
+    abort,
+  );
+
   try {
     // Embed any fonts currently used on the page so the rasterized
     // frames render with Fraunces / Nunito Sans instead of falling back
@@ -246,8 +263,102 @@ export async function exportVideoToMP4({
     onProgress({ stage: 'done' });
     return mp4;
   } finally {
+    // Restore every video element we touched (blob URL → original src,
+    // crossOrigin removed, export-ignore flag cleared) BEFORE handing
+    // playback back to the controller, so the editor never sees a
+    // stale state.
+    for (const restore of videoRestorations) {
+      try { restore(); } catch { /* swallow — restore is best-effort */ }
+    }
     controller.setPlaying(wasPlaying);
   }
+}
+
+/** Walk the export tree, find every cross-origin `<video>`, and
+ *  prepare it for canvas rasterization. Returns an array of restore
+ *  callbacks that the caller MUST run in `finally` to put the editor
+ *  back to its original state. See the comment in exportVideoToMP4
+ *  for the strategy. */
+async function prepareVideosForExport(
+  root: HTMLElement,
+  abort: () => void,
+): Promise<Array<() => void>> {
+  const restorations: Array<() => void> = [];
+  const videos = Array.from(root.querySelectorAll('video'));
+  for (const v of videos) {
+    abort();
+    const originalSrc = v.currentSrc || v.src;
+    if (!originalSrc) continue;
+    // data: + blob: URLs are already same-origin → no taint risk.
+    if (originalSrc.startsWith('data:') || originalSrc.startsWith('blob:')) continue;
+    // Only http(s) URLs need special handling.
+    if (!/^https?:\/\//i.test(originalSrc)) continue;
+
+    try {
+      // Pull the file via fetch with default 'cors' mode. If the host
+      // sends `access-control-allow-origin`, we get a real blob. If not,
+      // fetch throws, we fall through to the fallback branch.
+      const r = await fetch(originalSrc, { mode: 'cors', credentials: 'omit' });
+      if (!r.ok) throw new Error('fetch returned ' + r.status);
+      const blob = await r.blob();
+      const blobUrl = URL.createObjectURL(blob);
+
+      // Save state we're about to mutate.
+      const prevCrossOrigin = v.getAttribute('crossorigin');
+      const prevSrc = v.getAttribute('src');
+      const prevPaused = v.paused;
+      const prevTime = v.currentTime;
+
+      v.crossOrigin = 'anonymous';
+      v.src = blobUrl;
+
+      // Wait for the new source to load enough that drawImage works.
+      await new Promise<void>((resolve, reject) => {
+        const ok = () => {
+          v.removeEventListener('loadeddata', ok);
+          v.removeEventListener('error', err);
+          resolve();
+        };
+        const err = () => {
+          v.removeEventListener('loadeddata', ok);
+          v.removeEventListener('error', err);
+          reject(new Error('video failed to load blob source'));
+        };
+        v.addEventListener('loadeddata', ok, { once: true });
+        v.addEventListener('error', err, { once: true });
+        // Belt + braces — kick the load.
+        v.load();
+        setTimeout(() => err(), 12000);
+      });
+
+      // Resume playback so the frame the rasterizer captures is fresh.
+      if (!prevPaused) {
+        v.play().catch(() => {});
+      }
+
+      restorations.push(() => {
+        URL.revokeObjectURL(blobUrl);
+        if (prevSrc !== null) v.setAttribute('src', prevSrc);
+        else v.removeAttribute('src');
+        if (prevCrossOrigin !== null) v.setAttribute('crossorigin', prevCrossOrigin);
+        else v.removeAttribute('crossorigin');
+        v.load();
+        try { v.currentTime = prevTime; } catch { /* swallow */ }
+        if (!prevPaused) v.play().catch(() => {});
+      });
+    } catch {
+      // CORS-restricted host (Pexels' /download/ endpoint, etc.) — fall
+      // back to skipping this video from the rasterized frame so the
+      // export still succeeds. The user will see a black/dim layer
+      // where the video would have been; we surface this trade-off in
+      // The Reel's field hint.
+      v.dataset.exportIgnore = 'true';
+      restorations.push(() => {
+        delete v.dataset.exportIgnore;
+      });
+    }
+  }
+  return restorations;
 }
 
 /** Trigger a browser download of a Blob. */
