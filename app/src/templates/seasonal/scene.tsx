@@ -20,6 +20,7 @@ import {
   useSafeZone,
   useFieldColor,
   useFieldFormat,
+  useHasProjectBackground,
 } from '../../engine';
 import type { SeasonalProps } from './schema';
 import { BoutiqueLogo } from '../BoutiqueLogo';
@@ -69,6 +70,7 @@ export function SeasonalScene({
   const s = makeScale(width, height);
   const { w, h, wh } = s;
   const { base: safe } = useSafeZone({ width, height });
+  const hasProjectBg = useHasProjectBackground();
 
   // ── Content rect (the visible "safe window" in output-px) ────────────
   // When safe enforcement is OFF, every margin is 0 → the rect collapses
@@ -281,12 +283,12 @@ export function SeasonalScene({
       style={{
         position: 'absolute',
         inset: 0,
-        background: backgroundImage ? 'transparent' : colors.cream,
+        background: backgroundImage || hasProjectBg ? 'transparent' : colors.cream,
         color: colors.ink,
         overflow: 'hidden',
       }}
     >
-      {backgroundImage ? (
+      {hasProjectBg ? null : backgroundImage ? (
         /* Custom backdrop fades out as the final frame fades in, matching
          *  the original cream wash's behaviour. */
         <div

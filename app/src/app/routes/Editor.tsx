@@ -42,6 +42,7 @@ import { getTemplate } from '../../templates/registry';
 import { Button } from '../../ui/primitives';
 import { EditorBrandPanel, splitEditorFields } from '../components/EditorBrandPanel';
 import { PropertiesPanel } from '../components/PropertiesPanel';
+import { ProjectBackgroundPanel } from '../components/ProjectBackgroundPanel';
 import { ExportModal } from '../components/ExportModal';
 import { EditorTimelineDock } from '../components/EditorTimelineDock';
 import { useEditorMusicPreview } from '../hooks/useEditorMusicPreview';
@@ -89,6 +90,7 @@ const EMPTY_EDITABLE: EditableState = {
   localeOverride: undefined,
   themeMode: undefined,
   localizedText: {},
+  background: undefined,
 };
 
 export function Editor() {
@@ -856,13 +858,20 @@ export function Editor() {
             width={aspect.width}
             height={aspect.height}
             background={
-              (localProps as { colors?: { background?: string } })?.colors
-                ?.background ?? '#0A0A0A'
+              // When the marketer set a project-level background, the
+              // Stage canvas should be transparent so the bg layer
+              // shows through. Otherwise fall back to the template's
+              // own colour palette as before.
+              editable.background
+                ? 'transparent'
+                : (localProps as { colors?: { background?: string } })?.colors
+                    ?.background ?? '#0A0A0A'
             }
             controller={controller}
             chromeless
             canvasRef={canvasRef}
             compositionStartSec={editable.videoClipStartSec}
+            projectBackground={editable.background}
             onChromelessCanvasActivate={() => setCinemaMode(true)}
             onChromelessLetterboxPointerDown={() => setCinemaMode((c) => !c)}
           >
@@ -948,6 +957,11 @@ export function Editor() {
           overflow: 'auto',
         }}
       >
+        <ProjectBackgroundPanel
+          background={editable.background}
+          onChange={(next) => onTimelinePatch({ background: next })}
+          duration={duration}
+        />
         <PropertiesPanel
           fields={rightPaneFields}
           value={localProps}

@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
-import type { Project } from './types';
+import type { Project, ProjectBackground } from './types';
 import { MAX_TIMELINE_EXTENT_SEC, timelineContentUpperSec } from '../lib/timelineBounds';
+import { isVideoUrl } from '../lib/media';
 
 const KEY = 'vag:projects:v1';
 const CHANNEL = 'vag:projects:changed';
@@ -51,6 +52,14 @@ function normalizeProject(raw: Project): Project {
   trimS = Math.min(Math.max(0, trimS), 120);
   const minEnd = anchor + 0.15;
   end = Math.min(Math.max(minEnd, end), upper);
+
+  // Project-level background — accept the explicit `background` field
+  // when present, otherwise migrate from the legacy per-template props
+  // shape (`props.backgroundImage` / `props.videoSrc`) so existing
+  // projects keep their backdrop after the cutover. The migration runs
+  // once per load; future updates write to `raw.background` directly.
+  const background = normalizeBackground(raw.background, raw.props, L);
+
   return {
     ...raw,
     backgroundTrackId:
@@ -63,7 +72,71 @@ function normalizeProject(raw: Project): Project {
     musicEndVideoTime: end,
     duration: L,
     videoClipStartSec: vStart,
+    background,
   };
+}
+
+/** Validate (or auto-migrate from legacy props) the Project.background
+ *  field. Returns `undefined` for no-background; never throws. */
+function normalizeBackground(
+  raw: ProjectBackground | undefined,
+  props: unknown,
+  duration: number,
+): ProjectBackground | undefined {
+  // Path A — explicit background already set on the project.
+  if (raw && typeof raw === 'object' && typeof (raw as ProjectBackground).src === 'string') {
+    const dim = clamp01(typeof raw.dim === 'number' ? raw.dim : 0);
+    if (raw.kind === 'image') {
+      return { kind: 'image', src: raw.src, dim };
+    }
+    if (raw.kind === 'video') {
+      const anchor = Math.max(0, Number.isFinite(raw.anchorVideoTime) ? raw.anchorVideoTime : 0);
+      const trim = Math.max(0, Number.isFinite(raw.trimStartSec) ? raw.trimStartSec : 0);
+      const end = Math.max(
+        anchor + 0.05,
+        Math.min(duration, Number.isFinite(raw.endVideoTime) ? raw.endVideoTime : duration),
+      );
+      return {
+        kind: 'video',
+        src: raw.src,
+        dim: dim || 0.24,
+        anchorVideoTime: anchor,
+        trimStartSec: trim,
+        endVideoTime: end,
+      };
+    }
+  }
+
+  // Path B — auto-migrate from legacy per-template props. Earlier
+  // templates exposed `backgroundImage` (image upload OR video URL
+  // paste); The Reel exposed both `videoSrc` (video URL) and
+  // `productImage`. Pick the first one that looks live.
+  if (props && typeof props === 'object') {
+    const p = props as Record<string, unknown>;
+    const candidate = (typeof p.videoSrc === 'string' && p.videoSrc) || undefined;
+    const legacy = (typeof p.backgroundImage === 'string' && p.backgroundImage) || undefined;
+    const src = candidate || legacy;
+    if (src) {
+      if (isVideoUrl(src)) {
+        return {
+          kind: 'video',
+          src,
+          dim: typeof p.videoDim === 'number' ? clamp01(p.videoDim) : 0.24,
+          anchorVideoTime: 0,
+          trimStartSec: 0,
+          endVideoTime: duration,
+        };
+      }
+      return { kind: 'image', src, dim: 0 };
+    }
+  }
+
+  return undefined;
+}
+
+function clamp01(n: number): number {
+  if (!Number.isFinite(n)) return 0;
+  return Math.min(1, Math.max(0, n));
 }
 
 function readAll(): Project[] {

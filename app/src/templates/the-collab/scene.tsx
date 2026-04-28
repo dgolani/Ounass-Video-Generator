@@ -23,6 +23,7 @@ import {
   interpolate,
   useFieldColor,
   useFieldFormat,
+  useHasProjectBackground,
   useSafeZone,
   useThemedColors,
   useTimeline,
@@ -116,6 +117,7 @@ export function TheCollabScene({
   const s = makeScale(width, height);
   const { w, h, wh, W } = s;
   const { base: safe } = useSafeZone({ width, height });
+  const hasProjectBg = useHasProjectBackground();
   const is45 = Math.abs(width / height - 4 / 5) < 0.01;
 
   // Theme
@@ -386,14 +388,14 @@ export function TheCollabScene({
       style={{
         position: 'absolute',
         inset: 0,
-        background: colors.background,
+        background: hasProjectBg ? 'transparent' : colors.background,
         overflow: 'hidden',
         color: colors.ink,
       }}
     >
       {/* Background — uploaded image OR autoplay video replaces the
        *  gradient. MediaBackground auto-detects the URL kind. */}
-      {backgroundImage ? (
+      {hasProjectBg ? null : backgroundImage ? (
         <MediaBackground src={backgroundImage} />
       ) : (
         <>

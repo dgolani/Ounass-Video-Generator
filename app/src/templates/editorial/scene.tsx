@@ -6,6 +6,7 @@ import {
   useSafeZone,
   useFieldColor,
   useFieldFormat,
+  useHasProjectBackground,
 } from '../../engine';
 import type { EditorialProps } from './schema';
 import { BoutiqueLogo } from '../BoutiqueLogo';
@@ -729,6 +730,7 @@ export function EditorialScene({
   const T = (x: number) => x * timeScale;
   const s = makeScale(width, height);
   const { base: safe } = useSafeZone({ width, height });
+  const hasProjectBg = useHasProjectBackground();
 
   const contentTop = safe.top;
   const contentBottom = height - safe.bottom;
@@ -755,11 +757,11 @@ export function EditorialScene({
       style={{
         position: 'absolute',
         inset: 0,
-        background: backgroundImage ? 'transparent' : props.colors.paper,
+        background: backgroundImage || hasProjectBg ? 'transparent' : props.colors.paper,
         overflow: 'hidden',
       }}
     >
-      {backgroundImage && <MediaBackground src={backgroundImage} />}
+      {!hasProjectBg && backgroundImage && <MediaBackground src={backgroundImage} />}
       <Masthead {...actProps} />
       <Grid {...actProps} />
       <Feature {...actProps} />

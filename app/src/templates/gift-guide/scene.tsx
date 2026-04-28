@@ -11,6 +11,7 @@ import {
   useSafeZone,
   useFieldColor,
   useFieldFormat,
+  useHasProjectBackground,
 } from '../../engine';
 import type { GiftGuideProps } from './schema';
 import { BoutiqueLogo } from '../BoutiqueLogo';
@@ -76,6 +77,7 @@ export function GiftGuideScene({
   const s = makeScale(width, height);
   const { w, h, wh } = s;
   const { base: safe } = useSafeZone({ width, height });
+  const hasProjectBg = useHasProjectBackground();
 
   // Destructure before hooks so bases reference live brand values.
   const {
@@ -243,12 +245,12 @@ export function GiftGuideScene({
       style={{
         position: 'absolute',
         inset: 0,
-        background: backgroundImage ? 'transparent' : colors.background,
+        background: backgroundImage || hasProjectBg ? 'transparent' : colors.background,
         color: colors.ink,
         overflow: 'hidden',
       }}
     >
-      {backgroundImage && <MediaBackground src={backgroundImage} />}
+      {!hasProjectBg && backgroundImage && <MediaBackground src={backgroundImage} />}
       {/* Warm paper wash */}
       <div
         style={{

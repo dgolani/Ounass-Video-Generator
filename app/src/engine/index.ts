@@ -10,6 +10,12 @@ export {
   type SpriteContextValue,
 } from './timeline';
 export { Stage, PlaybackBar } from './Stage';
+export {
+  ProjectBackgroundContext,
+  ProjectBackgroundLayer,
+  useProjectBackground,
+  useHasProjectBackground,
+} from './projectBackground';
 export { useStageController, type StageController } from './useStageController';
 export { TextSprite, ImageSprite, RectSprite } from './sprites';
 export {

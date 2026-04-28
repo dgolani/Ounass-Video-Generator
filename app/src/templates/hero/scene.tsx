@@ -6,6 +6,7 @@ import {
   useSafeZone,
   useFieldColor,
   useFieldFormat,
+  useHasProjectBackground,
 } from '../../engine';
 import { composePrice, useCurrencyForLocale } from '../../lib/price';
 import type { HeroProps } from './schema';
@@ -462,6 +463,7 @@ export function HeroScene({
   const T = (x: number) => x * timeScale;
   const s = makeScale(width, height);
   const { base: safe } = useSafeZone({ width, height });
+  const hasProjectBg = useHasProjectBackground();
 
   // Content rect — the visible window in output pixels. Scenes always
   // render with safe margins applied (see SAFE_ZONE_PATTERNS.md).
@@ -476,11 +478,11 @@ export function HeroScene({
       style={{
         position: 'absolute',
         inset: 0,
-        background: backgroundImage ? 'transparent' : props.colors.background,
+        background: backgroundImage || hasProjectBg ? 'transparent' : props.colors.background,
         overflow: 'hidden',
       }}
     >
-      {backgroundImage && <MediaBackground src={backgroundImage} />}
+      {!hasProjectBg && backgroundImage && <MediaBackground src={backgroundImage} />}
       <HeroImage {...actProps} />
       <Reveal {...actProps} />
       <Copy {...actProps} />

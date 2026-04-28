@@ -5,6 +5,7 @@ import {
   useSafeZone,
   useFieldColor,
   useFieldFormat,
+  useHasProjectBackground,
 } from '../../engine';
 import type { CountdownProps } from './schema';
 import { BoutiqueLogo } from '../BoutiqueLogo';
@@ -455,6 +456,7 @@ export function CountdownScene({
   const T = (x: number) => x * timeScale;
   const s = makeScale(width, height);
   const { base: safe } = useSafeZone({ width, height });
+  const hasProjectBg = useHasProjectBackground();
   const { backgroundImage } = props;
 
   return (
@@ -462,11 +464,11 @@ export function CountdownScene({
       style={{
         position: 'absolute',
         inset: 0,
-        background: backgroundImage ? 'transparent' : props.colors.background,
+        background: backgroundImage || hasProjectBg ? 'transparent' : props.colors.background,
         overflow: 'hidden',
       }}
     >
-      {backgroundImage && <MediaBackground src={backgroundImage} />}
+      {!hasProjectBg && backgroundImage && <MediaBackground src={backgroundImage} />}
       <AccentSwash props={props} T={T} s={s} safe={safe} />
       <Hook props={props} T={T} s={s} safe={safe} />
       <Body props={props} T={T} s={s} safe={safe} />

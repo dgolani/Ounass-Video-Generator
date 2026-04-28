@@ -6,6 +6,7 @@ import {
   interpolate,
   useFieldColor,
   useFieldFormat,
+  useHasProjectBackground,
   useSafeZone,
   useTimeline,
 } from '../../engine';
@@ -824,6 +825,7 @@ export function LookbookScene({
   const s = makeScale(width, height);
   const { wh } = s;
   const { base: safe } = useSafeZone({ width, height });
+  const hasProjectBg = useHasProjectBackground();
 
   // Content-rect anchors. Every readability-critical element is pinned
   // against this rect instead of the canvas edges, so nothing gets
@@ -869,12 +871,12 @@ export function LookbookScene({
       style={{
         position: 'absolute',
         inset: 0,
-        background: backgroundImage ? 'transparent' : colors.background,
+        background: backgroundImage || hasProjectBg ? 'transparent' : colors.background,
         cursor: 'pointer',
         overflow: 'hidden',
       }}
     >
-      {backgroundImage && <MediaBackground src={backgroundImage} />}
+      {!hasProjectBg && backgroundImage && <MediaBackground src={backgroundImage} />}
       <style>{`
         @keyframes heroIn {
           from { transform: scale(1.04) translateX(14px); opacity: 0.4; }

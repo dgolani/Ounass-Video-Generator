@@ -12,6 +12,7 @@ import {
   useSafeZone,
   useFieldColor,
   useFieldFormat,
+  useHasProjectBackground,
 } from '../../engine';
 import { composePrice, useCurrencyForLocale } from '../../lib/price';
 import type { CarouselProps } from './schema';
@@ -61,6 +62,7 @@ export function CarouselScene({
   const s = makeScale(width, height);
   const { w, h, wh } = s;
   const { base: safe } = useSafeZone({ width, height });
+  const hasProjectBg = useHasProjectBackground();
   const currency = useCurrencyForLocale();
 
   // Content-rect anchors (always-safe regime). See SAFE_ZONE_PATTERNS.md.
@@ -242,12 +244,12 @@ export function CarouselScene({
       style={{
         position: 'absolute',
         inset: 0,
-        background: backgroundImage ? 'transparent' : colors.background,
+        background: backgroundImage || hasProjectBg ? 'transparent' : colors.background,
         color: lightText,
         overflow: 'hidden',
       }}
     >
-      {backgroundImage && <MediaBackground src={backgroundImage} />}
+      {!hasProjectBg && backgroundImage && <MediaBackground src={backgroundImage} />}
       {/* Ambient copper radial */}
       <div
         style={{

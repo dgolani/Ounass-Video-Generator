@@ -13,6 +13,7 @@ import {
   useSafeZone,
   useFieldColor,
   useFieldFormat,
+  useHasProjectBackground,
 } from '../../engine';
 import { composePrice, useCurrencyForLocale } from '../../lib/price';
 import type { SpotlightProps } from './schema';
@@ -60,6 +61,7 @@ export function BrandSpotlightScene({
   const s = makeScale(width, height);
   const { w, h, wh } = s;
   const { base: safe } = useSafeZone({ width, height });
+  const hasProjectBg = useHasProjectBackground();
   const currency = useCurrencyForLocale();
 
   // Destructure before hooks so bases reference live brand values.
@@ -250,12 +252,12 @@ export function BrandSpotlightScene({
       style={{
         position: 'absolute',
         inset: 0,
-        background: backgroundImage ? 'transparent' : colors.background,
+        background: backgroundImage || hasProjectBg ? 'transparent' : colors.background,
         color: '#fff',
         overflow: 'hidden',
       }}
     >
-      {backgroundImage ? (
+      {hasProjectBg ? null : backgroundImage ? (
         <MediaBackground src={backgroundImage} />
       ) : (
         /* Background copper radial */

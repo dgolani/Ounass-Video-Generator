@@ -43,6 +43,44 @@ export type Project = {
    *  Today only `'ar'` is populated; the shape leaves room for other
    *  locales without a migration. */
   localizedText?: { ar?: Record<string, string> };
+  /** Project-level full-bleed background — either a hosted video URL
+   *  OR an uploaded image data URL (mutually exclusive). Renders as a
+   *  sibling layer behind the rasterized canvas so it never taints
+   *  the export, and templates no longer need their own backdrop
+   *  field. Mirrors the music layer's anchor / trim / end semantics
+   *  for the video case so the marketer can drag and trim it on the
+   *  timeline exactly like a music track.
+   *
+   *  `undefined` = no project background; templates fall back to
+   *  their internal paper / gradient art. */
+  background?: ProjectBackground;
   createdAt: number;
   updatedAt: number;
 };
+
+/** Shape of `Project.background`. Discriminated by `kind`. */
+export type ProjectBackground =
+  | {
+      kind: 'image';
+      /** Image data URL (uploaded) or hosted URL. */
+      src: string;
+      /** 0–1 — black overlay opacity over the image, parity with the
+       *  video case. Default 0 (image not dimmed). */
+      dim: number;
+    }
+  | {
+      kind: 'video';
+      /** Hosted video URL (mp4 / webm / mov). */
+      src: string;
+      /** 0–1 — black overlay opacity over the video. Default 0.24 to
+       *  match the historical Reel default. */
+      dim: number;
+      /** When on the project timeline (seconds) the video begins. */
+      anchorVideoTime: number;
+      /** Skip this many seconds from the start of the source file. */
+      trimStartSec: number;
+      /** Project timeline second where the video ends (clipped tail
+       *  is replaced by the underlying scene chrome). Default = end
+       *  of project. */
+      endVideoTime: number;
+    };

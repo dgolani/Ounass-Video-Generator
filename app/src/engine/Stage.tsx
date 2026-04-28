@@ -13,6 +13,11 @@ import { clamp } from './math';
 import { TimelineContext, type TimelineContextValue } from './timeline';
 import type { StageController } from './useStageController';
 import { useLocale, isRTL } from './locale';
+import {
+  ProjectBackgroundContext,
+  ProjectBackgroundLayer,
+} from './projectBackground';
+import type { ProjectBackground } from '../store/types';
 
 type StageProps = {
   width: number;
@@ -27,6 +32,14 @@ type StageProps = {
   canvasRef?: RefObject<HTMLDivElement | null>;
   /** Trim offset on the composition timeline (seconds). */
   compositionStartSec?: number;
+  /** Project-level full-bleed background. When set, renders as the
+   *  bottom-most layer inside the canvas (sibling to the template's
+   *  scene chrome) and is exposed to templates via
+   *  `useProjectBackground()` so they can suppress their own
+   *  backdrops. Marked `data-export-ignore="true"` so the
+   *  rasterizer skips it; the export pipeline (Phase 3) overlays
+   *  it via ffmpeg. */
+  projectBackground?: ProjectBackground;
   /** Editor chromeless: fired from capture phase on the canvas shell (e.g. expand preview). */
   onChromelessCanvasActivate?: (e: PointerEvent<HTMLDivElement>) => void;
   /** Editor chromeless: direct hit on letterbox around the scaled canvas (e.g. toggle preview size). */
@@ -51,6 +64,7 @@ export function Stage({
   children,
   canvasRef,
   compositionStartSec = 0,
+  projectBackground,
   onChromelessCanvasActivate,
   onChromelessLetterboxPointerDown,
 }: StageProps) {
@@ -166,7 +180,16 @@ export function Stage({
           }}
         >
           <TimelineContext.Provider value={ctxValue}>
-            {children}
+            <ProjectBackgroundContext.Provider value={projectBackground}>
+              {projectBackground ? (
+                <ProjectBackgroundLayer
+                  background={projectBackground}
+                  width={width}
+                  height={height}
+                />
+              ) : null}
+              {children}
+            </ProjectBackgroundContext.Provider>
           </TimelineContext.Provider>
         </div>
       </div>

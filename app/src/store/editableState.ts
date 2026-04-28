@@ -3,7 +3,7 @@
 // createdAt) and out-of-history metadata (name — edited separately via
 // input blur, updatedAt — server/timestamp metadata).
 
-import type { Project } from './types';
+import type { Project, ProjectBackground } from './types';
 import type { FieldFormatOverrides } from './fieldFormat';
 import type { Locale } from '../engine/locale';
 import type { ThemeMode } from '../engine/themeMode';
@@ -33,6 +33,11 @@ export type EditableState = {
    *  re-flipping is instant. Manual edits while AR is active write to
    *  this map directly (writing to props.kicker would clobber EN). */
   localizedText: { ar?: Record<string, string> };
+  /** Project-level full-bleed background (image OR hosted video URL).
+   *  Mutually exclusive — the marketer picks one or the other.
+   *  `undefined` = no project bg; templates fall back to their own
+   *  paper / gradient art. */
+  background: ProjectBackground | undefined;
 };
 
 export function projectToEditable(p: Project): EditableState {
@@ -50,6 +55,7 @@ export function projectToEditable(p: Project): EditableState {
     localeOverride: p.localeOverride,
     themeMode: p.themeMode,
     localizedText: p.localizedText ?? {},
+    background: p.background,
   };
 }
 
@@ -69,7 +75,8 @@ export function editablesEqual(a: EditableState, b: EditableState): boolean {
     a.fieldFormatOverrides === b.fieldFormatOverrides &&
     a.localeOverride === b.localeOverride &&
     a.themeMode === b.themeMode &&
-    a.localizedText === b.localizedText
+    a.localizedText === b.localizedText &&
+    a.background === b.background
   );
 }
 
@@ -89,5 +96,6 @@ export function editableToPatch(e: EditableState): Partial<Project> {
     localeOverride: e.localeOverride,
     themeMode: e.themeMode,
     localizedText: e.localizedText,
+    background: e.background,
   };
 }

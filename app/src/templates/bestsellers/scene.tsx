@@ -14,6 +14,7 @@ import {
   useSafeZone,
   useFieldColor,
   useFieldFormat,
+  useHasProjectBackground,
 } from '../../engine';
 import { composePrice, useCurrencyForLocale } from '../../lib/price';
 import type { BestsellersProps } from './schema';
@@ -67,6 +68,7 @@ export function BestsellersScene({
   const s = makeScale(width, height);
   const { w, h, wh } = s;
   const { base: safe } = useSafeZone({ width, height });
+  const hasProjectBg = useHasProjectBackground();
   const currency = useCurrencyForLocale();
   const { colors, products, boutiqueName, headerMeta, kicker, logo, backgroundImage } = props;
   const logoColor = useFieldColor('logo', colors.ink);
@@ -237,12 +239,12 @@ export function BestsellersScene({
       style={{
         position: 'absolute',
         inset: 0,
-        background: backgroundImage ? 'transparent' : colors.background,
+        background: backgroundImage || hasProjectBg ? 'transparent' : colors.background,
         color: colors.ink,
         overflow: 'hidden',
       }}
     >
-      {backgroundImage && <MediaBackground src={backgroundImage} />}
+      {!hasProjectBg && backgroundImage && <MediaBackground src={backgroundImage} />}
       {/* Grain / wash overlay */}
       <div
         style={{
