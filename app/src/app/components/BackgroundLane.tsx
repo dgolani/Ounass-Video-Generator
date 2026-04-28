@@ -245,6 +245,12 @@ function VideoClip({
   const bgRef = useRef(background);
   bgRef.current = background;
 
+  // Same trick for the click-through-to-edit callback so the body
+  // pointerdown's onWinUp closure always calls the most recent
+  // version.
+  const onLabelClickRef = useRef(onLabelClick);
+  onLabelClickRef.current = onLabelClick;
+
   const left = background.anchorVideoTime * pxPerSec;
   const width = Math.max(
     MIN_CLIP_SEC * pxPerSec,
@@ -261,14 +267,19 @@ function VideoClip({
   }, []);
 
   // ── Body pointerdown — long-press setup ─────────────────────
+  // Listens on the entire clip body. Trim handles short-circuit
+  // because their pointerdown handlers stop propagation. The label
+  // button DOES NOT stop propagation — pressing the label area
+  // should also start the long-press timer; if the marketer just
+  // taps and releases quickly without enough movement, the
+  // button's onClick fires later (browser-level) and opens the
+  // drawer for editing.
   const onBodyPointerDown = useCallback(
     (e: ReactPointerEvent<HTMLDivElement>) => {
       if (e.button !== 0) return;
-      // Don't intercept presses on the trim handles or the label
-      // button — they have their own handlers.
+      // Trim handles handle their own gestures.
       const t = e.target as HTMLElement;
       if (t.closest('[data-bg-handle]')) return;
-      if (t.closest('[data-bg-label]')) return;
       e.preventDefault();
       e.stopPropagation();
       detachSession();
@@ -322,15 +333,28 @@ function VideoClip({
       const onWinUp = (ev: PointerEvent) => {
         if (ev.pointerId !== pointerId) return;
         const pending = pendingRef.current;
+        const wasPending = pending != null;
         if (pending) {
           window.clearTimeout(pending.timer);
           pendingRef.current = null;
         }
-        if (scrubRef.current) {
+        const wasScrubbing = scrubRef.current != null;
+        if (wasScrubbing) {
           scrubRef.current = null;
           setScrubbing(false);
         }
         detachSession();
+        // Quick tap (timer was still pending OR canceled by slop, no
+        // scrub started) → open the drawer for editing. This makes
+        // the clip act like a click-to-edit target the same way the
+        // image stripe does. Skip if the press graduated into a scrub.
+        if (wasPending && !wasScrubbing) {
+          const dx = ev.clientX - startX;
+          const dy = ev.clientY - startY;
+          if (Math.hypot(dx, dy) <= LONG_PRESS_MOVE_SLOP_PX) {
+            onLabelClickRef.current();
+          }
+        }
       };
 
       window.addEventListener('pointermove', onWinMove, true);
@@ -443,7 +467,11 @@ function VideoClip({
           : `linear-gradient(180deg, rgba(184,114,83,0.22) 0%, rgba(120,75,55,0.12) 100%)`,
         touchAction: 'none',
         zIndex: 2,
-        cursor: scrubbing ? 'col-resize' : 'pointer',
+        // `grab` / `grabbing` matches the music lane so muscle memory
+        // transfers. While scrubbing (long-press fired), we keep
+        // `grabbing` rather than switching to `col-resize` so the
+        // marketer doesn't get a cursor flicker mid-gesture.
+        cursor: scrubbing ? 'grabbing' : 'grab',
         transition: 'box-shadow 0.15s ease',
       }}
     >
@@ -455,17 +483,13 @@ function VideoClip({
         side="right"
         onPointerDown={(e) => onHandlePointerDown(e, 'right')}
       />
-      <button
-        type="button"
-        data-timeline-no-seek
-        data-bg-label
-        onPointerDown={(e) => e.stopPropagation()}
-        onClick={(e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          onLabelClick();
-        }}
-        title="Edit background"
+      {/* Label sits inside the clip body. Pointer-events:none so
+       *  presses always pass through to the parent body's
+       *  pointerdown handler (which sets up the long-press timer).
+       *  Quick "click to edit drawer" is delegated to the body's
+       *  pointerup-without-scrub path. */}
+      <div
+        aria-hidden
         style={{
           position: 'absolute',
           inset: 0,
@@ -473,10 +497,7 @@ function VideoClip({
           alignItems: 'center',
           justifyContent: 'center',
           padding: '0 32px',
-          background: 'transparent',
-          border: 0,
           color: 'rgba(255,255,255,0.85)',
-          cursor: 'pointer',
           fontFamily: 'var(--sans)',
           fontSize: 10,
           fontWeight: 700,
@@ -485,16 +506,12 @@ function VideoClip({
           whiteSpace: 'nowrap',
           overflow: 'hidden',
           textOverflow: 'ellipsis',
-          // Long-press scrub bypasses this button via the body's
-          // pointerdown handler (which short-circuits if the press
-          // hits a `[data-bg-label]` element). The only way to reach
-          // onClick is a quick tap with no movement — that opens the
-          // drawer for editing.
-          pointerEvents: scrubbing ? 'none' : 'auto',
+          pointerEvents: 'none',
+          userSelect: 'none',
         }}
       >
         Background video · {(background.endVideoTime - background.anchorVideoTime).toFixed(1)}s
-      </button>
+      </div>
     </div>
   );
 }
