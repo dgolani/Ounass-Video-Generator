@@ -22,6 +22,7 @@ import {
   clamp,
   interpolate,
   useFieldFormat,
+  useHasProjectBackground,
   useSafeZone,
   useTimeline,
 } from '../../engine';
@@ -106,6 +107,7 @@ export function ReelScene({
   const s = makeScale(width, height);
   const { wh } = s;
   const { base: safe } = useSafeZone({ width, height });
+  const hasProjectBg = useHasProjectBackground();
   const is45 = Math.abs(width / height - 4 / 5) < 0.01;
   // Reference safe rect so the import is exercised on every aspect.
   // The Reel is full-bleed by design and centres scene chrome on the
@@ -288,9 +290,11 @@ export function ReelScene({
   const s4CtaTy = (1 - ctaE) * wh(20);
   const s4CtaScale = 0.92 + ctaE * 0.08;
 
-  // Background tone — solid black behind the video so any letterboxing
-  // reads as part of the design, not a glitch.
-  const ROOT_BG = '#000000';
+  // Background tone — solid black behind the legacy bg layer so any
+  // letterboxing reads as part of the design. Goes transparent when
+  // the project-level bg layer is set so it shows through from
+  // behind the canvas (rendered as a sibling by Stage).
+  const ROOT_BG = hasProjectBg ? 'transparent' : '#000000';
 
   return (
     <div
@@ -302,20 +306,25 @@ export function ReelScene({
         color: '#ffffff',
       }}
     >
-      {/* Layer 1 — full-bleed video / image */}
-      {videoSrc ? <MediaBackground src={videoSrc} style={{ zIndex: 1 }} /> : null}
-
-      {/* Layer 2 — black dim overlay */}
-      <div
-        style={{
-          position: 'absolute',
-          inset: 0,
-          zIndex: 2,
-          background: '#000',
-          opacity: clamp(videoDim ?? 0, 0, 1),
-          pointerEvents: 'none',
-        }}
-      />
+      {/* Legacy backdrop — renders only for older projects whose
+       *  `videoSrc` / `videoDim` fields haven't migrated to
+       *  `project.background`. New projects route through the
+       *  project layer and skip this branch entirely. */}
+      {!hasProjectBg && videoSrc ? (
+        <MediaBackground src={videoSrc} style={{ zIndex: 1 }} />
+      ) : null}
+      {!hasProjectBg ? (
+        <div
+          style={{
+            position: 'absolute',
+            inset: 0,
+            zIndex: 2,
+            background: '#000',
+            opacity: clamp(videoDim ?? 0, 0, 1),
+            pointerEvents: 'none',
+          }}
+        />
+      ) : null}
 
       {/* ─── SCENE 1 — Wordmark ─────────────────────────────────── */}
       <div
