@@ -11,6 +11,7 @@ import { createPortal } from 'react-dom';
 import { Slider } from '../../ui/Slider';
 import { getMusicTrack, resolveAudioUrl } from '../../lib/musicLibrary';
 import { probeAudioDurationSec } from '../../lib/audioProbe';
+import { probeVideoDurationSec } from '../../lib/videoProbe';
 import { MAX_TIMELINE_EXTENT_SEC, timelineContentUpperSec } from '../../lib/timelineBounds';
 import { MusicLibraryDrawer } from './MusicLibraryDrawer';
 import { BackgroundLane } from './BackgroundLane';
@@ -285,6 +286,7 @@ export function EditorTimelineDock({
   /** While true, show file-time ruler during long-press source trim drag. */
   const [showMusicFileRuler, setShowMusicFileRuler] = useState(false);
   const [sourceFileDurationSec, setSourceFileDurationSec] = useState<number | null>(null);
+  const [bgSourceDurationSec, setBgSourceDurationSec] = useState<number | null>(null);
   const longPressMoveRef = useRef<{
     timer: ReturnType<typeof setTimeout>;
     startX: number;
@@ -311,6 +313,24 @@ export function EditorTimelineDock({
       cancelled = true;
     };
   }, [backgroundTrackId]);
+
+  // Probe the project-bg video's source duration so the lane can
+  // render a source-file ghost ruler exactly like the music lane does
+  // (showing the full clip extent + tick marks during scrub). Mirror
+  // of the music probe above.
+  useEffect(() => {
+    if (!background || background.kind !== 'video' || !background.src) {
+      setBgSourceDurationSec(null);
+      return;
+    }
+    let cancelled = false;
+    void probeVideoDurationSec(background.src).then((dur) => {
+      if (!cancelled) setBgSourceDurationSec(dur);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [background]);
 
   useEffect(() => {
     musicTimesRef.current = { a: musicAnchorVideoTime, e: musicEndVideoTime };
@@ -2157,6 +2177,7 @@ export function EditorTimelineDock({
                 videoClipStartSec={videoClipStartSec}
                 pxPerSec={pxPerSec}
                 laneWidthPx={displayTrackW}
+                sourceDurationSec={bgSourceDurationSec}
                 onChange={(next) => onPatch({ background: next })}
                 onAddClick={() => setBgDrawerOpen(true)}
                 onEditClick={() => setBgDrawerOpen(true)}

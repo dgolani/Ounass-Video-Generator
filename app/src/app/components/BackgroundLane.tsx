@@ -22,6 +22,7 @@
 import {
   useCallback,
   useEffect,
+  useMemo,
   useRef,
   useState,
   type CSSProperties,
@@ -54,6 +55,11 @@ type Props = {
   pxPerSec: number;
   /** Total lane width in px. Image-kind clips span this width. */
   laneWidthPx: number;
+  /** Probed duration of the source video file in seconds. Drives the
+   *  source-file ghost ruler (dashed bar showing the full source
+   *  beyond the on-timeline window, with seconds tick marks). null
+   *  while probe is in flight or fails — ghost simply won't render. */
+  sourceDurationSec: number | null;
   onChange: (next: ProjectBackground) => void;
   /** Called when the marketer clicks the "Add background" CTA inside
    *  the empty lane. Parent opens the BackgroundDrawer. */
@@ -69,6 +75,7 @@ export function BackgroundLane({
   videoClipStartSec,
   pxPerSec,
   laneWidthPx,
+  sourceDurationSec,
   onChange,
   onAddClick,
   onEditClick,
@@ -98,6 +105,8 @@ export function BackgroundLane({
           duration={duration}
           videoClipStartSec={videoClipStartSec}
           pxPerSec={pxPerSec}
+          laneWidthPx={laneWidthPx}
+          sourceDurationSec={sourceDurationSec}
           onChange={onChange}
           onLabelClick={onEditClick}
         />
@@ -214,6 +223,8 @@ function VideoClip({
   duration,
   videoClipStartSec,
   pxPerSec,
+  laneWidthPx,
+  sourceDurationSec,
   onChange,
   onLabelClick,
 }: {
@@ -221,10 +232,13 @@ function VideoClip({
   duration: number;
   videoClipStartSec: number;
   pxPerSec: number;
+  laneWidthPx: number;
+  sourceDurationSec: number | null;
   onChange: (next: ProjectBackground) => void;
   onLabelClick: () => void;
 }) {
   void videoClipStartSec; // reserved — could constrain anchor to ≥ this in future
+  void laneWidthPx; // reserved — could clamp ghost overflow on right edge
 
   const [scrubbing, setScrubbing] = useState(false);
   const pendingRef = useRef<PendingLongPress | null>(null);
@@ -256,6 +270,77 @@ function VideoClip({
     MIN_CLIP_SEC * pxPerSec,
     (background.endVideoTime - background.anchorVideoTime) * pxPerSec,
   );
+
+  // ── Source-file ghost geometry ──────────────────────────────────
+  // Mirrors the music lane's ghost ruler: a dashed bar showing the
+  // FULL source video extent on the same scale as the timeline. The
+  // bar maps source-time-0 onto project-time `(anchor - trimStart)`,
+  // and extends `sourceDurationSec * pxPerSec` to the right. A
+  // shaded sub-region inside the ghost shows which slice of the
+  // source maps to the on-timeline clip — moves as the marketer
+  // long-press-scrubs trim.
+  const showGhost =
+    sourceDurationSec != null && sourceDurationSec > 0.2;
+  const ghostLeftPx = showGhost
+    ? (background.anchorVideoTime - background.trimStartSec) * pxPerSec
+    : 0;
+  const ghostFullWidthPx = showGhost && sourceDurationSec ? sourceDurationSec * pxPerSec : 0;
+  // While long-press-scrubbing, expand the ghost to its full source
+  // width so the marketer can see context past the visible clip;
+  // otherwise clip the right edge to the on-timeline clip's right
+  // edge so it doesn't bleed into the music lane below.
+  const expandGhostForDrag = scrubbing;
+  const clipRightPx = left + width;
+  const ghostDisplayWidthPx = showGhost
+    ? expandGhostForDrag
+      ? ghostFullWidthPx
+      : Math.min(ghostFullWidthPx, Math.max(0, clipRightPx - ghostLeftPx))
+    : 0;
+
+  const clipLenSec = Math.max(
+    MIN_CLIP_SEC,
+    background.endVideoTime - background.anchorVideoTime,
+  );
+
+  /** Tick marks on the ghost ruler — same density curve the music
+   *  lane uses, so the visual language matches. Memoised on
+   *  sourceDurationSec because timeline updates churn the parent at
+   *  60fps; the ticks only change on URL swap. */
+  const ghostMarks = useMemo<Array<{ sec: number; kind: 'major' | 'mid' | 'minor' }>>(() => {
+    if (!showGhost || sourceDurationSec == null || sourceDurationSec < 0.25) {
+      return [];
+    }
+    const D = sourceDurationSec;
+    const majorStep = D > 90 ? 15 : D > 45 ? 10 : D > 22 ? 5 : D > 9 ? 2 : 1;
+    let minorStep =
+      majorStep >= 10 ? majorStep / 5 : majorStep >= 5 ? 1 : majorStep === 2 ? 0.5 : 0.25;
+    let nEst = Math.ceil(D / minorStep) + 2;
+    while (nEst > 96 && minorStep < majorStep) {
+      minorStep *= 2;
+      nEst = Math.ceil(D / minorStep) + 2;
+    }
+    const midStep = majorStep / 2;
+    const out: Array<{ sec: number; kind: 'major' | 'mid' | 'minor' }> = [];
+    const roundSec = (x: number) => Math.round(x * 1000) / 1000;
+    const steps = Math.min(400, Math.ceil(D / minorStep + 1e-9));
+    let prev = -1;
+    for (let i = 0; i <= steps; i++) {
+      const sec = roundSec(Math.min(D, i * minorStep));
+      if (sec <= prev + 1e-6) continue;
+      prev = sec;
+      const isMajor = Math.abs(sec / majorStep - Math.round(sec / majorStep)) < 0.02;
+      const isMid =
+        !isMajor &&
+        midStep >= minorStep * 1.2 &&
+        Math.abs(sec / midStep - Math.round(sec / midStep)) < 0.02;
+      out.push({ sec, kind: isMajor ? 'major' : isMid ? 'mid' : 'minor' });
+    }
+    const last = out[out.length - 1];
+    if (last && D - last.sec > minorStep * 0.75) {
+      out.push({ sec: roundSec(D), kind: 'major' });
+    }
+    return out;
+  }, [showGhost, sourceDurationSec]);
 
   const detachSession = useCallback(() => {
     const s = sessionRef.current;
@@ -446,35 +531,194 @@ function VideoClip({
   }, [detachSession]);
 
   return (
-    <div
-      data-timeline-no-seek
-      data-bg-video-clip
-      onPointerDown={onBodyPointerDown}
-      style={{
-        position: 'absolute',
-        left,
-        width,
-        top: 5,
-        height: LANE_H - 10,
-        borderRadius: 'var(--r-md)',
-        boxSizing: 'border-box',
-        border: `2px solid ${BG_BRONZE}`,
-        boxShadow: scrubbing
-          ? '0 0 0 1px rgba(0,0,0,0.5), 0 0 22px rgba(184,114,83,0.45), 0 6px 18px rgba(0,0,0,0.45)'
-          : '0 0 0 1px rgba(0,0,0,0.5), 0 6px 18px rgba(0,0,0,0.45)',
-        background: scrubbing
-          ? `linear-gradient(180deg, ${BG_BRONZE_DIM} 0%, rgba(120,75,55,0.18) 100%)`
-          : `linear-gradient(180deg, rgba(184,114,83,0.22) 0%, rgba(120,75,55,0.12) 100%)`,
-        touchAction: 'none',
-        zIndex: 2,
-        // `grab` / `grabbing` matches the music lane so muscle memory
-        // transfers. While scrubbing (long-press fired), we keep
-        // `grabbing` rather than switching to `col-resize` so the
-        // marketer doesn't get a cursor flicker mid-gesture.
-        cursor: scrubbing ? 'grabbing' : 'grab',
-        transition: 'box-shadow 0.15s ease',
-      }}
-    >
+    <>
+      {/* Source-file ghost ruler — dashed bar showing the full source
+       *  duration on the same pxPerSec scale as the timeline. The
+       *  shaded sub-region inside marks the slice currently mapped
+       *  to the on-timeline clip; that shaded region moves as the
+       *  marketer scrubs trim, telling them where in the source they
+       *  are. While long-press scrubbing is active, the ghost
+       *  expands beyond the on-timeline clip to show full context;
+       *  otherwise it's clipped to the clip's right edge. */}
+      {showGhost && ghostDisplayWidthPx > 0.5 ? (
+        <div
+          aria-hidden
+          title={
+            expandGhostForDrag
+              ? 'Source file (full length while scrubbing) — shaded region is what plays through the bronze clip'
+              : 'Source file — shaded region is what plays through the bronze clip'
+          }
+          style={{
+            position: 'absolute',
+            left: ghostLeftPx,
+            width: ghostDisplayWidthPx,
+            top: 5,
+            height: LANE_H - 10,
+            borderRadius: 'var(--r-md)',
+            boxSizing: 'border-box',
+            border: expandGhostForDrag
+              ? `1px solid rgba(184,114,83,0.72)`
+              : `1px solid rgba(184,114,83,0.45)`,
+            borderStyle: expandGhostForDrag ? 'solid' : 'dashed',
+            background: expandGhostForDrag
+              ? 'linear-gradient(180deg, rgba(36,24,18,0.96) 0%, rgba(20,14,10,0.98) 100%)'
+              : 'linear-gradient(180deg, rgba(28,18,14,0.88) 0%, rgba(14,10,8,0.92) 100%)',
+            boxShadow: expandGhostForDrag
+              ? '0 0 0 1px rgba(0,0,0,0.5), 0 0 22px rgba(184,114,83,0.18), inset 0 1px 0 rgba(184,114,83,0.12)'
+              : '0 2px 10px rgba(0,0,0,0.35), inset 0 1px 0 rgba(184,114,83,0.08)',
+            pointerEvents: 'none',
+            zIndex: expandGhostForDrag ? 4 : 1,
+            transition:
+              'border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease',
+            overflow: 'hidden',
+          }}
+        >
+          <div
+            style={{
+              position: 'relative',
+              width: ghostFullWidthPx,
+              height: '100%',
+            }}
+          >
+            {/* Shaded slice = current trim window inside the source */}
+            {sourceDurationSec ? (
+              <div
+                aria-hidden
+                style={{
+                  position: 'absolute',
+                  left: `${(background.trimStartSec / sourceDurationSec) * 100}%`,
+                  width: `${(Math.min(clipLenSec, Math.max(0, sourceDurationSec - background.trimStartSec)) / sourceDurationSec) * 100}%`,
+                  top: 0,
+                  bottom: 13,
+                  boxSizing: 'border-box',
+                  borderLeft: '1px solid rgba(184,114,83,0.55)',
+                  borderRight: '1px solid rgba(184,114,83,0.55)',
+                  background: expandGhostForDrag
+                    ? 'linear-gradient(180deg, rgba(184,114,83,0.34) 0%, rgba(184,114,83,0.14) 100%)'
+                    : 'linear-gradient(180deg, rgba(184,114,83,0.22) 0%, rgba(184,114,83,0.08) 100%)',
+                  pointerEvents: 'none',
+                  transition: 'background 0.12s ease',
+                }}
+              />
+            ) : null}
+            {/* Tick band */}
+            <div
+              aria-hidden
+              style={{
+                position: 'absolute',
+                left: 0,
+                right: 0,
+                bottom: 0,
+                height: 13,
+                background:
+                  'linear-gradient(180deg, rgba(6,6,8,0.15) 0%, rgba(4,4,6,0.72) 100%)',
+                borderTop: '1px solid rgba(184,114,83,0.38)',
+                boxSizing: 'border-box',
+              }}
+            >
+              {sourceDurationSec
+                ? ghostMarks.map(({ sec, kind }) => {
+                    const fileDur = sourceDurationSec;
+                    const pct = (sec / fileDur) * 100;
+                    const tickH = kind === 'major' ? 9 : kind === 'mid' ? 6 : 3;
+                    const tickW = kind === 'major' ? 1.5 : 1;
+                    const label =
+                      kind === 'major'
+                        ? sec >= 100
+                          ? `${Math.round(sec)}s`
+                          : sec >= 10
+                            ? `${Math.round(sec)}s`
+                            : `${sec.toFixed(1)}s`
+                        : '';
+                    return (
+                      <div
+                        key={`bg-mk-${sec.toFixed(3)}-${kind}`}
+                        style={{
+                          position: 'absolute',
+                          left: `${pct}%`,
+                          bottom: 0,
+                          width: 0,
+                          height: 13,
+                          transform: 'translateX(-0.5px)',
+                        }}
+                      >
+                        {kind === 'major' ? (
+                          <span
+                            style={{
+                              position: 'absolute',
+                              left: 0,
+                              bottom: 11,
+                              transform: 'translateX(-50%)',
+                              fontFamily: 'var(--mono)',
+                              fontSize: 8,
+                              fontWeight: 700,
+                              letterSpacing: '0.02em',
+                              color: 'rgba(248,224,200,0.98)',
+                              whiteSpace: 'nowrap',
+                              textShadow: '0 1px 3px rgba(0,0,0,0.95)',
+                            }}
+                          >
+                            {label}
+                          </span>
+                        ) : null}
+                        <div
+                          style={{
+                            position: 'absolute',
+                            left: 0,
+                            bottom: 0,
+                            width: tickW,
+                            height: tickH,
+                            transform: 'translateX(-50%)',
+                            borderRadius: 0.5,
+                            background:
+                              kind === 'major'
+                                ? 'rgba(248,224,200,0.95)'
+                                : kind === 'mid'
+                                  ? 'rgba(184,114,83,0.78)'
+                                  : 'rgba(184,114,83,0.45)',
+                            boxShadow:
+                              kind === 'major'
+                                ? '0 0 6px rgba(184,114,83,0.35)'
+                                : 'none',
+                          }}
+                        />
+                      </div>
+                    );
+                  })
+                : null}
+            </div>
+          </div>
+        </div>
+      ) : null}
+      <div
+        data-timeline-no-seek
+        data-bg-video-clip
+        onPointerDown={onBodyPointerDown}
+        style={{
+          position: 'absolute',
+          left,
+          width,
+          top: 5,
+          height: LANE_H - 10,
+          borderRadius: 'var(--r-md)',
+          boxSizing: 'border-box',
+          border: `2px solid ${BG_BRONZE}`,
+          boxShadow: scrubbing
+            ? '0 0 0 1px rgba(0,0,0,0.5), 0 0 22px rgba(184,114,83,0.45), 0 6px 18px rgba(0,0,0,0.45)'
+            : '0 0 0 1px rgba(0,0,0,0.5), 0 6px 18px rgba(0,0,0,0.45)',
+          background: scrubbing
+            ? `linear-gradient(180deg, ${BG_BRONZE_DIM} 0%, rgba(120,75,55,0.18) 100%)`
+            : `linear-gradient(180deg, rgba(184,114,83,0.22) 0%, rgba(120,75,55,0.12) 100%)`,
+          touchAction: 'none',
+          zIndex: 2,
+          // `grab` / `grabbing` matches the music lane so muscle memory
+          // transfers. While scrubbing (long-press fired), we keep
+          // `grabbing` rather than switching to `col-resize` so the
+          // marketer doesn't get a cursor flicker mid-gesture.
+          cursor: scrubbing ? 'grabbing' : 'grab',
+          transition: 'box-shadow 0.15s ease',
+        }}
+      >
       <Handle
         side="left"
         onPointerDown={(e) => onHandlePointerDown(e, 'left')}
@@ -512,7 +756,8 @@ function VideoClip({
       >
         Background video · {(background.endVideoTime - background.anchorVideoTime).toFixed(1)}s
       </div>
-    </div>
+      </div>
+    </>
   );
 }
 
