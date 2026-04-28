@@ -32,6 +32,7 @@ import {
   createContext,
   useContext,
   useEffect,
+  useRef,
   useState,
   type CSSProperties,
 } from 'react';
@@ -127,7 +128,8 @@ function VideoBackground({
 }: {
   background: Extract<ProjectBackground, { kind: 'video' }>;
 }) {
-  const { time } = useTimeline();
+  const { time, playing } = useTimeline();
+  const videoRef = useRef<HTMLVideoElement | null>(null);
   /** The URL we actually feed to <video src=…>. Starts as the raw
    *  source so the editor preview is responsive while we async-fetch
    *  a same-origin blob URL behind the scenes. */
@@ -188,6 +190,57 @@ function VideoBackground({
   }, [background.src]);
 
   const visible = time >= background.anchorVideoTime && time < background.endVideoTime;
+
+  // ── Source-time sync ──────────────────────────────────────────
+  // The marketer drags the trim handle / scrubs trimStartSec. The
+  // <video> element doesn't automatically reflect that — it just
+  // plays from currentTime=0 with `loop`. We need to imperatively
+  // map (timeline-time, anchor, trimStartSec) → video.currentTime
+  // so the editor preview matches what the timeline says it should.
+  //
+  // Mapping: at timeline second `t`, the source frame visible should
+  //   be `((t - anchor) + trimStartSec) mod sourceDuration`.
+  //
+  // We only seek when drift exceeds a threshold (0.25s) — during
+  // normal smooth playback the timeline cursor and the video element
+  // advance at the same wall-clock rate so drift stays tiny; firing
+  // currentTime= every frame would stutter the preview.
+  const desiredSourceTime = Math.max(
+    0,
+    (time - background.anchorVideoTime) + background.trimStartSec,
+  );
+  useEffect(() => {
+    const v = videoRef.current;
+    if (!v) return;
+    const dur = Number.isFinite(v.duration) && v.duration > 0 ? v.duration : 0;
+    if (!dur) return;
+    const target = ((desiredSourceTime % dur) + dur) % dur;
+    if (Math.abs(v.currentTime - target) > 0.25) {
+      try {
+        v.currentTime = target;
+      } catch {
+        /* swallow — typically a brief NotAllowedError before metadata loads */
+      }
+    }
+  }, [desiredSourceTime]);
+
+  // Mirror the timeline's play/pause onto the <video> element so
+  // pausing the editor pauses the bg, and scrubbing the playhead /
+  // dragging trim handles updates the visible frame without the
+  // video drifting forward at wall-clock 1× while the timeline is
+  // stationary.
+  useEffect(() => {
+    const v = videoRef.current;
+    if (!v) return;
+    if (playing && v.paused) {
+      v.play().catch(() => {
+        /* autoplay restrictions on first run — harmless */
+      });
+    } else if (!playing && !v.paused) {
+      v.pause();
+    }
+  }, [playing]);
+
   // Only mark the element as anonymous-CORS once the source is
   // same-origin (data: or blob:). On the brief initial render before
   // the blob fetch completes, renderSrc is still the original hosted
@@ -203,6 +256,7 @@ function VideoBackground({
   return (
     <>
       <video
+        ref={videoRef}
         data-export-ignore="true"
         data-project-bg-video="true"
         src={renderSrc}
