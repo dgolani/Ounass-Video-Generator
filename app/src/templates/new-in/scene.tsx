@@ -34,6 +34,7 @@ import {
 } from '../../engine';
 import type { NewInProps } from './schema';
 import { BoutiqueLogo } from '../BoutiqueLogo';
+import { MediaBackground } from '../MediaBackground';
 import { composePrice, useCurrencyForLocale } from '../../lib/price';
 
 const BASE_W = 1080;
@@ -479,20 +480,10 @@ export function NewInScene({
         color: colors.ink,
       }}
     >
-      {/* Background — uploaded image replaces the paper gradient */}
+      {/* Background — uploaded image OR autoplay video replaces the
+       *  paper gradient. MediaBackground auto-detects the URL kind. */}
       {backgroundImage ? (
-        <img
-          src={backgroundImage}
-          alt=""
-          style={{
-            position: 'absolute',
-            inset: 0,
-            width: '100%',
-            height: '100%',
-            objectFit: 'cover',
-            zIndex: 0,
-          }}
-        />
+        <MediaBackground src={backgroundImage} />
       ) : (
         <>
           {/* Paper gradient */}

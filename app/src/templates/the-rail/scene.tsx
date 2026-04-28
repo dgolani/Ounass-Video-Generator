@@ -28,6 +28,7 @@ import {
 } from '../../engine';
 import type { RailProps, RailProduct } from './schema';
 import { BoutiqueLogo } from '../BoutiqueLogo';
+import { MediaBackground } from '../MediaBackground';
 import { composePrice, useCurrencyForLocale } from '../../lib/price';
 
 const BASE_W = 1080;
@@ -460,20 +461,10 @@ export function TheRailScene({
         color: colors.ink,
       }}
     >
-      {/* Background — either uploaded image (replaces gradient) or paper + grain */}
+      {/* Background — uploaded image OR autoplay video replaces the
+       *  gradient. MediaBackground auto-detects the URL kind. */}
       {backgroundImage ? (
-        <img
-          src={backgroundImage}
-          alt=""
-          style={{
-            position: 'absolute',
-            inset: 0,
-            width: '100%',
-            height: '100%',
-            objectFit: 'cover',
-            zIndex: 0,
-          }}
-        />
+        <MediaBackground src={backgroundImage} />
       ) : (
         <>
           <div

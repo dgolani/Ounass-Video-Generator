@@ -29,7 +29,8 @@ export const fields: FieldDescriptor[] = [
     path: 'backgroundImage',
     label: 'Custom backdrop',
     aspectRatio: 9 / 16,
-    hint: 'Optional. When set, replaces the paper gradient entirely in BOTH light and dark modes.',
+    acceptVideo: true,
+    hint: 'Optional image or video (mp4 / webm / mov). Videos autoplay muted and loop. Replaces the paper gradient entirely in BOTH light and dark modes. Max 3 MB for inline video uploads.',
   },
 
   { kind: 'section', label: 'Kicker' },

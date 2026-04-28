@@ -73,6 +73,13 @@ export type FieldDescriptor =
        *  URL and recoloured by templates via CSS mask-image. Use for
        *  boutique/brand logos. */
       svgOnly?: boolean;
+      /** When true, the dropzone also accepts video uploads (mp4 / webm /
+       *  mov) in addition to images. Videos are stored as data URLs and
+       *  rendered with `<video autoplay loop muted playsInline>` by
+       *  templates that consume the field via `<MediaBackground>`. Best
+       *  paired with full-bleed backdrop fields; raw uploads are capped
+       *  at 3 MB so the project still fits in localStorage. */
+      acceptVideo?: boolean;
     }
   | {
       kind: 'productList';

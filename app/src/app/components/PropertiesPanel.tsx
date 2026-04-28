@@ -21,6 +21,14 @@ import {
   sanitizeSvg,
   svgToDataURL,
 } from '../../lib/logo';
+import {
+  ACCEPTED_VIDEO_MIMES,
+  MAX_VIDEO_FILE_BYTES,
+  formatBytes,
+  isVideoFile,
+  isVideoUrl,
+  readFileAsDataURL,
+} from '../../lib/media';
 import { uid } from '../../lib/uid';
 import { mapOunassProductToFields } from '../../lib/importers/ounass';
 import { OunassImporterDialog } from './OunassImporterDialog';
@@ -199,6 +207,7 @@ export function PropertiesPanel({
                       aspectRatio={field.aspectRatio ?? 1}
                       size="large"
                       svgOnly={field.svgOnly}
+                      acceptVideo={field.acceptVideo}
                     />
                   </div>
                   {showFormatBtn && (
@@ -576,6 +585,7 @@ export function ImageDropZone({
   aspectRatio,
   size = 'small',
   svgOnly = false,
+  acceptVideo = false,
 }: {
   url: string;
   onImage: (dataURL: string) => void;
@@ -588,11 +598,19 @@ export function ImageDropZone({
    *  resize. Used by the Brand Kit logo field so templates can recolour
    *  the logo via CSS mask-image. */
   svgOnly?: boolean;
+  /** When true, the dropzone also accepts video uploads (mp4 / webm /
+   *  mov) up to MAX_VIDEO_FILE_BYTES. Videos are stored verbatim as
+   *  data URLs (no resize) and the preview switches to an autoplaying
+   *  muted <video>. Mutually compatible with image uploads — the
+   *  marketer can pick either. */
+  acceptVideo?: boolean;
 }) {
   const inputRef = useRef<HTMLInputElement | null>(null);
   const [dragActive, setDragActive] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const urlIsVideo = isVideoUrl(url);
 
   const handleFile = async (file: File | null | undefined) => {
     if (!file) return;
@@ -606,6 +624,14 @@ export function ImageDropZone({
         const raw = await readFileAsText(file);
         const clean = sanitizeSvg(raw);
         onImage(svgToDataURL(clean));
+      } else if (acceptVideo && isVideoFile(file)) {
+        if (file.size > MAX_VIDEO_FILE_BYTES) {
+          throw new Error(
+            `Video too large (${formatBytes(file.size)}). Max ${formatBytes(MAX_VIDEO_FILE_BYTES)}. Compress the clip or trim its length.`,
+          );
+        }
+        const dataURL = await readFileAsDataURL(file);
+        onImage(dataURL);
       } else {
         const dataURL = await resizeImageToDataURL(file, 1080, 0.85);
         onImage(dataURL);
@@ -658,16 +684,34 @@ export function ImageDropZone({
         }}
       >
         {url ? (
-          <img
-            src={url}
-            alt=""
-            style={{
-              width: '100%',
-              height: '100%',
-              objectFit: small ? 'cover' : 'contain',
-              padding: small ? 0 : 12,
-            }}
-          />
+          urlIsVideo ? (
+            <video
+              src={url}
+              autoPlay
+              loop
+              muted
+              playsInline
+              controls={false}
+              style={{
+                width: '100%',
+                height: '100%',
+                objectFit: small ? 'cover' : 'contain',
+                padding: small ? 0 : 12,
+                background: '#000',
+              }}
+            />
+          ) : (
+            <img
+              src={url}
+              alt=""
+              style={{
+                width: '100%',
+                height: '100%',
+                objectFit: small ? 'cover' : 'contain',
+                padding: small ? 0 : 12,
+              }}
+            />
+          )
         ) : (
           <span
             style={{
@@ -685,9 +729,13 @@ export function ImageDropZone({
               ? 'Uploading'
               : svgOnly
                 ? 'Drop SVG or click to upload'
-                : small
-                  ? 'Drop or click'
-                  : 'Drop image or click to upload'}
+                : acceptVideo
+                  ? small
+                    ? 'Drop or click'
+                    : 'Drop image or video, or click to upload'
+                  : small
+                    ? 'Drop or click'
+                    : 'Drop image or click to upload'}
           </span>
         )}
         {busy && (
@@ -739,7 +787,13 @@ export function ImageDropZone({
       <input
         ref={inputRef}
         type="file"
-        accept={svgOnly ? '.svg,image/svg+xml' : 'image/*'}
+        accept={
+          svgOnly
+            ? '.svg,image/svg+xml'
+            : acceptVideo
+              ? `image/*,${ACCEPTED_VIDEO_MIMES.join(',')},.mp4,.webm,.mov,.m4v`
+              : 'image/*'
+        }
         onChange={(e) => {
           handleFile(e.target.files?.[0]);
           e.currentTarget.value = '';
