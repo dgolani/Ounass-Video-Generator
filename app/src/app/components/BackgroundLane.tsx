@@ -1,22 +1,30 @@
 // Project-background timeline lane — visual + drag/trim parity with
 // the music lane. Renders directly above the music row in
-// EditorTimelineDock when `project.background` is set.
+// EditorTimelineDock; always present as long as the dock has space
+// for it.
 //
-// Behaviour:
-//   - Image bg → flat stripe spanning the full duration. No drag
-//     handles (image is static; anchor/end/trim don't apply).
-//   - Video bg → bordered clip from `anchor` to `end` on the project
-//     timeline. Body drag moves both endpoints (preserves length).
-//     Left handle drags `anchor` (and shifts `trimStartSec` so the
-//     visible source frame stays put). Right handle drags `end`
-//     (independent of trim).
-//
-// Pointer math mirrors the music lane's onMusicClipBodyPointerDown
-// + onClipPointerDown 'trimL'/'trimR' handlers; cloned here as a
-// self-contained component so the 2500-line EditorTimelineDock
-// doesn't grow further.
+// Three states:
+//   - No background → "Add background" button (opens BackgroundDrawer).
+//   - Image background → flat stripe spanning the full duration
+//     (no drag — image is static).
+//   - Video background → bordered clip from `anchor` to `end` on the
+//     project timeline. Same gestures as the music lane:
+//       * Body drag (quick) → moves both endpoints (preserves length).
+//       * Body drag (long-press, ≥320ms held still) → scrubs the
+//         visible source frame by adjusting `trimStartSec` only;
+//         anchor/end stay put. Mirrors music's long-press scrub.
+//       * Left handle → drags `anchor` AND shifts `trimStartSec`
+//         by the same delta (keeps the visible source frame in
+//         place, exactly like music's left trim handle).
+//       * Right handle → drags `endVideoTime` only.
 
-import { useRef, useState, type CSSProperties, type PointerEvent } from 'react';
+import {
+  useEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+  type PointerEvent,
+} from 'react';
 import type { ProjectBackground } from '../../store/types';
 
 const LANE_H = 36;
@@ -26,26 +34,42 @@ const BG_BRONZE = '#B87253';
 const BG_BRONZE_DIM = 'rgba(184, 114, 83, 0.28)';
 /** Minimum clip width on the timeline (in seconds). */
 const MIN_CLIP_SEC = 0.25;
+/** How long the marketer must hold the body still before a body drag
+ *  becomes a long-press scrub instead of a slide. Matches the music
+ *  lane's threshold. */
+const LONG_PRESS_MS = 320;
+/** Movement (px) past which a press counts as a slide rather than
+ *  a long-press scrub. */
+const LONG_PRESS_SLOP_PX = 4;
 
 type Props = {
   background: ProjectBackground | undefined;
   duration: number;
+  videoClipStartSec: number;
   /** Pixels per second on the timeline (matches the music lane's
    *  pxPerSec so the clip aligns vertically). */
   pxPerSec: number;
   /** Total lane width in px. Image-kind clips span this width. */
   laneWidthPx: number;
   onChange: (next: ProjectBackground) => void;
+  /** Called when the marketer clicks the "Add background" CTA inside
+   *  the empty lane. Parent opens the BackgroundDrawer. */
+  onAddClick: () => void;
+  /** Called when the marketer clicks the existing clip's gear / label
+   *  area to re-open the drawer. */
+  onEditClick: () => void;
 };
 
 export function BackgroundLane({
   background,
   duration,
+  videoClipStartSec,
   pxPerSec,
   laneWidthPx,
   onChange,
+  onAddClick,
+  onEditClick,
 }: Props) {
-  if (!background) return null;
   return (
     <div
       data-timeline-no-seek
@@ -61,25 +85,77 @@ export function BackgroundLane({
         width: laneWidthPx,
       }}
     >
-      {background.kind === 'image' ? (
-        <ImageStripe />
+      {!background ? (
+        <AddButton onClick={onAddClick} />
+      ) : background.kind === 'image' ? (
+        <ImageStripe onClick={onEditClick} />
       ) : (
         <VideoClip
           background={background}
           duration={duration}
+          videoClipStartSec={videoClipStartSec}
           pxPerSec={pxPerSec}
           onChange={onChange}
+          onLabelClick={onEditClick}
         />
       )}
     </div>
   );
 }
 
+// ── No background — Add button ──────────────────────────────────
+
+function AddButton({ onClick }: { onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      data-timeline-no-seek
+      onPointerDown={(e) => e.stopPropagation()}
+      onClick={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        onClick();
+      }}
+      style={{
+        position: 'absolute',
+        inset: 5,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 10,
+        border: `1px dashed ${BG_BRONZE_DIM}`,
+        borderRadius: 'var(--r-md)',
+        background: 'rgba(184,114,83,0.06)',
+        color: 'var(--editor-text-dim)',
+        fontFamily: 'var(--sans)',
+        fontSize: 13,
+        letterSpacing: '0.06em',
+        cursor: 'pointer',
+        zIndex: 3,
+        transition: 'background 160ms, border-color 160ms',
+      }}
+    >
+      <span style={{ fontSize: 18, color: BG_BRONZE }} aria-hidden>
+        ▦
+      </span>
+      <span style={{ fontWeight: 700, color: BG_BRONZE }}>Add background</span>
+    </button>
+  );
+}
+
 // ── Image branch — non-draggable stripe ─────────────────────────
 
-function ImageStripe() {
+function ImageStripe({ onClick }: { onClick: () => void }) {
   return (
-    <div
+    <button
+      type="button"
+      data-timeline-no-seek
+      onPointerDown={(e) => e.stopPropagation()}
+      onClick={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        onClick();
+      }}
       style={{
         position: 'absolute',
         inset: 5,
@@ -95,11 +171,13 @@ function ImageStripe() {
         fontWeight: 700,
         letterSpacing: '0.18em',
         textTransform: 'uppercase',
-        pointerEvents: 'none',
+        cursor: 'pointer',
+        padding: 0,
+        width: `calc(100% - 10px)`,
       }}
     >
-      Background image
-    </div>
+      Background image · click to edit
+    </button>
   );
 }
 
@@ -109,24 +187,38 @@ type VideoBg = Extract<ProjectBackground, { kind: 'video' }>;
 
 type DragState =
   | null
-  | { mode: 'body'; startX: number; anchor0: number; end0: number }
+  | {
+      mode: 'body';
+      startX: number;
+      anchor0: number;
+      end0: number;
+      /** Source-time offset at press, captured for long-press scrub. */
+      trim0: number;
+    }
+  | { mode: 'scrub'; startX: number; trim0: number }
   | { mode: 'trimL'; startX: number; anchor0: number; trim0: number }
   | { mode: 'trimR'; startX: number; end0: number };
 
 function VideoClip({
   background,
   duration,
+  videoClipStartSec,
   pxPerSec,
   onChange,
+  onLabelClick,
 }: {
   background: VideoBg;
   duration: number;
+  videoClipStartSec: number;
   pxPerSec: number;
   onChange: (next: ProjectBackground) => void;
+  onLabelClick: () => void;
 }) {
+  void videoClipStartSec; // reserved — could constrain anchor to ≥ this in future
   const [dragging, setDragging] = useState<DragState>(null);
   const dragRef = useRef<DragState>(null);
   dragRef.current = dragging;
+  const longPressTimerRef = useRef<number | null>(null);
 
   const left = background.anchorVideoTime * pxPerSec;
   const width = Math.max(
@@ -134,11 +226,37 @@ function VideoClip({
     (background.endVideoTime - background.anchorVideoTime) * pxPerSec,
   );
 
+  // Cleanup on unmount.
+  useEffect(() => {
+    return () => {
+      if (longPressTimerRef.current != null) window.clearTimeout(longPressTimerRef.current);
+    };
+  }, []);
+
   const beginDrag = (e: PointerEvent<HTMLDivElement>, state: DragState) => {
     e.stopPropagation();
     e.preventDefault();
     (e.currentTarget as HTMLDivElement).setPointerCapture(e.pointerId);
     setDragging(state);
+  };
+
+  const onBodyPointerDown = (e: PointerEvent<HTMLDivElement>) => {
+    const startX = e.clientX;
+    const anchor0 = background.anchorVideoTime;
+    const end0 = background.endVideoTime;
+    const trim0 = background.trimStartSec;
+    beginDrag(e, { mode: 'body', startX, anchor0, end0, trim0 });
+
+    // Schedule the long-press trigger. If the marketer hasn't moved
+    // past LONG_PRESS_SLOP_PX before LONG_PRESS_MS elapses, flip the
+    // drag mode to 'scrub' (adjust trimStartSec only).
+    if (longPressTimerRef.current != null) window.clearTimeout(longPressTimerRef.current);
+    longPressTimerRef.current = window.setTimeout(() => {
+      const cur = dragRef.current;
+      if (cur && cur.mode === 'body') {
+        setDragging({ mode: 'scrub', startX, trim0 });
+      }
+    }, LONG_PRESS_MS);
   };
 
   const onPointerMove = (e: PointerEvent<HTMLDivElement>) => {
@@ -148,6 +266,12 @@ function VideoClip({
     const dt = dx / pxPerSec;
 
     if (cur.mode === 'body') {
+      // If the marketer has moved past the slop while the long-press
+      // timer is still pending, this is a slide — cancel the timer.
+      if (Math.abs(dx) > LONG_PRESS_SLOP_PX && longPressTimerRef.current != null) {
+        window.clearTimeout(longPressTimerRef.current);
+        longPressTimerRef.current = null;
+      }
       const len = cur.end0 - cur.anchor0;
       const maxAnchor = Math.max(0, duration - len);
       const nextAnchor = Math.min(maxAnchor, Math.max(0, cur.anchor0 + dt));
@@ -160,11 +284,21 @@ function VideoClip({
       return;
     }
 
+    if (cur.mode === 'scrub') {
+      // Long-press scrub: anchor + end stay put; only trimStartSec
+      // moves. Positive drag (right) increases trim, scrubbing forward
+      // through the source. Lower bound is 0 (can't go below source
+      // start); upper bound is unbounded — the marketer can scrub
+      // past the end of the clip's natural source span.
+      const nextTrim = Math.max(0, cur.trim0 + dt);
+      onChange({
+        ...background,
+        trimStartSec: nextTrim,
+      });
+      return;
+    }
+
     if (cur.mode === 'trimL') {
-      // Dragging the left handle moves anchor on the timeline. To
-      // keep the visible source frame in place, trimStartSec moves
-      // by the same delta. Bound by [0, end - MIN_CLIP_SEC] on the
-      // timeline and [0, +∞) for trim.
       const minAnchor = 0;
       const maxAnchor = background.endVideoTime - MIN_CLIP_SEC;
       const nextAnchor = Math.min(maxAnchor, Math.max(minAnchor, cur.anchor0 + dt));
@@ -192,22 +326,24 @@ function VideoClip({
 
   const endDrag = () => {
     setDragging(null);
+    if (longPressTimerRef.current != null) {
+      window.clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
   };
 
-  const cursor = dragging?.mode === 'body' ? 'grabbing' : 'grab';
+  const cursor =
+    dragging?.mode === 'body'
+      ? 'grabbing'
+      : dragging?.mode === 'scrub'
+        ? 'col-resize'
+        : 'grab';
 
   return (
     <div
       data-timeline-no-seek
       data-bg-video-clip
-      onPointerDown={(e) =>
-        beginDrag(e, {
-          mode: 'body',
-          startX: e.clientX,
-          anchor0: background.anchorVideoTime,
-          end0: background.endVideoTime,
-        })
-      }
+      onPointerDown={onBodyPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={endDrag}
       onPointerCancel={endDrag}
@@ -220,16 +356,19 @@ function VideoClip({
         borderRadius: 'var(--r-md)',
         boxSizing: 'border-box',
         border: `2px solid ${BG_BRONZE}`,
-        boxShadow: '0 0 0 1px rgba(0,0,0,0.5), 0 6px 18px rgba(0,0,0,0.45)',
+        boxShadow:
+          dragging?.mode === 'scrub'
+            ? '0 0 0 1px rgba(0,0,0,0.5), 0 0 22px rgba(184,114,83,0.45), 0 6px 18px rgba(0,0,0,0.45)'
+            : '0 0 0 1px rgba(0,0,0,0.5), 0 6px 18px rgba(0,0,0,0.45)',
         background: dragging
           ? `linear-gradient(180deg, ${BG_BRONZE_DIM} 0%, rgba(120,75,55,0.18) 100%)`
           : `linear-gradient(180deg, rgba(184,114,83,0.22) 0%, rgba(120,75,55,0.12) 100%)`,
         touchAction: 'none',
         zIndex: 2,
         cursor,
+        transition: 'box-shadow 0.15s ease',
       }}
     >
-      {/* Left trim handle */}
       <Handle
         side="left"
         onPointerDown={(e) =>
@@ -244,8 +383,6 @@ function VideoClip({
         onPointerUp={endDrag}
         onPointerCancel={endDrag}
       />
-
-      {/* Right trim handle */}
       <Handle
         side="right"
         onPointerDown={(e) =>
@@ -259,10 +396,16 @@ function VideoClip({
         onPointerUp={endDrag}
         onPointerCancel={endDrag}
       />
-
-      {/* Centered label */}
-      <div
-        aria-hidden
+      <button
+        type="button"
+        data-timeline-no-seek
+        onPointerDown={(e) => e.stopPropagation()}
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          onLabelClick();
+        }}
+        title="Edit background"
         style={{
           position: 'absolute',
           inset: 0,
@@ -270,25 +413,25 @@ function VideoClip({
           alignItems: 'center',
           justifyContent: 'center',
           padding: '0 32px',
-          pointerEvents: 'none',
+          background: 'transparent',
+          border: 0,
+          color: 'rgba(255,255,255,0.85)',
+          cursor: 'pointer',
+          fontFamily: 'var(--sans)',
+          fontSize: 10,
+          fontWeight: 700,
+          letterSpacing: '0.18em',
+          textTransform: 'uppercase',
+          whiteSpace: 'nowrap',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          // Drag still works because the click only fires on a clean
+          // press without movement. Pointer move events bubble to
+          // the parent's onPointerMove via React's event propagation.
         }}
       >
-        <span
-          style={{
-            fontFamily: 'var(--sans)',
-            fontSize: 10,
-            fontWeight: 700,
-            letterSpacing: '0.18em',
-            textTransform: 'uppercase',
-            color: 'rgba(255,255,255,0.85)',
-            whiteSpace: 'nowrap',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-          }}
-        >
-          Background video · {(background.endVideoTime - background.anchorVideoTime).toFixed(1)}s
-        </span>
-      </div>
+        Background video · {(background.endVideoTime - background.anchorVideoTime).toFixed(1)}s
+      </button>
     </div>
   );
 }

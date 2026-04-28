@@ -14,6 +14,7 @@ import { probeAudioDurationSec } from '../../lib/audioProbe';
 import { MAX_TIMELINE_EXTENT_SEC, timelineContentUpperSec } from '../../lib/timelineBounds';
 import { MusicLibraryDrawer } from './MusicLibraryDrawer';
 import { BackgroundLane } from './BackgroundLane';
+import { BackgroundDrawer } from './BackgroundDrawer';
 import type { Project, ProjectBackground } from '../../store/types';
 import type { SceneOutline } from '../../templates/types';
 
@@ -255,6 +256,7 @@ export function EditorTimelineDock({
   const timelineInteract = useRef(false);
   const [padRight, setPadRight] = useState(0);
   const [audioMenuOpen, setAudioMenuOpen] = useState(false);
+  const [bgDrawerOpen, setBgDrawerOpen] = useState(false);
   const [soundPanelOpen, setSoundPanelOpen] = useState(false);
   const audioMenuTriggerRef = useRef<HTMLButtonElement | null>(null);
   const soundPanelRef = useRef<HTMLDivElement | null>(null);
@@ -988,6 +990,17 @@ export function EditorTimelineDock({
     />
   );
 
+  const bgDrawerEl = (
+    <BackgroundDrawer
+      open={bgDrawerOpen}
+      onClose={() => setBgDrawerOpen(false)}
+      background={background}
+      duration={duration}
+      videoClipStartSec={videoClipStartSec}
+      onChange={(next) => onPatch({ background: next })}
+    />
+  );
+
   if (cinemaMode) {
     const ext = Math.max(0.001, timelineExtentSec);
     const vLeftPct = (videoClipStartSec / ext) * 100;
@@ -1354,6 +1367,7 @@ export function EditorTimelineDock({
         </div>
       </div>
       {musicLibraryDrawerEl}
+      {bgDrawerEl}
       </>
     );
   }
@@ -2048,15 +2062,16 @@ export function EditorTimelineDock({
                 </div>
               </div>
 
-              {background ? (
-                <BackgroundLane
-                  background={background}
-                  duration={duration}
-                  pxPerSec={pxPerSec}
-                  laneWidthPx={displayTrackW}
-                  onChange={(next) => onPatch({ background: next })}
-                />
-              ) : null}
+              <BackgroundLane
+                background={background}
+                duration={duration}
+                videoClipStartSec={videoClipStartSec}
+                pxPerSec={pxPerSec}
+                laneWidthPx={displayTrackW}
+                onChange={(next) => onPatch({ background: next })}
+                onAddClick={() => setBgDrawerOpen(true)}
+                onEditClick={() => setBgDrawerOpen(true)}
+              />
 
               <div
                 data-timeline-no-seek
@@ -2512,6 +2527,7 @@ export function EditorTimelineDock({
 
     </div>
     {musicLibraryDrawerEl}
+      {bgDrawerEl}
     </>
   );
 }

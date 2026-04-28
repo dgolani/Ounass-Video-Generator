@@ -58,7 +58,10 @@ function normalizeProject(raw: Project): Project {
   // shape (`props.backgroundImage` / `props.videoSrc`) so existing
   // projects keep their backdrop after the cutover. The migration runs
   // once per load; future updates write to `raw.background` directly.
-  const background = normalizeBackground(raw.background, raw.props, L);
+  // The video bg anchor + end default to the content layer's range
+  // (videoClipStartSec → videoClipStartSec + duration) so the bg
+  // visually aligns with the blue content clip on the timeline.
+  const background = normalizeBackground(raw.background, raw.props, L, vStart);
 
   return {
     ...raw,
@@ -82,6 +85,7 @@ function normalizeBackground(
   raw: ProjectBackground | undefined,
   props: unknown,
   duration: number,
+  videoClipStartSec: number,
 ): ProjectBackground | undefined {
   // Path A — explicit background already set on the project.
   if (raw && typeof raw === 'object' && typeof (raw as ProjectBackground).src === 'string') {
@@ -90,11 +94,13 @@ function normalizeBackground(
       return { kind: 'image', src: raw.src, dim };
     }
     if (raw.kind === 'video') {
-      const anchor = Math.max(0, Number.isFinite(raw.anchorVideoTime) ? raw.anchorVideoTime : 0);
+      const defaultAnchor = videoClipStartSec;
+      const defaultEnd = videoClipStartSec + duration;
+      const anchor = Math.max(0, Number.isFinite(raw.anchorVideoTime) ? raw.anchorVideoTime : defaultAnchor);
       const trim = Math.max(0, Number.isFinite(raw.trimStartSec) ? raw.trimStartSec : 0);
       const end = Math.max(
         anchor + 0.05,
-        Math.min(duration, Number.isFinite(raw.endVideoTime) ? raw.endVideoTime : duration),
+        Number.isFinite(raw.endVideoTime) ? raw.endVideoTime : defaultEnd,
       );
       return {
         kind: 'video',
@@ -122,9 +128,9 @@ function normalizeBackground(
           kind: 'video',
           src,
           dim: typeof p.videoDim === 'number' ? clamp01(p.videoDim) : 0.24,
-          anchorVideoTime: 0,
+          anchorVideoTime: videoClipStartSec,
           trimStartSec: 0,
-          endVideoTime: duration,
+          endVideoTime: videoClipStartSec + duration,
         };
       }
       return { kind: 'image', src, dim: 0 };

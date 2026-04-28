@@ -42,7 +42,6 @@ import { getTemplate } from '../../templates/registry';
 import { Button } from '../../ui/primitives';
 import { EditorBrandPanel, splitEditorFields } from '../components/EditorBrandPanel';
 import { PropertiesPanel } from '../components/PropertiesPanel';
-import { ProjectBackgroundPanel } from '../components/ProjectBackgroundPanel';
 import { ExportModal } from '../components/ExportModal';
 import { EditorTimelineDock } from '../components/EditorTimelineDock';
 import { useEditorMusicPreview } from '../hooks/useEditorMusicPreview';
@@ -958,11 +957,6 @@ export function Editor() {
           overflow: 'auto',
         }}
       >
-        <ProjectBackgroundPanel
-          background={editable.background}
-          onChange={(next) => onTimelinePatch({ background: next })}
-          duration={duration}
-        />
         <PropertiesPanel
           fields={rightPaneFields}
           value={localProps}
