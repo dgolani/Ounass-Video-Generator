@@ -294,13 +294,45 @@ async function prepareVideosForExport(
     // Only http(s) URLs need special handling.
     if (!/^https?:\/\//i.test(originalSrc)) continue;
 
+    let blob: Blob | null = null;
     try {
-      // Pull the file via fetch with default 'cors' mode. If the host
-      // sends `access-control-allow-origin`, we get a real blob. If not,
-      // fetch throws, we fall through to the fallback branch.
+      // (1) Direct fetch with CORS. Works for hosts that send the
+      //     Access-Control-Allow-Origin header (most modern CDNs).
       const r = await fetch(originalSrc, { mode: 'cors', credentials: 'omit' });
-      if (!r.ok) throw new Error('fetch returned ' + r.status);
-      const blob = await r.blob();
+      if (!r.ok) throw new Error('direct fetch returned ' + r.status);
+      blob = await r.blob();
+    } catch {
+      // (2) Same-origin proxy fallback. The dev server (vite.config.ts)
+      //     and the Vercel serverless function at api/media-proxy.ts
+      //     both expose `/api/media-proxy?url=<target>` — they fetch
+      //     the asset server-side (no browser CORS check) and re-emit
+      //     it from our origin with `Access-Control-Allow-Origin: *`.
+      //     The marketer's video host doesn't need to support CORS for
+      //     this to work, as long as it appears in our proxy's
+      //     allow-list (Pexels, Cloudinary, Coverr, etc.).
+      try {
+        const proxied = `/api/media-proxy?url=${encodeURIComponent(originalSrc)}`;
+        const r2 = await fetch(proxied, { mode: 'cors', credentials: 'omit' });
+        if (!r2.ok) throw new Error('proxy fetch returned ' + r2.status);
+        blob = await r2.blob();
+      } catch {
+        blob = null;
+      }
+    }
+
+    if (!blob) {
+      // Both direct fetch + proxy failed. Skip the video from the
+      // rasterized frame so the export still succeeds; the user gets
+      // an MP4 with the dim layer + scenes on a black backdrop where
+      // the video would have been.
+      v.dataset.exportIgnore = 'true';
+      restorations.push(() => {
+        delete v.dataset.exportIgnore;
+      });
+      continue;
+    }
+
+    try {
       const blobUrl = URL.createObjectURL(blob);
 
       // Save state we're about to mutate.
