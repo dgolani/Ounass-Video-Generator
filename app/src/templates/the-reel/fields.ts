@@ -66,7 +66,6 @@ export const fields: FieldDescriptor[] = [
       { value: 'drop', label: 'Drop-in (from above, settle)' },
       { value: 'tilt', label: 'Tilt-down (place from above)' },
     ],
-    hint: 'How the phone screen reveals when it lands on stage. Iris and streak animate the screen interior; drop and tilt animate the phone body itself.',
   },
   {
     kind: 'image',
