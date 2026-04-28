@@ -19,6 +19,9 @@ export type CountdownProps = {
   accentImage: string;    // optional accent (can be the placeholder)
   boutiqueName: string;
   logo?: string;
+  /** Optional custom backdrop — image data URL or hosted video URL.
+   *  When set, REPLACES the solid background. */
+  backgroundImage?: string;
   colors: CountdownColors;
 };
 
@@ -35,6 +38,7 @@ export const defaultProps: CountdownProps = {
   accentImage: salePlaceholder,
   boutiqueName: 'Ounass',
   logo: undefined,
+  backgroundImage: undefined,
   colors: {
     background: '#0A0A0A',
     paper: '#F5F3EF',

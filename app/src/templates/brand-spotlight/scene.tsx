@@ -17,6 +17,7 @@ import {
 import { composePrice, useCurrencyForLocale } from '../../lib/price';
 import type { SpotlightProps } from './schema';
 import { BoutiqueLogo } from '../BoutiqueLogo';
+import { MediaBackground } from '../MediaBackground';
 
 const BASE_W = 1080;
 const BASE_H = 1920;
@@ -78,6 +79,7 @@ export function BrandSpotlightScene({
     finalMeta,
     ctaButton,
     logo,
+    backgroundImage,
   } = props;
   const logoColor = useFieldColor('logo', '#fff');
 
@@ -248,20 +250,24 @@ export function BrandSpotlightScene({
       style={{
         position: 'absolute',
         inset: 0,
-        background: colors.background,
+        background: backgroundImage ? 'transparent' : colors.background,
         color: '#fff',
         overflow: 'hidden',
       }}
     >
-      {/* Background copper radial */}
-      <div
-        style={{
-          position: 'absolute',
-          inset: 0,
-          background: `radial-gradient(ellipse at 50% 30%, rgba(184,114,83,0.12), transparent 55%), linear-gradient(180deg, ${colors.backgroundDeep} 0%, #151515 100%)`,
-          zIndex: 0,
-        }}
-      />
+      {backgroundImage ? (
+        <MediaBackground src={backgroundImage} />
+      ) : (
+        /* Background copper radial */
+        <div
+          style={{
+            position: 'absolute',
+            inset: 0,
+            background: `radial-gradient(ellipse at 50% 30%, rgba(184,114,83,0.12), transparent 55%), linear-gradient(180deg, ${colors.backgroundDeep} 0%, #151515 100%)`,
+            zIndex: 0,
+          }}
+        />
+      )}
 
       {/* Top — "OUNASS PRESENTS" pinned below the top safe zone so the
        *  IG progress bar / username chip doesn't cover it. */}

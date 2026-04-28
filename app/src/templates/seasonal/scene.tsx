@@ -23,6 +23,7 @@ import {
 } from '../../engine';
 import type { SeasonalProps } from './schema';
 import { BoutiqueLogo } from '../BoutiqueLogo';
+import { MediaBackground } from '../MediaBackground';
 
 const BASE_W = 1080;
 const BASE_H = 1920;
@@ -120,6 +121,7 @@ export function SeasonalScene({
     finalSubline,
     ctaButton,
     logo,
+    backgroundImage,
   } = props;
   const logoColor = useFieldColor('logo', colors.ink);
 
@@ -279,21 +281,36 @@ export function SeasonalScene({
       style={{
         position: 'absolute',
         inset: 0,
-        background: colors.cream,
+        background: backgroundImage ? 'transparent' : colors.cream,
         color: colors.ink,
         overflow: 'hidden',
       }}
     >
-      {/* Background gradient wash (copper tinted radials over cream → bone) */}
-      <div
-        style={{
-          position: 'absolute',
-          inset: 0,
-          background: `radial-gradient(ellipse at 20% 15%, rgba(184,114,83,0.18), transparent 55%), radial-gradient(ellipse at 85% 85%, rgba(184,114,83,0.10), transparent 60%), linear-gradient(180deg, ${colors.cream} 0%, ${colors.backgroundDeep} 100%)`,
-          zIndex: 0,
-          opacity: time < T(FINAL_IN) ? 1 : 1 - finalOp,
-        }}
-      />
+      {backgroundImage ? (
+        /* Custom backdrop fades out as the final frame fades in, matching
+         *  the original cream wash's behaviour. */
+        <div
+          style={{
+            position: 'absolute',
+            inset: 0,
+            zIndex: 0,
+            opacity: time < T(FINAL_IN) ? 1 : 1 - finalOp,
+          }}
+        >
+          <MediaBackground src={backgroundImage} />
+        </div>
+      ) : (
+        /* Background gradient wash (copper tinted radials over cream → bone) */
+        <div
+          style={{
+            position: 'absolute',
+            inset: 0,
+            background: `radial-gradient(ellipse at 20% 15%, rgba(184,114,83,0.18), transparent 55%), radial-gradient(ellipse at 85% 85%, rgba(184,114,83,0.10), transparent 60%), linear-gradient(180deg, ${colors.cream} 0%, ${colors.backgroundDeep} 100%)`,
+            zIndex: 0,
+            opacity: time < T(FINAL_IN) ? 1 : 1 - finalOp,
+          }}
+        />
+      )}
 
       {/* Top brand line — anchored inside the content rect's top edge
        *  so it stays 20-base-px below the platform chrome (or canvas

@@ -24,6 +24,9 @@ export type HeroProps = {
   ctaText: string;
   ctaFooter: string;
   logo?: string;
+  /** Optional custom backdrop — image data URL or hosted video URL.
+   *  When set, REPLACES the solid background. */
+  backgroundImage?: string;
   colors: HeroColors;
 };
 
@@ -42,6 +45,7 @@ export const defaultProps: HeroProps = {
   ctaText: 'Shop Now',
   ctaFooter: 'Delivered in 60 minutes · Dubai & Abu Dhabi',
   logo: undefined,
+  backgroundImage: undefined,
   colors: {
     background: '#0F0C0A',
     paper: '#F5F3EF',

@@ -38,6 +38,9 @@ export type EditorialProps = {
   ctaFooter: string;
 
   logo?: string;
+  /** Optional custom backdrop — image data URL or hosted video URL.
+   *  When set, REPLACES the paper background. */
+  backgroundImage?: string;
   colors: EditorialColors;
 };
 
@@ -65,6 +68,7 @@ export const defaultProps: EditorialProps = {
   ctaFooter: 'Delivered in 60 minutes · Dubai & Abu Dhabi',
 
   logo: undefined,
+  backgroundImage: undefined,
 
   colors: {
     paper: '#F6F3EF',

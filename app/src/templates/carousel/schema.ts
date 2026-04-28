@@ -43,6 +43,10 @@ export type CarouselProps = {
 
   logo?: string;
 
+  /** Optional custom backdrop — image data URL or hosted video URL.
+   *  When set, REPLACES the dark background. */
+  backgroundImage?: string;
+
   colors: CarouselColors;
 };
 
@@ -70,6 +74,7 @@ export const defaultProps: CarouselProps = {
   ctaButton: 'Shop accessories',
 
   logo: undefined,
+  backgroundImage: undefined,
 
   colors: {
     background: '#121212',

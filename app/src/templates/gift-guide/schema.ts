@@ -44,6 +44,10 @@ export type GiftGuideProps = {
 
   logo?: string;
 
+  /** Optional custom backdrop — image data URL or hosted video URL.
+   *  When set, REPLACES the paper background. */
+  backgroundImage?: string;
+
   colors: GiftGuideColors;
 };
 
@@ -69,6 +73,7 @@ export const defaultProps: GiftGuideProps = {
   ctaButton: 'Shop the gift edit',
 
   logo: undefined,
+  backgroundImage: undefined,
 
   colors: {
     background: '#EDE9E2',

@@ -50,6 +50,10 @@ export type SpotlightProps = {
 
   logo?: string;
 
+  /** Optional custom backdrop — image data URL or hosted video URL.
+   *  When set, REPLACES the dark background + copper radial. */
+  backgroundImage?: string;
+
   colors: SpotlightColors;
 };
 
@@ -86,6 +90,7 @@ export const defaultProps: SpotlightProps = {
   ctaButton: 'Shop Giorgio Armani',
 
   logo: undefined,
+  backgroundImage: undefined,
 
   colors: {
     background: '#121212',

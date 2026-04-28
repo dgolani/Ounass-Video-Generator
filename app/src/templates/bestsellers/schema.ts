@@ -45,6 +45,10 @@ export type BestsellersProps = {
    *  `boutiqueName` in the header. */
   logo?: string;
 
+  /** Optional custom backdrop — image data URL or hosted video URL.
+   *  When set, REPLACES the paper background entirely. */
+  backgroundImage?: string;
+
   colors: BestsellersColors;
 };
 
@@ -66,6 +70,7 @@ export const defaultProps: BestsellersProps = {
   ctaButton: 'Shop the edit',
 
   logo: undefined,
+  backgroundImage: undefined,
 
   colors: {
     background: '#EDE9E2',     // paper

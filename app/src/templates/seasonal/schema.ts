@@ -52,6 +52,10 @@ export type SeasonalProps = {
 
   logo?: string;
 
+  /** Optional custom backdrop — image data URL or hosted video URL.
+   *  When set, REPLACES the cream wash + copper radials. */
+  backgroundImage?: string;
+
   colors: SeasonalColors;
 };
 
@@ -86,6 +90,7 @@ export const defaultProps: SeasonalProps = {
   ctaButton: 'Discover the collection',
 
   logo: undefined,
+  backgroundImage: undefined,
 
   colors: {
     background: '#F5F0E8',       // cream

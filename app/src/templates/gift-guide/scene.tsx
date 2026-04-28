@@ -14,6 +14,7 @@ import {
 } from '../../engine';
 import type { GiftGuideProps } from './schema';
 import { BoutiqueLogo } from '../BoutiqueLogo';
+import { MediaBackground } from '../MediaBackground';
 
 const BASE_W = 1080;
 const BASE_H = 1920;
@@ -90,6 +91,7 @@ export function GiftGuideScene({
     footHead,
     ctaButton,
     logo,
+    backgroundImage,
   } = props;
   const logoColor = useFieldColor('logo', colors.ink);
 
@@ -241,11 +243,12 @@ export function GiftGuideScene({
       style={{
         position: 'absolute',
         inset: 0,
-        background: colors.background,
+        background: backgroundImage ? 'transparent' : colors.background,
         color: colors.ink,
         overflow: 'hidden',
       }}
     >
+      {backgroundImage && <MediaBackground src={backgroundImage} />}
       {/* Warm paper wash */}
       <div
         style={{

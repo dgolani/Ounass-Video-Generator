@@ -16,6 +16,7 @@ import {
 import { composePrice, useCurrencyForLocale } from '../../lib/price';
 import type { CarouselProps } from './schema';
 import { BoutiqueLogo } from '../BoutiqueLogo';
+import { MediaBackground } from '../MediaBackground';
 
 const BASE_W = 1080;
 const BASE_H = 1920;
@@ -84,6 +85,7 @@ export function CarouselScene({
     finalSubline,
     ctaButton,
     logo,
+    backgroundImage,
   } = props;
   // Scene is dark-themed: `colors.card` is the light surface tone used
   // for both the item cards AND any light text over the dark scene bg.
@@ -240,11 +242,12 @@ export function CarouselScene({
       style={{
         position: 'absolute',
         inset: 0,
-        background: colors.background,
+        background: backgroundImage ? 'transparent' : colors.background,
         color: lightText,
         overflow: 'hidden',
       }}
     >
+      {backgroundImage && <MediaBackground src={backgroundImage} />}
       {/* Ambient copper radial */}
       <div
         style={{

@@ -43,6 +43,10 @@ export type LookbookProps = {
    *  place of the Fraunces wordmark text. */
   logo?: string;
 
+  /** Optional custom backdrop — image data URL or hosted video URL. When
+   *  set, REPLACES the solid `colors.background` behind every Act. */
+  backgroundImage?: string;
+
   colors: LookbookColors;
 };
 
@@ -70,6 +74,7 @@ export const defaultProps: LookbookProps = {
   ctaFooter: 'Tap · Delivered in 60 minutes · Dubai & Abu Dhabi',
 
   logo: undefined,
+  backgroundImage: undefined,
 
   colors: {
     background: '#0A0A0A',

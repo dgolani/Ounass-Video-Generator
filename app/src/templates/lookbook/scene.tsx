@@ -12,6 +12,7 @@ import {
 import { composePrice, useCurrencyForLocale } from '../../lib/price';
 import type { LookbookProps } from './schema';
 import { BoutiqueLogo } from '../BoutiqueLogo';
+import { MediaBackground } from '../MediaBackground';
 
 // Base canvas — the choreography was designed on 1080×1920. All pixel
 // literals below refer to this base. Scaling to any other canvas comes
@@ -845,7 +846,7 @@ export function LookbookScene({
     contentCX,
   };
 
-  const { colors } = props;
+  const { colors, backgroundImage } = props;
   const [focusIdx, setFocusIdx] = useState<number | null>(null);
   const [tapMark, setTapMark] = useState<{ x: number; y: number } | null>(null);
 
@@ -868,11 +869,12 @@ export function LookbookScene({
       style={{
         position: 'absolute',
         inset: 0,
-        background: colors.background,
+        background: backgroundImage ? 'transparent' : colors.background,
         cursor: 'pointer',
         overflow: 'hidden',
       }}
     >
+      {backgroundImage && <MediaBackground src={backgroundImage} />}
       <style>{`
         @keyframes heroIn {
           from { transform: scale(1.04) translateX(14px); opacity: 0.4; }

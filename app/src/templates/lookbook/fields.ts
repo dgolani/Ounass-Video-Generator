@@ -10,6 +10,16 @@ export const fields: FieldDescriptor[] = [
     hint: 'Shown in place of the outro wordmark. Transparent PNG recommended.',
   },
 
+  { kind: 'section', label: 'Background' },
+  {
+    kind: 'image',
+    path: 'backgroundImage',
+    label: 'Custom backdrop',
+    aspectRatio: 9 / 16,
+    acceptVideo: true,
+    hint: 'Upload an image, or paste a hosted video URL (mp4 / webm / mov) below. Videos autoplay muted and loop. Replaces the template backdrop entirely.',
+  },
+
   { kind: 'section', label: 'Opening' },
   { kind: 'text', path: 'kicker', label: 'Kicker', sceneIds: ['act-1'], role: 'body' },
   { kind: 'text', path: 'brand', label: 'Brand', sceneIds: ['act-1'], role: 'display', noTranslate: true },

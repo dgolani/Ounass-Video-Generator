@@ -9,6 +9,7 @@ import {
 } from '../../engine';
 import type { EditorialProps } from './schema';
 import { BoutiqueLogo } from '../BoutiqueLogo';
+import { MediaBackground } from '../MediaBackground';
 
 // Editorial — magazine-style masthead → 2×2 product grid → feature
 // zoom → editor signature. Always-safe regime; composes against the
@@ -747,15 +748,18 @@ export function EditorialScene({
     contentCX,
   };
 
+  const { backgroundImage } = props;
+
   return (
     <div
       style={{
         position: 'absolute',
         inset: 0,
-        background: props.colors.paper,
+        background: backgroundImage ? 'transparent' : props.colors.paper,
         overflow: 'hidden',
       }}
     >
+      {backgroundImage && <MediaBackground src={backgroundImage} />}
       <Masthead {...actProps} />
       <Grid {...actProps} />
       <Feature {...actProps} />

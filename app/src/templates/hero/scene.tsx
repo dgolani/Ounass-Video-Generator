@@ -10,6 +10,7 @@ import {
 import { composePrice, useCurrencyForLocale } from '../../lib/price';
 import type { HeroProps } from './schema';
 import { BoutiqueLogo } from '../BoutiqueLogo';
+import { MediaBackground } from '../MediaBackground';
 
 // Hero — single-product full-frame Ken-Burns with staged copy + CTA.
 // Composes against the safe rect at render time (see SAFE_ZONE_PATTERNS.md).
@@ -468,16 +469,18 @@ export function HeroScene({
   const contentBottom = height - safe.bottom;
 
   const actProps: ActProps = { props, T, s, safe, contentTop, contentBottom };
+  const { backgroundImage } = props;
 
   return (
     <div
       style={{
         position: 'absolute',
         inset: 0,
-        background: props.colors.background,
+        background: backgroundImage ? 'transparent' : props.colors.background,
         overflow: 'hidden',
       }}
     >
+      {backgroundImage && <MediaBackground src={backgroundImage} />}
       <HeroImage {...actProps} />
       <Reveal {...actProps} />
       <Copy {...actProps} />

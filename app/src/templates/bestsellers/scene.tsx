@@ -18,6 +18,7 @@ import {
 import { composePrice, useCurrencyForLocale } from '../../lib/price';
 import type { BestsellersProps } from './schema';
 import { BoutiqueLogo } from '../BoutiqueLogo';
+import { MediaBackground } from '../MediaBackground';
 
 const BASE_W = 1080;
 const BASE_H = 1920;
@@ -67,7 +68,7 @@ export function BestsellersScene({
   const { w, h, wh } = s;
   const { base: safe } = useSafeZone({ width, height });
   const currency = useCurrencyForLocale();
-  const { colors, products, boutiqueName, headerMeta, kicker, logo } = props;
+  const { colors, products, boutiqueName, headerMeta, kicker, logo, backgroundImage } = props;
   const logoColor = useFieldColor('logo', colors.ink);
 
   // ── Content rect (composition-safe window in output pixels) ───────────
@@ -236,11 +237,12 @@ export function BestsellersScene({
       style={{
         position: 'absolute',
         inset: 0,
-        background: colors.background,
+        background: backgroundImage ? 'transparent' : colors.background,
         color: colors.ink,
         overflow: 'hidden',
       }}
     >
+      {backgroundImage && <MediaBackground src={backgroundImage} />}
       {/* Grain / wash overlay */}
       <div
         style={{

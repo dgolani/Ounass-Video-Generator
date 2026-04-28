@@ -12,6 +12,16 @@ export const fields: FieldDescriptor[] = [
   { kind: 'text', path: 'boutiqueName', label: 'Boutique name', sceneIds: ['word-1', 'word-2', 'word-3', 'products'], noTranslate: true },
   { kind: 'text', path: 'sideEditorialLine', label: 'Side editorial line (e.g. "Vol. XII · SS26")', sceneIds: ['word-1', 'word-2', 'word-3', 'products'] },
 
+  { kind: 'section', label: 'Background' },
+  {
+    kind: 'image',
+    path: 'backgroundImage',
+    label: 'Custom backdrop',
+    aspectRatio: 9 / 16,
+    acceptVideo: true,
+    hint: 'Upload an image, or paste a hosted video URL (mp4 / webm / mov) below. Videos autoplay muted and loop. Replaces the template backdrop entirely.',
+  },
+
   { kind: 'section', label: 'Typographic refrain' },
   { kind: 'text', path: 'word1', label: 'Word 1 (e.g. "Summer")', sceneIds: ['word-1'], role: 'display' },
   { kind: 'text', path: 'word2', label: 'Word 2 (e.g. "in bloom")', sceneIds: ['word-2'], role: 'display' },
