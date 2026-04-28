@@ -224,22 +224,49 @@ function VideoBackground({
     }
   }, [desiredSourceTime]);
 
-  // Mirror the timeline's play/pause onto the <video> element so
-  // pausing the editor pauses the bg, and scrubbing the playhead /
-  // dragging trim handles updates the visible frame without the
-  // video drifting forward at wall-clock 1× while the timeline is
-  // stationary.
+  // Mirror the timeline's play/pause onto the <video> element. We
+  // can't rely on `<video autoPlay>` because that starts playback
+  // the moment the source's metadata is decoded — even if the
+  // timeline is paused, which causes a "video plays while editor
+  // shows pause" desync at first load until the marketer toggles
+  // play/pause manually. autoPlay is OFF (see the JSX below); this
+  // effect drives playback in both directions.
+  //
+  // Two effects, not one, because React only schedules an effect
+  // re-run when its deps change. We need to also ensure the desired
+  // state is enforced when the video element finishes loading
+  // (after a renderSrc swap from raw URL → blob:), at which point
+  // `playing` itself hasn't changed but the video does change state
+  // internally. Listening to `loadeddata` covers that.
   useEffect(() => {
     const v = videoRef.current;
     if (!v) return;
-    if (playing && v.paused) {
-      v.play().catch(() => {
-        /* autoplay restrictions on first run — harmless */
-      });
-    } else if (!playing && !v.paused) {
-      v.pause();
-    }
-  }, [playing]);
+    const enforce = () => {
+      if (playing && v.paused) {
+        v.play().catch(() => {
+          /* autoplay restrictions on first run — harmless */
+        });
+      } else if (!playing && !v.paused) {
+        v.pause();
+      }
+    };
+    enforce();
+    v.addEventListener('loadeddata', enforce);
+    v.addEventListener('canplay', enforce);
+    // The `play` event fires whenever the video starts playing —
+    // including any case the browser auto-resumes (e.g. after a
+    // visibility change). If the timeline is paused, immediately
+    // pause again. Belt + braces guarantee the desired state.
+    const onPlay = () => {
+      if (!playing && !v.paused) v.pause();
+    };
+    v.addEventListener('play', onPlay);
+    return () => {
+      v.removeEventListener('loadeddata', enforce);
+      v.removeEventListener('canplay', enforce);
+      v.removeEventListener('play', onPlay);
+    };
+  }, [playing, renderSrc]);
 
   // Only mark the element as anonymous-CORS once the source is
   // same-origin (data: or blob:). On the brief initial render before
@@ -261,7 +288,10 @@ function VideoBackground({
         data-project-bg-video="true"
         src={renderSrc}
         crossOrigin={isSameOriginSrc ? 'anonymous' : undefined}
-        autoPlay
+        // autoPlay deliberately OFF — the play/pause effect above
+        // mirrors the timeline's `playing` state onto the element.
+        // With autoPlay set, the video would race ahead of the
+        // editor on first load (timeline paused but video playing).
         loop
         muted
         playsInline
