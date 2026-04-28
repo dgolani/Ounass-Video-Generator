@@ -21,14 +21,7 @@ import {
   sanitizeSvg,
   svgToDataURL,
 } from '../../lib/logo';
-import {
-  ACCEPTED_VIDEO_MIMES,
-  MAX_VIDEO_FILE_BYTES,
-  formatBytes,
-  isVideoFile,
-  isVideoUrl,
-  readFileAsDataURL,
-} from '../../lib/media';
+import { isVideoUrl } from '../../lib/media';
 import { uid } from '../../lib/uid';
 import { mapOunassProductToFields } from '../../lib/importers/ounass';
 import { OunassImporterDialog } from './OunassImporterDialog';
@@ -207,8 +200,13 @@ export function PropertiesPanel({
                       aspectRatio={field.aspectRatio ?? 1}
                       size="large"
                       svgOnly={field.svgOnly}
-                      acceptVideo={field.acceptVideo}
                     />
+                    {field.acceptVideo && (
+                      <VideoUrlField
+                        url={url}
+                        onChange={(next) => set(next)}
+                      />
+                    )}
                   </div>
                   {showFormatBtn && (
                     <FormatButton
@@ -578,6 +576,59 @@ function ProductRow({
   );
 }
 
+/** Video URL paste input. Renders below the image dropzone for fields
+ *  flagged `acceptVideo: true`. The marketer hosts the clip on their
+ *  CDN / video host and pastes the URL — the runtime auto-detects video
+ *  vs image via `MediaBackground` and renders the right element.
+ *
+ *  The same `path` holds either an image data URL (from the upload
+ *  flow) or a video URL (from this field). Pasting a URL clears any
+ *  uploaded image, and uploading an image clears any pasted URL — the
+ *  two are mutually exclusive but live behind one field. */
+function VideoUrlField({
+  url,
+  onChange,
+}: {
+  url: string;
+  onChange: (next: string) => void;
+}) {
+  const showsHostedVideo = isVideoUrl(url) && !url.startsWith('data:');
+  return (
+    <div style={{ marginTop: 8 }}>
+      <input
+        type="url"
+        value={showsHostedVideo ? url : ''}
+        placeholder="…or paste a hosted video URL (mp4 / webm / mov)"
+        onChange={(e) => onChange(e.target.value)}
+        style={{
+          width: '100%',
+          boxSizing: 'border-box',
+          padding: '6px 10px',
+          fontSize: 11,
+          fontFamily: 'var(--mono)',
+          letterSpacing: '0.02em',
+          color: 'var(--editor-text)',
+          background: 'var(--editor-panel-2)',
+          border: '1px solid var(--editor-border)',
+          borderRadius: 'var(--r-sm)',
+          outline: 'none',
+        }}
+      />
+      <div
+        style={{
+          marginTop: 4,
+          fontFamily: 'var(--sans)',
+          fontSize: 10,
+          color: 'var(--editor-text-dim)',
+          letterSpacing: '0.02em',
+        }}
+      >
+        Videos autoplay muted and loop. Host on a CDN — no upload limit.
+      </div>
+    </div>
+  );
+}
+
 export function ImageDropZone({
   url,
   onImage,
@@ -585,7 +636,6 @@ export function ImageDropZone({
   aspectRatio,
   size = 'small',
   svgOnly = false,
-  acceptVideo = false,
 }: {
   url: string;
   onImage: (dataURL: string) => void;
@@ -598,18 +648,16 @@ export function ImageDropZone({
    *  resize. Used by the Brand Kit logo field so templates can recolour
    *  the logo via CSS mask-image. */
   svgOnly?: boolean;
-  /** When true, the dropzone also accepts video uploads (mp4 / webm /
-   *  mov) up to MAX_VIDEO_FILE_BYTES. Videos are stored verbatim as
-   *  data URLs (no resize) and the preview switches to an autoplaying
-   *  muted <video>. Mutually compatible with image uploads — the
-   *  marketer can pick either. */
-  acceptVideo?: boolean;
 }) {
   const inputRef = useRef<HTMLInputElement | null>(null);
   const [dragActive, setDragActive] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // The preview branch handles both kinds: an image data-URL from the
+  // upload path AND a hosted video URL pasted via the sibling
+  // VideoUrlField. Detection stays here so the preview is always in
+  // sync with whatever string is in `url`.
   const urlIsVideo = isVideoUrl(url);
 
   const handleFile = async (file: File | null | undefined) => {
@@ -624,14 +672,6 @@ export function ImageDropZone({
         const raw = await readFileAsText(file);
         const clean = sanitizeSvg(raw);
         onImage(svgToDataURL(clean));
-      } else if (acceptVideo && isVideoFile(file)) {
-        if (file.size > MAX_VIDEO_FILE_BYTES) {
-          throw new Error(
-            `Video too large (${formatBytes(file.size)}). Max ${formatBytes(MAX_VIDEO_FILE_BYTES)}. Compress the clip or trim its length.`,
-          );
-        }
-        const dataURL = await readFileAsDataURL(file);
-        onImage(dataURL);
       } else {
         const dataURL = await resizeImageToDataURL(file, 1080, 0.85);
         onImage(dataURL);
@@ -729,13 +769,9 @@ export function ImageDropZone({
               ? 'Uploading'
               : svgOnly
                 ? 'Drop SVG or click to upload'
-                : acceptVideo
-                  ? small
-                    ? 'Drop or click'
-                    : 'Drop image or video, or click to upload'
-                  : small
-                    ? 'Drop or click'
-                    : 'Drop image or click to upload'}
+                : small
+                  ? 'Drop or click'
+                  : 'Drop image or click to upload'}
           </span>
         )}
         {busy && (
@@ -787,13 +823,7 @@ export function ImageDropZone({
       <input
         ref={inputRef}
         type="file"
-        accept={
-          svgOnly
-            ? '.svg,image/svg+xml'
-            : acceptVideo
-              ? `image/*,${ACCEPTED_VIDEO_MIMES.join(',')},.mp4,.webm,.mov,.m4v`
-              : 'image/*'
-        }
+        accept={svgOnly ? '.svg,image/svg+xml' : 'image/*'}
         onChange={(e) => {
           handleFile(e.target.files?.[0]);
           e.currentTarget.value = '';
