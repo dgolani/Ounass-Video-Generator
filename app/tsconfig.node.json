@@ -5,6 +5,10 @@
     "lib": ["ES2023"],
     "module": "ESNext",
     "skipLibCheck": true,
+    /* vite.config.ts ships a /api/media-proxy middleware that uses
+     * Node APIs (URL, Buffer, fetch, IncomingMessage). Pull node
+     * typings in so `tsc -b` resolves them on Vercel's CI build. */
+    "types": ["node"],
 
     /* Bundler mode */
     "moduleResolution": "bundler",
