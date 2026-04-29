@@ -327,8 +327,20 @@ export async function exportVideoToMP4({
     }
     args.push('-movflags', '+faststart');
 
-    // Stop encoding when the PNG sequence ends — the looped bg video
-    // and music would otherwise drag past the project duration.
+    // HARD output cap. `-t DURATION` truncates the output at this
+    // length regardless of which input is finite. We use this in
+    // addition to (instead of?) `-shortest` because the latter has
+    // failed in practice: when both bg video and music are looped
+    // via `-stream_loop -1`, and the audio filter chain pads with
+    // `apad=whole_len=…` (which is a MIN, not a max), the [aout]
+    // stream never EOFs. ffmpeg then keeps encoding silence past
+    // the project duration — the "frame=300 stuck, time=01:19:39
+    // and growing" bug.
+    //
+    // -t terminates encoding at exactly `duration` seconds of
+    // output, no ambiguity. -shortest still helps for the no-audio
+    // / no-bg paths but is now belt-and-braces.
+    args.push('-t', String(duration));
     if (useAudio || useBgVideo) {
       args.push('-shortest');
     }
