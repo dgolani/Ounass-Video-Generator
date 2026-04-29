@@ -207,12 +207,34 @@ export async function exportVideoToMP4({
     // through so the UI shows a moving progress bar during the
     // encode step instead of a frozen "Encoding…" message that the
     // marketer can't tell apart from a hang.
+    //
+    // After progress hits 1.0 ffmpeg is still working — `+faststart`
+    // requires a second pass that rewrites the file with `moov` at
+    // the front, and that pass doesn't fire progress events. So
+    // when we hit 100% we flip the label to "Finalising…" so the
+    // marketer knows the encode is done but the file isn't quite
+    // written yet.
+    let lastReportedPct = 0;
     const onFfmpegProgress = ({ progress }: { progress: number; time: number }) => {
       if (!Number.isFinite(progress)) return;
       const pct = Math.min(100, Math.max(0, Math.round(progress * 100)));
-      onProgress({ stage: 'encoding', message: `${encodingBaseMessage} ${pct}%` });
+      if (pct < lastReportedPct - 1) return; // ignore brief regressions
+      lastReportedPct = pct;
+      const message =
+        pct >= 100
+          ? `${encodingBaseMessage} — finalising…`
+          : `${encodingBaseMessage} ${pct}%`;
+      onProgress({ stage: 'encoding', message });
     };
     ffmpeg.on('progress', onFfmpegProgress);
+
+    // Capture ffmpeg's stdout/stderr to the browser console — useful
+    // for diagnosing slow / hung encodes. Doesn't add user-visible
+    // chrome; only surfaces in DevTools.
+    const onFfmpegLog = ({ message }: { type: string; message: string }) => {
+      if (message) console.log('[ffmpeg]', message);
+    };
+    ffmpeg.on('log', onFfmpegLog);
 
     // Inputs in order: PNG sequence, [bg.mp4], [bgm.mp3]. Track each
     // input's index so the filter_complex labels stay in sync as the
@@ -293,7 +315,11 @@ export async function exportVideoToMP4({
     args.push(
       '-c:v', 'libx264',
       '-pix_fmt', 'yuv420p',
-      '-preset', 'fast',
+      // ffmpeg.wasm is single-threaded — preset speed dominates total
+      // encode time. `ultrafast` is 3–5× faster than `fast` at the
+      // cost of a larger output file, which is acceptable for short
+      // marketing clips. CRF stays at 22 for legible quality.
+      '-preset', 'ultrafast',
       '-crf', String(crf),
     );
     if (audioMapLabel) {
@@ -312,6 +338,7 @@ export async function exportVideoToMP4({
       await ffmpeg.exec(args);
     } finally {
       ffmpeg.off('progress', onFfmpegProgress);
+      ffmpeg.off('log', onFfmpegLog);
     }
     abort();
 
