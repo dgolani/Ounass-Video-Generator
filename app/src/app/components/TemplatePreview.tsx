@@ -1,7 +1,9 @@
 import { useEffect, useMemo } from 'react';
 import { Stage, useStageController, ThemeModeContext, type ThemeMode } from '../../engine';
 import type { TemplateEntry } from '../../templates/registry';
+import type { ProjectBackground } from '../../store/types';
 import { applyBrand, useBrand } from '../../store/brand';
+import { isVideoUrl } from '../../lib/media';
 
 type Props = {
   template: TemplateEntry;
@@ -45,6 +47,37 @@ function posterTimeFromSeed(seed: string, durationSec: number): number {
   const inset = Math.min(0.14 * d, d * 0.35);
   const span = Math.max(d - 2 * inset, 0.1);
   return inset + u * span;
+}
+
+/** Synthesize a `ProjectBackground` from a template's preview props
+ *  so gallery cards show the video / image backdrop the way the
+ *  editor would once the marketer creates a project from this
+ *  template. Mirrors the auto-migration logic in
+ *  `store/projects.ts:normalizeBackground` — picks `videoSrc`
+ *  (Reel-only legacy) first, then `backgroundImage`, then falls
+ *  through to undefined. */
+function previewBackgroundFromProps(
+  sceneProps: unknown,
+  duration: number,
+): ProjectBackground | undefined {
+  if (!sceneProps || typeof sceneProps !== 'object') return undefined;
+  const p = sceneProps as Record<string, unknown>;
+  const candidate =
+    (typeof p.videoSrc === 'string' && p.videoSrc) ||
+    (typeof p.backgroundImage === 'string' && p.backgroundImage) ||
+    undefined;
+  if (!candidate) return undefined;
+  if (isVideoUrl(candidate)) {
+    return {
+      kind: 'video',
+      src: candidate,
+      dim: typeof p.videoDim === 'number' ? Math.max(0, Math.min(1, p.videoDim)) : 0.24,
+      anchorVideoTime: 0,
+      trimStartSec: 0,
+      endVideoTime: duration,
+    };
+  }
+  return { kind: 'image', src: candidate, dim: 0 };
 }
 
 /** Resolve a theme-aware background colour from sceneProps.colors. Handles
@@ -125,6 +158,17 @@ export function TemplatePreview({
   const resolvedMode: ThemeMode = mode ?? 'light';
   const bg = resolveBackground(sceneProps, resolvedMode);
 
+  // Gallery / dashboard preview cards never reach the editor's
+  // BackgroundDrawer state — they render straight off the template's
+  // defaultProps. Synthesize a project-bg from the legacy
+  // `videoSrc` / `backgroundImage` fields so cards show the same
+  // video/image backdrop the editor would once the marketer created
+  // a project from this template.
+  const previewProjectBg = useMemo(
+    () => previewBackgroundFromProps(sceneProps, dur),
+    [sceneProps, dur],
+  );
+
   const stage = (
     <div
       style={{
@@ -142,8 +186,9 @@ export function TemplatePreview({
       <Stage
         width={aspect.width}
         height={aspect.height}
-        background={bg}
+        background={previewProjectBg ? 'transparent' : bg}
         controller={controller}
+        projectBackground={previewProjectBg}
         chromeless
       >
         <Scene
