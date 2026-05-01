@@ -20,6 +20,7 @@ import * as newIn from './new-in';
 import * as theCollab from './the-collab';
 import * as theRail from './the-rail';
 import * as theReel from './the-reel';
+import * as theReelModular from './the-reel-modular';
 
 export type SceneComponentProps = {
   props: any;
@@ -111,6 +112,11 @@ const entries: Record<string, TemplateEntry> = {
     meta: theReel.meta as unknown as TemplateMeta<unknown>,
     fields: theReel.fields,
     Scene: theReel.ReelScene as unknown as ComponentType<SceneComponentProps>,
+  },
+  [theReelModular.meta.id]: {
+    meta: theReelModular.meta as unknown as TemplateMeta<unknown>,
+    fields: theReelModular.fields,
+    Scene: theReelModular.ReelModularScene as unknown as ComponentType<SceneComponentProps>,
   },
 };
 

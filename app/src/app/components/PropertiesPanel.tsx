@@ -123,6 +123,22 @@ export function PropertiesPanel({
       }}
     >
       {fields.map((field, i) => {
+        // Variant gating: per-field `showWhen` predicate evaluated
+        // against the live props blob. Used by templates with scene-
+        // type selectors (e.g. The Reel - Modular) so fields specific
+        // to one variant disappear when the marketer picks another.
+        if (field.showWhen) {
+          try {
+            const blob =
+              value && typeof value === 'object'
+                ? (value as Record<string, unknown>)
+                : {};
+            if (!field.showWhen(blob)) return null;
+          } catch {
+            // Predicate threw — be conservative and hide the field.
+            return null;
+          }
+        }
         if (field.kind === 'section') {
           return <Section key={i} label={field.label} />;
         }
