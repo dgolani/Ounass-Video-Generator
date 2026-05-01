@@ -35,7 +35,7 @@ const MUSIC_LANE_H = 44;
 const VIDEO_LANE_H = 42;
 const MIN_CLIP_SEC = 0.25;
 const MIN_VIDEO_DURATION = 5;
-const MAX_VIDEO_DURATION = 20;
+const MAX_VIDEO_DURATION = 30;
 const SOUND_PANEL_W = 292;
 const SOUND_PANEL_Z = 9400;
 /** Reels-style trim accent */

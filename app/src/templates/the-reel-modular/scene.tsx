@@ -25,10 +25,11 @@ import {
   useSafeZone,
   useTimeline,
 } from '../../engine';
-import type {
-  ReelModularProps,
-  ReelPhoneAnim,
-  ContentType,
+import {
+  computeTimeline,
+  type ReelModularProps,
+  type ReelPhoneAnim,
+  type ContentType,
 } from './schema';
 import { BoutiqueLogo } from '../BoutiqueLogo';
 import { MediaBackground } from '../MediaBackground';
@@ -82,42 +83,6 @@ function sceneOpacity(
   return Easing.easeOutCubic(upP) * (1 - Easing.easeOutCubic(downP));
 }
 
-/** Compute per-scene in/out times from the props' *Dur fields. The
- *  heading-products variant overrides contentDur so cadence is
- *  consistent: 2.2s per frame (heading + N products). */
-function computeTimeline(p: ReelModularProps): {
-  s1In: number;
-  s1Out: number;
-  s2In: number;
-  s2Out: number;
-  s3In: number;
-  s3Out: number;
-  s4In: number;
-  s4Out: number;
-  total: number;
-} {
-  const d1 = Math.max(0.1, p.introDur);
-  let d2: number;
-  if (p.contentType === 'heading-products') {
-    const count = Math.max(1, Math.min(6, Math.round(p.s2hpCount) || 4));
-    const SLICE = 2.2;
-    d2 = (count + 1) * SLICE;
-  } else {
-    d2 = Math.max(0.1, p.contentDur);
-  }
-  const d3 = Math.max(0.1, p.uspsDur);
-  const d4 = Math.max(0.1, p.finaleDur);
-  const s1In = 0;
-  const s1Out = s1In + d1;
-  const s2In = s1Out;
-  const s2Out = s2In + d2;
-  const s3In = s2Out;
-  const s3Out = s3In + d3;
-  const s4In = s3Out;
-  const s4Out = s4In + d4;
-  return { s1In, s1Out, s2In, s2Out, s3In, s3Out, s4In, s4Out, total: s4Out };
-}
-
 export function ReelModularScene({
   props,
   timeScale = 1,
@@ -144,7 +109,6 @@ export function ReelModularScene({
     s2Anim,
     productImage,
     s2hpHeading,
-    s2hpCount,
     s2hpProducts,
     s2vpHeading,
     s2vpSub,
@@ -415,7 +379,7 @@ export function ReelModularScene({
             is45={is45}
             heading={s2hpHeading}
             headingStyle={s2hpHeadingStyle}
-            count={Math.max(1, Math.min(6, Math.round(s2hpCount) || 4))}
+            count={Math.max(1, Math.min(6, s2hpProducts.length))}
             products={s2hpProducts}
             localT={s2LocalT}
           />

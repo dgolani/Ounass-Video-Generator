@@ -179,9 +179,39 @@ export function Editor() {
   };
 
   // ── Setters exposed to children (all route through the unified history)
+  // `computeDurationRef` lazy-resolves the active template's
+  // `meta.computeDuration` at call-time so the setter doesn't depend
+  // on the `template` const (declared lower in this file). When the
+  // template defines `meta.computeDuration`, sync the project's
+  // duration to the template's natural runtime on every props change.
+  // Used by The Reel - Modular's heading-products variant where
+  // adding a product extends Scene 2 by 2.2s — without the sync, the
+  // tail of Scene 4 would get clipped.
+  const computeDurationRef = useRef<((p: unknown) => number) | undefined>(undefined);
   const setLocalProps = useCallback(
     (nextProps: unknown) => {
-      setEditable((prev) => ({ ...prev, props: nextProps }));
+      setEditable((prev) => {
+        const next: typeof prev = { ...prev, props: nextProps };
+        const fn = computeDurationRef.current;
+        if (fn) {
+          try {
+            const wantSec = fn(nextProps);
+            if (Number.isFinite(wantSec) && wantSec > 0) {
+              // Pass through normalizeEditable so it clamps to the
+              // project's allowed [MIN_VIDEO_DURATION, MAX_VIDEO_DURATION]
+              // window.
+              return normalizeEditable({
+                ...next,
+                duration: wantSec,
+                musicEndVideoTime: wantSec,
+              });
+            }
+          } catch {
+            /* fall through with unchanged duration */
+          }
+        }
+        return next;
+      });
     },
     [setEditable],
   );
@@ -238,6 +268,12 @@ export function Editor() {
   );
 
   const template = project ? getTemplate(project.templateId) : null;
+  // Push the active template's optional computeDuration hook into
+  // the ref consumed by setLocalProps. Re-runs whenever `template`
+  // changes (project switch, hot reload).
+  computeDurationRef.current = template?.meta.computeDuration as
+    | ((p: unknown) => number)
+    | undefined;
   const aspectIndex = editable.aspectIndex;
   const aspect = template?.meta.aspects[aspectIndex];
   const duration = editable.duration;

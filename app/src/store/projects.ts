@@ -7,7 +7,7 @@ const KEY = 'vag:projects:v1';
 const CHANNEL = 'vag:projects:changed';
 
 const MIN_VIDEO_DURATION = 5;
-const MAX_VIDEO_DURATION = 20;
+const MAX_VIDEO_DURATION = 30;
 
 function normalizeProject(raw: Project): Project {
   const vol = raw.musicVolume;

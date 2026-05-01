@@ -88,8 +88,9 @@ export type ReelModularProps = {
 
   // Scene 2 — heading-products variant
   s2hpHeading: string;
-  /** 1–6 product slots — only the first `s2hpCount` render. */
-  s2hpCount: number;
+  /** 1–6 product slots. The list length itself drives the render
+   *  count and the auto-computed Scene 2 duration; there's no
+   *  separate count slider so the marketer can't desync them. */
   s2hpProducts: HpProduct[];
 
   // Scene 2 — vouri-plp variant
@@ -192,8 +193,7 @@ export const defaultProps: ReelModularProps = {
   productImage: undefined,
 
   s2hpHeading: 'TAILORED TO YOUR TASTE',
-  s2hpCount: 4,
-  s2hpProducts: defaultHpProducts,
+  s2hpProducts: defaultHpProducts.slice(0, 4),
 
   s2vpHeading: 'INTRODUCING',
   s2vpSub: 'Vuori',
@@ -214,3 +214,34 @@ export const defaultProps: ReelModularProps = {
 
   colors: palette,
 };
+
+/** Per-frame slice for the heading-products variant. */
+export const HP_FRAME_SLICE = 2.2;
+
+/** Compute the in/out times for each scene from the props' duration
+ *  fields. heading-products auto-scales: (productCount + 1) × 2.2s.
+ *  Returns total runtime in seconds — the editor reads this through
+ *  `meta.computeDuration` to auto-extend the project's stored
+ *  duration whenever the marketer changes anything that affects
+ *  total runtime. */
+export function computeTimeline(p: ReelModularProps) {
+  const d1 = Math.max(0.1, p.introDur);
+  let d2: number;
+  if (p.contentType === 'heading-products') {
+    const count = Math.max(1, Math.min(6, p.s2hpProducts?.length ?? 1));
+    d2 = (count + 1) * HP_FRAME_SLICE;
+  } else {
+    d2 = Math.max(0.1, p.contentDur);
+  }
+  const d3 = Math.max(0.1, p.uspsDur);
+  const d4 = Math.max(0.1, p.finaleDur);
+  const s1In = 0;
+  const s1Out = s1In + d1;
+  const s2In = s1Out;
+  const s2Out = s2In + d2;
+  const s3In = s2Out;
+  const s3Out = s3In + d3;
+  const s4In = s3Out;
+  const s4Out = s4In + d4;
+  return { s1In, s1Out, s2In, s2Out, s3In, s3Out, s4In, s4Out, total: s4Out };
+}

@@ -46,4 +46,13 @@ export type TemplateMeta<P> = {
    *  surfaces a Light | Dark toggle that flips the active mode. The
    *  project persists the user's choice in `project.themeMode`. */
   supportsThemes?: boolean;
+  /** Optional dynamic-duration hook. When defined, the editor
+   *  auto-syncs `project.duration` to whatever this returns whenever
+   *  the marketer edits any field — so templates with variable-length
+   *  scene logic (e.g. The Reel - Modular's heading-products variant
+   *  whose length scales with the product count) can guarantee the
+   *  full template runtime fits without the marketer manually
+   *  bumping the project duration. The returned value is clamped to
+   *  the project's allowed [MIN, MAX] range before being applied. */
+  computeDuration?: (props: P) => number;
 };

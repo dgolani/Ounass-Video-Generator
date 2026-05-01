@@ -118,17 +118,6 @@ export const fields: FieldDescriptor[] = [
     showWhen: isContent('heading-products'),
   },
   {
-    kind: 'slider',
-    path: 's2hpCount',
-    label: 'Number of products',
-    min: 1,
-    max: 6,
-    step: 1,
-    precision: 0,
-    hint: 'Each product adds 2.2s of runtime; total Scene 2 duration auto-scales.',
-    showWhen: isContent('heading-products'),
-  },
-  {
     kind: 'productList',
     path: 's2hpProducts',
     label: 'Products',
