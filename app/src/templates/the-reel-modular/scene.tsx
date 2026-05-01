@@ -161,6 +161,66 @@ export function ReelModularScene({
     textTransform: 'uppercase',
     color: '#ffffff',
   });
+  // Per-product wildcard hooks for the heading-products variant —
+  // every rendered product card spreads these on its brand + price
+  // text so the Aa drawer reaches every frame.
+  const s2hpProductBrandStyle = useFieldFormat('s2hpProducts.*.brand', {
+    fontFamily: 'var(--font-body)',
+    fontWeight: 800,
+    fontSize: wh(is45 ? 24 : 30),
+    letterSpacing: '0.16em',
+    textTransform: 'uppercase',
+    color: '#ffffff',
+  });
+  const s2hpProductPriceStyle = useFieldFormat('s2hpProducts.*.price', {
+    fontFamily: 'var(--font-body)',
+    fontWeight: 600,
+    fontSize: wh(is45 ? 20 : 26),
+    letterSpacing: '0.1em',
+    color: '#B87253',
+  });
+  // Vouri-plp text hooks — earlier these styles were hardcoded inside
+  // the variant component, so the Aa drawer for these fields had no
+  // effect. Wired up the same way every other text field in this
+  // template is.
+  const s2vpHeadingStyle = useFieldFormat('s2vpHeading', {
+    fontFamily: 'var(--font-mono, var(--font-body))',
+    fontSize: wh(is45 ? 15 : 18),
+    fontWeight: 500,
+    letterSpacing: '0.55em',
+    textTransform: 'uppercase',
+    color: 'rgba(244,239,232,0.65)',
+  });
+  const s2vpSubStyle = useFieldFormat('s2vpSub', {
+    fontFamily: 'var(--font-display)',
+    fontStyle: 'italic',
+    fontSize: wh(is45 ? 72 : 92),
+    fontWeight: 400,
+    letterSpacing: '0.01em',
+    color: '#F2EFEA',
+  });
+  const s2vpTitleStyle = useFieldFormat('s2vpTitle', {
+    fontFamily: 'var(--font-mono, var(--font-body))',
+    fontSize: wh(16),
+    fontWeight: 500,
+    letterSpacing: '0.01em',
+    color: '#F2EFEA',
+  });
+  const s2vpBrandChipStyle = useFieldFormat('s2vpBrandChip', {
+    fontFamily: 'var(--font-mono, var(--font-body))',
+    fontSize: wh(11),
+    fontWeight: 600,
+    letterSpacing: '0.14em',
+    textTransform: 'uppercase',
+    color: '#F2EFEA',
+  });
+  const s2vpResultsStyle = useFieldFormat('s2vpResults', {
+    fontFamily: 'var(--font-mono, var(--font-body))',
+    fontSize: wh(12),
+    fontWeight: 500,
+    letterSpacing: '0.02em',
+    color: 'rgba(242,239,234,0.55)',
+  });
   const s3EyebrowStyle = useFieldFormat('s3Eyebrow', {
     fontFamily: 'var(--font-mono, var(--font-body))',
     fontSize: wh(16),
@@ -258,6 +318,18 @@ export function ReelModularScene({
   const s4CtaOp = ctaE;
   const s4CtaTy = (1 - ctaE) * wh(20);
   const s4CtaScale = 0.92 + ctaE * 0.08;
+  // CTA shimmer — diagonal light sweep that loops across the pill
+  // every 1.4s starting 1.7s after Scene 4 becomes active. Mirrors the
+  // prototype's `@keyframes ctaShimmer` (translateX -130% → 130% over
+  // 60% of cycle, holds for the remaining 40%). Visible only after
+  // the CTA's entry animation has settled.
+  const CTA_SHIMMER_START = 1.7;
+  const CTA_SHIMMER_CYCLE = 1.4;
+  const shimmerLocalT = Math.max(0, s4LocalT - CTA_SHIMMER_START);
+  const shimmerPhase = (shimmerLocalT % CTA_SHIMMER_CYCLE) / CTA_SHIMMER_CYCLE;
+  const s4ShimmerTx =
+    shimmerPhase < 0.6 ? -130 + (shimmerPhase / 0.6) * 260 : 130;
+  const s4ShimmerVisible = s4LocalT >= CTA_SHIMMER_START;
 
   const ROOT_BG = hasProjectBg ? 'transparent' : '#000000';
 
@@ -379,6 +451,8 @@ export function ReelModularScene({
             is45={is45}
             heading={s2hpHeading}
             headingStyle={s2hpHeadingStyle}
+            brandStyle={s2hpProductBrandStyle}
+            priceStyle={s2hpProductPriceStyle}
             count={Math.max(1, Math.min(6, s2hpProducts.length))}
             products={s2hpProducts}
             localT={s2LocalT}
@@ -395,6 +469,11 @@ export function ReelModularScene({
             brandChip={s2vpBrandChip}
             results={s2vpResults}
             tiles={s2vpTiles}
+            headingStyle={s2vpHeadingStyle}
+            subStyle={s2vpSubStyle}
+            titleStyle={s2vpTitleStyle}
+            brandChipStyle={s2vpBrandChipStyle}
+            resultsStyle={s2vpResultsStyle}
             localT={s2LocalT}
             durEff={s2DurEff}
           />
@@ -549,8 +628,24 @@ export function ReelModularScene({
               opacity: s4CtaOp * ((s4CtaStyle.opacity as number | undefined) ?? 1),
             }}
           >
-            <span>{s4Cta}</span>
-            <span style={{ fontSize: wh(24), lineHeight: 1, color: '#fff' }}>→</span>
+            <span style={{ position: 'relative', zIndex: 2 }}>{s4Cta}</span>
+            <span style={{ fontSize: wh(24), lineHeight: 1, color: '#fff', position: 'relative', zIndex: 2 }}>→</span>
+            {/* Diagonal shimmer sweep — runs continuously after the
+             *  CTA's entry animation has settled. */}
+            {s4ShimmerVisible ? (
+              <span
+                aria-hidden
+                style={{
+                  position: 'absolute',
+                  inset: 0,
+                  background:
+                    'linear-gradient(115deg, transparent 25%, rgba(255,255,255,0.35) 48%, rgba(255,255,255,0) 65%, transparent 80%)',
+                  transform: `translateX(${s4ShimmerTx}%)`,
+                  pointerEvents: 'none',
+                  zIndex: 1,
+                }}
+              />
+            ) : null}
           </div>
         </div>
       </div>
@@ -718,12 +813,14 @@ type HeadingProductsProps = {
   is45: boolean;
   heading: string;
   headingStyle: React.CSSProperties;
+  brandStyle: React.CSSProperties;
+  priceStyle: React.CSSProperties;
   count: number;
   products: ReelModularProps['s2hpProducts'];
   localT: number;
 };
 
-function HeadingProducts({ scale, is45, heading, headingStyle, count, products, localT }: HeadingProductsProps) {
+function HeadingProducts({ scale, is45, heading, headingStyle, brandStyle, priceStyle, count, products, localT }: HeadingProductsProps) {
   const { wh } = scale;
   // Frame 0 = heading, frames 1..N = product cards.
   const SLICE = 2.2;
@@ -813,7 +910,8 @@ function HeadingProducts({ scale, is45, heading, headingStyle, count, products, 
             backgroundSize: 'contain',
             backgroundPosition: 'center',
             backgroundRepeat: 'no-repeat',
-            boxShadow: `0 ${wh(30)}px ${wh(80)}px rgba(0,0,0,0.45)`,
+            // No box-shadow — the marketer asked for clean product
+            // shots without a drop shadow underneath the white card.
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -831,26 +929,17 @@ function HeadingProducts({ scale, is45, heading, headingStyle, count, products, 
         <div style={{ textAlign: 'center' }}>
           <div
             style={{
-              fontFamily: 'var(--font-body)',
-              fontWeight: 800,
-              fontSize: wh(is45 ? 24 : 30),
-              letterSpacing: '0.16em',
-              textTransform: 'uppercase',
-              color: '#ffffff',
               textShadow: '0 2px 18px rgba(0,0,0,0.5)',
               marginBottom: wh(14),
+              ...brandStyle,
             }}
           >
             {product.brand}
           </div>
           <div
             style={{
-              fontFamily: 'var(--font-body)',
-              fontWeight: 600,
-              fontSize: wh(is45 ? 20 : 26),
-              letterSpacing: '0.1em',
-              color: 'var(--bronze, #B87253)',
               textShadow: '0 2px 18px rgba(0,0,0,0.5)',
+              ...priceStyle,
             }}
           >
             {product.price}
@@ -873,9 +962,31 @@ type VouriPlpProps = {
   brandChip: string;
   results: string;
   tiles: ReelModularProps['s2vpTiles'];
+  /** Pre-resolved typography overrides for each editable text. */
+  headingStyle: React.CSSProperties;
+  subStyle: React.CSSProperties;
+  titleStyle: React.CSSProperties;
+  brandChipStyle: React.CSSProperties;
+  resultsStyle: React.CSSProperties;
 };
 
-function VouriPlp({ scale, is45, heading, sub, title, brandChip, results, tiles, localT, durEff }: VouriPlpProps & { localT: number; durEff: number }) {
+function VouriPlp({
+  scale,
+  is45,
+  heading,
+  sub,
+  title,
+  brandChip,
+  results,
+  tiles,
+  headingStyle,
+  subStyle,
+  titleStyle,
+  brandChipStyle,
+  resultsStyle,
+  localT,
+  durEff,
+}: VouriPlpProps & { localT: number; durEff: number }) {
   const { wh } = scale;
   const IVORY = '#F2EFEA';
   const SCREEN_BG = '#0E0E0E';
@@ -925,26 +1036,17 @@ function VouriPlp({ scale, is45, heading, sub, title, brandChip, results, tiles,
       >
         <div
           style={{
-            fontFamily: 'var(--font-mono, var(--font-body))',
-            fontSize: wh(is45 ? 15 : 18),
-            fontWeight: 500,
-            letterSpacing: '0.55em',
-            textTransform: 'uppercase',
-            color: 'rgba(244,239,232,0.65)',
             marginBottom: wh(is45 ? 12 : 16),
             paddingLeft: '0.55em',
+            ...headingStyle,
           }}
         >
           {heading}
         </div>
         <div
           style={{
-            fontFamily: 'var(--font-display)',
-            fontStyle: 'italic',
-            fontSize: wh(is45 ? 72 : 92),
-            fontWeight: 400,
-            letterSpacing: '0.01em',
             lineHeight: 1,
+            ...subStyle,
           }}
         >
           {sub}
@@ -1114,11 +1216,7 @@ function VouriPlp({ scale, is45, heading, sub, title, brandChip, results, tiles,
               <span
                 style={{
                   textAlign: 'center',
-                  fontFamily: 'var(--font-mono, var(--font-body))',
-                  fontSize: wh(16),
-                  fontWeight: 500,
-                  color: IVORY,
-                  letterSpacing: '0.01em',
+                  ...titleStyle,
                 }}
               >
                 {title}
@@ -1167,17 +1265,13 @@ function VouriPlp({ scale, is45, heading, sub, title, brandChip, results, tiles,
               <PlpChip label="Filter (1)" />
               <PlpChip label="Sort" />
               <PlpChip label={`${title} ×`} />
-              <PlpChip label={brandChip} outlined />
+              <PlpChip label={brandChip} outlined styleOverride={brandChipStyle} />
             </div>
             <div
               style={{
                 textAlign: 'center',
                 marginTop: wh(16),
-                fontFamily: 'var(--font-mono, var(--font-body))',
-                fontSize: wh(12),
-                fontWeight: 500,
-                color: 'rgba(242,239,234,0.55)',
-                letterSpacing: '0.02em',
+                ...resultsStyle,
               }}
             >
               Showing {results} results
@@ -1376,7 +1470,17 @@ function VouriPlp({ scale, is45, heading, sub, title, brandChip, results, tiles,
   );
 }
 
-function PlpChip({ label, outlined }: { label: string; outlined?: boolean }) {
+function PlpChip({
+  label,
+  outlined,
+  styleOverride,
+}: {
+  label: string;
+  outlined?: boolean;
+  /** Per-field typography override applied via the Aa drawer. Spread
+   *  AFTER the chip's own typography so the marketer's edits win. */
+  styleOverride?: React.CSSProperties;
+}) {
   return (
     <span
       style={{
@@ -1395,6 +1499,7 @@ function PlpChip({ label, outlined }: { label: string; outlined?: boolean }) {
         color: outlined ? '#F2EFEA' : '#1A1410',
         background: outlined ? 'transparent' : '#F2EFEA',
         border: outlined ? '1px solid rgba(242,239,234,0.18)' : 'none',
+        ...styleOverride,
       }}
     >
       {label}
