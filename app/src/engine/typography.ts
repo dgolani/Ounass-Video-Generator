@@ -47,7 +47,12 @@ export type Typography = Record<TypographyRole, FontChoice>;
 export const CURATED_FAMILIES: Record<TypographyRole, string[]> = {
   display: ['Portrait', 'Cormorant Garamond', 'Playfair Display', 'Fraunces'],
   body: ['Portrait', 'Inter', 'DM Sans', 'Nunito Sans'],
-  numeric: ['Noto Serif Display', 'Fraunces'],
+  // Portrait first — it's the brand's primary face and reads
+  // beautifully on prices like "640 AED". The serif alternates stay
+  // for marketers who want a more editorial/numeric look on a price
+  // tag. Inter sneaks in for crisp sans-numerals (PLP-style "WW" tags
+  // and small badges).
+  numeric: ['Portrait', 'Noto Serif Display', 'Fraunces', 'Inter'],
   arabic: ['Noto Kufi Arabic', 'Noto Naskh Arabic', 'Cairo'],
 };
 
