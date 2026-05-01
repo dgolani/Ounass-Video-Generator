@@ -20,6 +20,7 @@ import {
   Easing,
   clamp,
   interpolate,
+  useFieldColor,
   useFieldFormat,
   useHasProjectBackground,
   useSafeZone,
@@ -134,6 +135,10 @@ export function ReelModularScene({
   const op4 = sceneOpacity(t, T(tl.s4In), T(tl.s4Out));
 
   // Per-text typography hooks.
+  // Logo color override — Aa drawer on the logo field surfaces a
+  // color picker. Pass the result into `<BoutiqueLogo color={...}>`
+  // so it tints both the SVG (via mask) and text-fallback paths.
+  const logoColor = useFieldColor('logo', '#ffffff');
   const s1MarkStyle = useFieldFormat('s1Mark', {
     fontFamily: 'var(--font-display)',
     fontSize: wh(is45 ? 150 : 200),
@@ -220,6 +225,57 @@ export function ReelModularScene({
     fontWeight: 500,
     letterSpacing: '0.02em',
     color: 'rgba(242,239,234,0.55)',
+  });
+  // Per-tile wildcard hooks for the vouri-plp PLP grid. Spread on
+  // every rendered tile so the Aa drawer for any single tile field
+  // reaches all eight cards.
+  const s2vpTileBrandStyle = useFieldFormat('s2vpTiles.*.brand', {
+    fontFamily: 'var(--font-mono, var(--font-body))',
+    fontWeight: 700,
+    fontSize: wh(11),
+    lineHeight: 1.1,
+    letterSpacing: '0.14em',
+    textTransform: 'uppercase',
+    color: '#F2EFEA',
+  });
+  const s2vpTileNameStyle = useFieldFormat('s2vpTiles.*.name', {
+    fontFamily: 'var(--font-mono, var(--font-body))',
+    fontWeight: 400,
+    fontSize: wh(11),
+    lineHeight: 1.3,
+    color: '#F2EFEA',
+  });
+  const s2vpTilePriceStyle = useFieldFormat('s2vpTiles.*.price', {
+    fontFamily: 'var(--font-mono, var(--font-body))',
+    fontWeight: 600,
+    fontSize: wh(11),
+    letterSpacing: '0.04em',
+    color: '#E85A2C',
+  });
+  // `textDecoration` isn't part of FieldBaseStyle (the editor's Aa
+  // drawer can't override it). Keep `line-through` on the call site
+  // and let the marketer edit family/size/weight/color via the hook.
+  const s2vpTileWasStyle = useFieldFormat('s2vpTiles.*.was', {
+    fontFamily: 'var(--font-mono, var(--font-body))',
+    fontWeight: 500,
+    fontSize: wh(11),
+    letterSpacing: '0.04em',
+    color: 'rgba(242,239,234,0.45)',
+  });
+  const s2vpTileOffStyle = useFieldFormat('s2vpTiles.*.off', {
+    fontFamily: 'var(--font-mono, var(--font-body))',
+    fontWeight: 500,
+    fontSize: wh(9.5),
+    letterSpacing: '0.06em',
+    color: 'rgba(242,239,234,0.65)',
+  });
+  const s2vpTileTagStyle = useFieldFormat('s2vpTiles.*.tag', {
+    fontFamily: 'var(--font-mono, var(--font-body))',
+    fontWeight: 700,
+    fontSize: wh(9),
+    letterSpacing: '0.22em',
+    textTransform: 'uppercase',
+    color: '#F2EFEA',
   });
   const s3EyebrowStyle = useFieldFormat('s3Eyebrow', {
     fontFamily: 'var(--font-mono, var(--font-body))',
@@ -375,11 +431,11 @@ export function ReelModularScene({
       >
         <div style={{ textAlign: 'center' }}>
           {logo ? (
-            <div style={{ opacity: tagE, filter: 'drop-shadow(0 4px 32px rgba(0,0,0,0.45))' }}>
+            <div style={{ opacity: tagE }}>
               <BoutiqueLogo
                 logo={logo}
                 boutiqueName={s1Mark}
-                color="#ffffff"
+                color={logoColor}
                 width={s1FontPx * 3.0}
                 height={s1FontPx * 1.1}
                 fontSize={s1FontPx}
@@ -391,7 +447,6 @@ export function ReelModularScene({
             <div
               style={{
                 whiteSpace: 'nowrap',
-                textShadow: '0 4px 32px rgba(0,0,0,0.45)',
                 ...s1MarkStyle,
               }}
             >
@@ -474,6 +529,12 @@ export function ReelModularScene({
             titleStyle={s2vpTitleStyle}
             brandChipStyle={s2vpBrandChipStyle}
             resultsStyle={s2vpResultsStyle}
+            tileBrandStyle={s2vpTileBrandStyle}
+            tileNameStyle={s2vpTileNameStyle}
+            tilePriceStyle={s2vpTilePriceStyle}
+            tileWasStyle={s2vpTileWasStyle}
+            tileOffStyle={s2vpTileOffStyle}
+            tileTagStyle={s2vpTileTagStyle}
             localT={s2LocalT}
             durEff={s2DurEff}
           />
@@ -524,7 +585,6 @@ export function ReelModularScene({
                 transform: `translateY(-50%) translateY(${l1.ty}px)`,
                 filter: `blur(${l1.blur}px)`,
                 textAlign: 'center',
-                textShadow: '0 4px 32px rgba(0,0,0,0.5)',
                 ...s3LineStyle,
                 opacity: l1.opacity * ((s3LineStyle.opacity as number | undefined) ?? 1),
               }}
@@ -540,7 +600,6 @@ export function ReelModularScene({
                 transform: `translateY(-50%) translateY(${l2.ty}px)`,
                 filter: `blur(${l2.blur}px)`,
                 textAlign: 'center',
-                textShadow: '0 4px 32px rgba(0,0,0,0.5)',
                 ...s3Line2Style,
                 opacity: l2.opacity * ((s3Line2Style.opacity as number | undefined) ?? 1),
               }}
@@ -582,14 +641,13 @@ export function ReelModularScene({
               opacity: s4MarkOp,
               transform: `scale(${s4MarkScale})`,
               marginBottom: wh(60),
-              filter: 'drop-shadow(0 4px 32px rgba(0,0,0,0.5))',
             }}
           >
             {logo ? (
               <BoutiqueLogo
                 logo={logo}
                 boutiqueName={s4Mark}
-                color="#ffffff"
+                color={logoColor}
                 width={s4FontPx * 3.0}
                 height={s4FontPx * 1.1}
                 fontSize={s4FontPx}
@@ -600,7 +658,6 @@ export function ReelModularScene({
               <div
                 style={{
                   whiteSpace: 'nowrap',
-                  textShadow: '0 4px 32px rgba(0,0,0,0.5)',
                   ...s4MarkStyle,
                 }}
               >
@@ -861,7 +918,6 @@ function HeadingProducts({ scale, is45, heading, headingStyle, brandStyle, price
             maxWidth: is45 ? '80%' : '70%',
             opacity,
             ...headingStyle,
-            textShadow: '0 4px 32px rgba(0,0,0,0.5)',
           }}
         >
           {heading}
@@ -929,7 +985,6 @@ function HeadingProducts({ scale, is45, heading, headingStyle, brandStyle, price
         <div style={{ textAlign: 'center' }}>
           <div
             style={{
-              textShadow: '0 2px 18px rgba(0,0,0,0.5)',
               marginBottom: wh(14),
               ...brandStyle,
             }}
@@ -938,7 +993,6 @@ function HeadingProducts({ scale, is45, heading, headingStyle, brandStyle, price
           </div>
           <div
             style={{
-              textShadow: '0 2px 18px rgba(0,0,0,0.5)',
               ...priceStyle,
             }}
           >
@@ -968,6 +1022,13 @@ type VouriPlpProps = {
   titleStyle: React.CSSProperties;
   brandChipStyle: React.CSSProperties;
   resultsStyle: React.CSSProperties;
+  /** Per-tile wildcard overrides — applied to every rendered tile. */
+  tileBrandStyle: React.CSSProperties;
+  tileNameStyle: React.CSSProperties;
+  tilePriceStyle: React.CSSProperties;
+  tileWasStyle: React.CSSProperties;
+  tileOffStyle: React.CSSProperties;
+  tileTagStyle: React.CSSProperties;
 };
 
 function VouriPlp({
@@ -984,13 +1045,18 @@ function VouriPlp({
   titleStyle,
   brandChipStyle,
   resultsStyle,
+  tileBrandStyle,
+  tileNameStyle,
+  tilePriceStyle,
+  tileWasStyle,
+  tileOffStyle,
+  tileTagStyle,
   localT,
   durEff,
 }: VouriPlpProps & { localT: number; durEff: number }) {
   const { wh } = scale;
   const IVORY = '#F2EFEA';
   const SCREEN_BG = '#0E0E0E';
-  const ACCENT = '#E85A2C'; // PLP price/badge orange — matches the prototype
 
   // Phone settle (0.7s @ 0.1s, scale 0.92 → 0.96)
   const phoneP = clamp((localT - 0.1) / 0.7, 0, 1);
@@ -1338,14 +1404,9 @@ function VouriPlp({
                           bottom: 0,
                           transform: 'translateX(-50%)',
                           background: SCREEN_BG,
-                          color: IVORY,
-                          fontFamily: 'var(--font-mono, var(--font-body))',
-                          fontSize: wh(9),
-                          fontWeight: 700,
-                          letterSpacing: '0.22em',
-                          textTransform: 'uppercase',
                           padding: `${wh(6)}px ${wh(14)}px`,
                           zIndex: 2,
+                          ...tileTagStyle,
                         }}
                       >
                         {tile.tag}
@@ -1356,32 +1417,23 @@ function VouriPlp({
                     style={{
                       padding: `${wh(10)}px ${wh(2)}px 0`,
                       textAlign: 'center',
-                      color: IVORY,
                     }}
                   >
                     <div
                       style={{
-                        fontFamily: 'var(--font-mono, var(--font-body))',
-                        fontWeight: 700,
-                        fontSize: wh(11),
-                        lineHeight: 1.1,
-                        letterSpacing: '0.14em',
-                        textTransform: 'uppercase',
                         marginBottom: wh(4),
+                        ...tileBrandStyle,
                       }}
                     >
                       {tile.brand}
                     </div>
                     <div
                       style={{
-                        fontFamily: 'var(--font-mono, var(--font-body))',
-                        fontWeight: 400,
-                        fontSize: wh(11),
-                        lineHeight: 1.3,
                         marginBottom: wh(6),
                         overflow: 'hidden',
                         whiteSpace: 'nowrap',
                         textOverflow: 'ellipsis',
+                        ...tileNameStyle,
                       }}
                     >
                       {tile.name}
@@ -1394,45 +1446,12 @@ function VouriPlp({
                         marginBottom: wh(4),
                       }}
                     >
-                      <span
-                        style={{
-                          fontFamily: 'var(--font-mono, var(--font-body))',
-                          fontWeight: 600,
-                          fontSize: wh(11),
-                          letterSpacing: '0.04em',
-                          color: ACCENT,
-                        }}
-                      >
-                        {tile.price}
-                      </span>
+                      <span style={tilePriceStyle}>{tile.price}</span>
                       {tile.was ? (
-                        <span
-                          style={{
-                            fontFamily: 'var(--font-mono, var(--font-body))',
-                            fontWeight: 500,
-                            fontSize: wh(11),
-                            letterSpacing: '0.04em',
-                            color: 'rgba(242,239,234,0.45)',
-                            textDecoration: 'line-through',
-                          }}
-                        >
-                          {tile.was}
-                        </span>
+                        <span style={{ textDecoration: 'line-through', ...tileWasStyle }}>{tile.was}</span>
                       ) : null}
                     </div>
-                    {tile.off ? (
-                      <div
-                        style={{
-                          fontFamily: 'var(--font-mono, var(--font-body))',
-                          fontWeight: 500,
-                          fontSize: wh(9.5),
-                          letterSpacing: '0.06em',
-                          color: 'rgba(242,239,234,0.65)',
-                        }}
-                      >
-                        {tile.off}
-                      </div>
-                    ) : null}
+                    {tile.off ? <div style={tileOffStyle}>{tile.off}</div> : null}
                   </div>
                 </div>
               ))}
