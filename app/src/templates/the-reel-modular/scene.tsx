@@ -185,13 +185,16 @@ export function ReelModularScene({
     textTransform: 'uppercase',
     color: 'rgba(255,255,255,0.7)',
   });
+  // Heading-products headline — matches the prototype's CSS exactly:
+  // serif (NOT italic), regular weight, uppercase, ~96px on 9:16 /
+  // 72px on 4:5, with positive letter-spacing for the all-caps look.
   const s2hpHeadingStyle = useFieldFormat('s2hpHeading', {
     fontFamily: 'var(--font-display)',
-    fontStyle: 'italic',
-    fontSize: wh(is45 ? 92 : 116),
-    fontWeight: 300,
-    lineHeight: 1.05,
-    letterSpacing: '-0.01em',
+    fontSize: wh(is45 ? 72 : 96),
+    fontWeight: 400,
+    lineHeight: 1.15,
+    letterSpacing: '0.04em',
+    textTransform: 'uppercase',
     color: '#ffffff',
   });
   const s3EyebrowStyle = useFieldFormat('s3Eyebrow', {
@@ -428,6 +431,8 @@ export function ReelModularScene({
             brandChip={s2vpBrandChip}
             results={s2vpResults}
             tiles={s2vpTiles}
+            localT={s2LocalT}
+            durEff={s2DurEff}
           />
         ) : null}
         {contentType === 'gravity-collapse' ? (
@@ -755,22 +760,24 @@ type HeadingProductsProps = {
 };
 
 function HeadingProducts({ scale, is45, heading, headingStyle, count, products, localT }: HeadingProductsProps) {
-  void is45;
   const { wh } = scale;
   // Frame 0 = heading, frames 1..N = product cards.
   const SLICE = 2.2;
   const totalFrames = 1 + count;
-  // Determine which frame is currently fading in / fading out so we
-  // can crossfade at frame boundaries (200ms overlap).
+  // Strict no-overlap fade pattern from the prototype CSS:
+  // fade-OUT runs 0.8s starting at frame end - 0.8s; fade-IN runs
+  // 0.8s with a 0.8s delay (so it begins after the previous frame
+  // has fully faded out). Each frame holds at opacity 1 in between.
   const frameIdxFloat = localT / SLICE;
   const frameIdx = Math.max(0, Math.floor(frameIdxFloat));
   const frameLocal = localT - frameIdx * SLICE;
-  // Fade-in over 0–0.45, hold to 1.95, fade-out over 1.95–2.20.
-  const inP = clamp(frameLocal / 0.45, 0, 1);
-  const outP = clamp((frameLocal - 1.95) / 0.25, 0, 1);
+  // Fade-in: 0–0.8s after delayed start (we treat "delay" as already
+  // baked into frameLocal — frameLocal=0 is when the new frame starts
+  // fading in). Fade-out begins at 1.4s, ends at 2.2s.
+  const inP = clamp(frameLocal / 0.8, 0, 1);
+  const outP = clamp((frameLocal - 1.4) / 0.8, 0, 1);
   const opacity = Easing.easeOutCubic(inP) * (1 - Easing.easeOutCubic(outP));
 
-  // Render only the current frame (others are at opacity 0 anyway).
   if (frameIdx >= totalFrames) {
     return null;
   }
@@ -790,9 +797,10 @@ function HeadingProducts({ scale, is45, heading, headingStyle, count, products, 
         <div
           style={{
             textAlign: 'center',
+            maxWidth: is45 ? '80%' : '70%',
             opacity,
             ...headingStyle,
-            textShadow: '0 4px 32px rgba(0,0,0,0.55)',
+            textShadow: '0 4px 32px rgba(0,0,0,0.5)',
           }}
         >
           {heading}
@@ -803,6 +811,15 @@ function HeadingProducts({ scale, is45, heading, headingStyle, count, products, 
 
   const product = products[frameIdx - 1];
   if (!product) return null;
+
+  // Product frame matches the prototype exactly:
+  //   - 70% width column, image + meta stacked, 36px gap
+  //   - Image: white background, contain-fit so the full product
+  //     shows; deep drop-shadow
+  //   - Brand: sans 800, uppercase, 0.16em letter-spacing
+  //   - Price: sans 600, BRONZE accent
+  const colWidth = is45 ? '70%' : '70%';
+  const imgAspect = '3 / 4';
   return (
     <div
       style={{
@@ -816,43 +833,60 @@ function HeadingProducts({ scale, is45, heading, headingStyle, count, products, 
     >
       <div
         style={{
-          width: wh(620),
-          background: 'rgba(20,20,20,0.85)',
-          borderRadius: wh(20),
-          overflow: 'hidden',
-          boxShadow: `0 ${wh(40)}px ${wh(100)}px rgba(0,0,0,0.6)`,
+          width: colWidth,
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          gap: wh(36),
         }}
       >
         <div
           style={{
             width: '100%',
-            paddingBottom: '125%',
-            background: product.imageUrl
-              ? `url("${product.imageUrl}") center/cover no-repeat`
-              : 'linear-gradient(135deg, #2a2522, #0e0c0a)',
+            aspectRatio: imgAspect,
+            background: '#ffffff',
+            backgroundImage: product.imageUrl ? `url("${product.imageUrl}")` : undefined,
+            backgroundSize: 'contain',
+            backgroundPosition: 'center',
+            backgroundRepeat: 'no-repeat',
+            boxShadow: `0 ${wh(30)}px ${wh(80)}px rgba(0,0,0,0.45)`,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: 'rgba(18,18,18,0.18)',
+            fontFamily: 'var(--font-display)',
+            fontStyle: 'italic',
+            fontWeight: 400,
+            fontSize: wh(26),
+            letterSpacing: '0.4em',
+            textTransform: 'uppercase',
           }}
-        />
-        <div style={{ padding: `${wh(28)}px ${wh(36)}px ${wh(32)}px` }}>
+        >
+          {product.imageUrl ? null : `Product ${frameIdx}`}
+        </div>
+        <div style={{ textAlign: 'center' }}>
           <div
             style={{
               fontFamily: 'var(--font-body)',
-              fontSize: wh(16),
-              fontWeight: 700,
-              letterSpacing: '0.32em',
+              fontWeight: 800,
+              fontSize: wh(is45 ? 24 : 30),
+              letterSpacing: '0.16em',
               textTransform: 'uppercase',
-              color: 'rgba(255,255,255,0.7)',
-              marginBottom: wh(10),
+              color: '#ffffff',
+              textShadow: '0 2px 18px rgba(0,0,0,0.5)',
+              marginBottom: wh(14),
             }}
           >
             {product.brand}
           </div>
           <div
             style={{
-              fontFamily: 'var(--font-numeric, var(--font-body))',
-              fontSize: wh(34),
+              fontFamily: 'var(--font-body)',
               fontWeight: 600,
-              color: '#fff',
-              letterSpacing: '0.02em',
+              fontSize: wh(is45 ? 20 : 26),
+              letterSpacing: '0.1em',
+              color: 'var(--bronze, #B87253)',
+              textShadow: '0 2px 18px rgba(0,0,0,0.5)',
             }}
           >
             {product.price}
@@ -877,35 +911,64 @@ type VouriPlpProps = {
   tiles: ReelModularProps['s2vpTiles'];
 };
 
-function VouriPlp({ scale, is45, colors, heading, sub, title, brandChip, results, tiles }: VouriPlpProps) {
+function VouriPlp({ scale, is45, heading, sub, title, brandChip, results, tiles, localT, durEff }: VouriPlpProps & { localT: number; durEff: number }) {
   const { wh } = scale;
+  const IVORY = '#F2EFEA';
+  const SCREEN_BG = '#0E0E0E';
+  const ACCENT = '#E85A2C'; // PLP price/badge orange — matches the prototype
+
+  // Phone settle (0.7s @ 0.1s, scale 0.92 → 0.96)
+  const phoneP = clamp((localT - 0.1) / 0.7, 0, 1);
+  const phoneE = Easing.easeOutCubic(phoneP);
+  const phoneScale = 0.92 + phoneE * 0.04;
+
+  // Eyebrow fade-up (0.9s @ 0.55s, ty 14 → 0)
+  const eyeP = clamp((localT - 0.55) / 0.9, 0, 1);
+  const eyeE = Easing.easeOutCubic(eyeP);
+  const eyeOp = eyeE;
+  const eyeTy = (1 - eyeE) * wh(14);
+
+  // Grid auto-scroll: starts at 1.0s, runs 6s, translates -720px on 9:16.
+  // We map that translation to a fraction of the original 920px screen
+  // height so it scales with the phone size.
+  const scrollSpan = (durEff > 0.1 ? Math.min(6.0, durEff - 1.2) : 6.0);
+  const scrollP = clamp((localT - 1.0) / Math.max(0.5, scrollSpan), 0, 1);
+  const scrollE = Easing.easeInOutCubic(scrollP);
+  const scrollPx = -scrollE * (is45 ? wh(560) : wh(720));
+
+  // Phone proportions ported from the prototype: 460×920 on 9:16,
+  // 380×760 on 4:5. Scaled by wh() so the same phone fits both
+  // aspects relative to the canvas.
+  const pw = is45 ? wh(380) : wh(460);
+  const ph = is45 ? wh(760) : wh(920);
+
   return (
-    <div
-      style={{
-        position: 'absolute',
-        inset: 0,
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        gap: wh(20),
-        padding: `${wh(120)}px 0 0`,
-      }}
-    >
+    <div style={{ position: 'absolute', inset: 0 }}>
+      {/* Eyebrow above the phone */}
       <div
         style={{
+          position: 'absolute',
+          left: '50%',
+          bottom: is45 ? '72%' : '70%',
+          transform: `translate(-50%, ${eyeTy}px)`,
+          opacity: eyeOp,
           textAlign: 'center',
-          fontFamily: 'var(--font-body)',
-          color: '#fff',
+          color: IVORY,
+          width: 'max-content',
+          zIndex: 4,
+          pointerEvents: 'none',
         }}
       >
         <div
           style={{
-            fontSize: wh(22),
-            fontWeight: 700,
-            letterSpacing: '0.5em',
+            fontFamily: 'var(--font-mono, var(--font-body))',
+            fontSize: wh(is45 ? 15 : 18),
+            fontWeight: 500,
+            letterSpacing: '0.55em',
             textTransform: 'uppercase',
-            opacity: 0.7,
-            marginBottom: wh(8),
+            color: 'rgba(244,239,232,0.65)',
+            marginBottom: wh(is45 ? 12 : 16),
+            paddingLeft: '0.55em',
           }}
         >
           {heading}
@@ -914,116 +977,434 @@ function VouriPlp({ scale, is45, colors, heading, sub, title, brandChip, results
           style={{
             fontFamily: 'var(--font-display)',
             fontStyle: 'italic',
-            fontSize: wh(60),
+            fontSize: wh(is45 ? 72 : 92),
             fontWeight: 400,
+            letterSpacing: '0.01em',
+            lineHeight: 1,
           }}
         >
           {sub}
         </div>
       </div>
 
+      {/* Phone */}
       <div
         style={{
-          width: is45 ? wh(540) : wh(620),
-          height: is45 ? wh(900) : wh(1080),
-          borderRadius: wh(50),
-          background: colors.phoneFrame,
-          padding: wh(10),
+          position: 'absolute',
+          left: '50%',
+          top: is45 ? '58%' : '56%',
+          width: pw,
+          height: ph,
+          transform: `translate(-50%, -50%) scale(${phoneScale})`,
+          borderRadius: wh(56),
+          background: 'linear-gradient(180deg, #1a1411, #0E0B09 60%, #1a1411)',
           boxShadow: `
-            0 0 0 ${wh(2)}px rgba(255,255,255,0.06),
-            0 ${wh(40)}px ${wh(100)}px rgba(0,0,0,0.6)
+            0 0 0 ${wh(1)}px rgba(216,154,110,0.35),
+            0 0 0 ${wh(8)}px #0E0B09,
+            0 ${wh(60)}px ${wh(120)}px rgba(0,0,0,0.7),
+            0 ${wh(12)}px ${wh(30)}px rgba(0,0,0,0.5),
+            inset 0 0 0 ${wh(2)}px rgba(216,154,110,0.15)
           `,
+          padding: wh(14),
           boxSizing: 'border-box',
+          opacity: phoneP,
+          zIndex: 3,
         }}
       >
         <div
           style={{
+            position: 'relative',
             width: '100%',
             height: '100%',
-            background: '#fff',
-            borderRadius: wh(40),
+            borderRadius: wh(44),
             overflow: 'hidden',
-            display: 'flex',
-            flexDirection: 'column',
-            color: '#111',
-            fontFamily: 'var(--font-body)',
+            background: SCREEN_BG,
+            color: IVORY,
           }}
         >
-          {/* Top bar */}
+          {/* Notch */}
           <div
             style={{
-              padding: `${wh(20)}px ${wh(24)}px ${wh(12)}px`,
-              borderBottom: `1px solid rgba(0,0,0,0.06)`,
+              position: 'absolute',
+              left: '50%',
+              top: wh(8),
+              transform: 'translateX(-50%)',
+              width: wh(110),
+              height: wh(28),
+              background: '#000',
+              borderRadius: `0 0 ${wh(18)}px ${wh(18)}px`,
+              zIndex: 5,
+            }}
+          />
+
+          {/* Status bar */}
+          <div
+            style={{
+              position: 'absolute',
+              left: 0,
+              right: 0,
+              top: 0,
+              height: wh(44),
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: `${wh(14)}px ${wh(30)}px 0`,
+              fontFamily: 'var(--font-mono, var(--font-body))',
+              fontSize: wh(15),
+              fontWeight: 600,
+              color: IVORY,
+              background: SCREEN_BG,
+              zIndex: 4,
+              boxSizing: 'border-box',
+            }}
+          >
+            <span>9:39</span>
+            <span style={{ display: 'flex', alignItems: 'center', gap: wh(6) }}>
+              {/* signal bars */}
+              <svg viewBox="0 0 18 12" width={wh(17)} height={wh(11)} aria-hidden>
+                <rect x="0" y="8" width="3" height="4" rx="0.5" fill="currentColor" />
+                <rect x="5" y="5" width="3" height="7" rx="0.5" fill="currentColor" />
+                <rect x="10" y="2" width="3" height="10" rx="0.5" fill="currentColor" />
+                <rect x="15" y="0" width="3" height="12" rx="0.5" fill="currentColor" opacity="0.35" />
+              </svg>
+              {/* wifi */}
+              <svg viewBox="0 0 16 12" width={wh(15)} height={wh(11)} aria-hidden>
+                <path d="M8 11.2 L9.7 9.5 a2.4 2.4 0 0 0 -3.4 0 z" fill="currentColor" />
+                <path d="M5 8.5 a4.2 4.2 0 0 1 6 0 l-1 1 a2.8 2.8 0 0 0 -4 0 z" fill="currentColor" />
+                <path d="M2.5 6 a7.7 7.7 0 0 1 11 0 l-1 1 a6.3 6.3 0 0 0 -9 0 z" fill="currentColor" />
+                <path d="M0 3.5 a11.3 11.3 0 0 1 16 0 l-1 1 a9.9 9.9 0 0 0 -14 0 z" fill="currentColor" />
+              </svg>
+              {/* battery */}
+              <span
+                style={{
+                  position: 'relative',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: wh(26),
+                  height: wh(12),
+                  border: `1px solid currentColor`,
+                  borderRadius: wh(3),
+                  marginLeft: wh(1),
+                }}
+              >
+                <span
+                  style={{
+                    position: 'absolute',
+                    right: -wh(3),
+                    top: wh(3),
+                    width: wh(2),
+                    height: wh(4),
+                    background: 'currentColor',
+                    borderRadius: `0 ${wh(1)}px ${wh(1)}px 0`,
+                  }}
+                />
+                <span
+                  style={{
+                    fontFamily: 'var(--font-mono, var(--font-body))',
+                    fontSize: wh(8),
+                    fontWeight: 700,
+                    color: SCREEN_BG,
+                    background: 'currentColor',
+                    width: '100%',
+                    height: '100%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    borderRadius: wh(1),
+                  }}
+                >
+                  74
+                </span>
+              </span>
+            </span>
+          </div>
+
+          {/* Top nav */}
+          <div
+            style={{
+              position: 'absolute',
+              left: 0,
+              right: 0,
+              top: wh(44),
+              padding: `${wh(8)}px ${wh(16)}px ${wh(14)}px`,
+              background: SCREEN_BG,
+              zIndex: 3,
+              boxSizing: 'border-box',
             }}
           >
             <div
               style={{
-                display: 'flex',
+                display: 'grid',
+                gridTemplateColumns: `${wh(32)}px 1fr auto`,
                 alignItems: 'center',
-                justifyContent: 'space-between',
-                fontSize: wh(18),
-                fontWeight: 600,
-                marginBottom: wh(10),
+                gap: wh(10),
+                padding: `${wh(8)}px ${wh(4)}px ${wh(14)}px`,
               }}
             >
-              <span>‹</span>
-              <span>{title}</span>
-              <span style={{ opacity: 0.6 }}>♡</span>
+              <span style={{ color: IVORY, display: 'inline-flex' }}>
+                <svg viewBox="0 0 24 24" width={wh(22)} height={wh(22)}>
+                  <path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </span>
+              <span
+                style={{
+                  textAlign: 'center',
+                  fontFamily: 'var(--font-mono, var(--font-body))',
+                  fontSize: wh(16),
+                  fontWeight: 500,
+                  color: IVORY,
+                  letterSpacing: '0.01em',
+                }}
+              >
+                {title}
+              </span>
+              <span style={{ display: 'flex', alignItems: 'center', gap: wh(14), color: IVORY }}>
+                <svg viewBox="0 0 24 24" width={wh(20)} height={wh(20)} aria-hidden>
+                  <circle cx="11" cy="11" r="6.5" fill="none" stroke="currentColor" strokeWidth="1.5" />
+                  <path d="M16 16l4 4" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                </svg>
+                <span style={{ position: 'relative', display: 'inline-flex' }}>
+                  <svg viewBox="0 0 24 24" width={wh(22)} height={wh(22)} aria-hidden>
+                    <path d="M12 20s-7-4.5-7-10.2A4.3 4.3 0 0 1 12 7a4.3 4.3 0 0 1 7 2.8C19 15.5 12 20 12 20z" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" />
+                  </svg>
+                  <span
+                    style={{
+                      position: 'absolute',
+                      top: -wh(4),
+                      right: -wh(8),
+                      background: '#E85A2C',
+                      color: '#fff',
+                      fontFamily: 'var(--font-mono, var(--font-body))',
+                      fontSize: wh(9),
+                      fontWeight: 700,
+                      padding: `${wh(2)}px ${wh(4)}px`,
+                      borderRadius: 999,
+                      minWidth: wh(16),
+                      textAlign: 'center',
+                    }}
+                  >
+                    161
+                  </span>
+                </span>
+              </span>
             </div>
-            <div style={{ display: 'flex', gap: wh(8), flexWrap: 'wrap' }}>
-              <Chip>{`Filter (1)`}</Chip>
-              <Chip>Sort</Chip>
-              <Chip strong>{title} ×</Chip>
-              <Chip strong>{brandChip}</Chip>
+
+            {/* Chips */}
+            <div
+              style={{
+                display: 'flex',
+                gap: wh(8),
+                overflow: 'hidden',
+                whiteSpace: 'nowrap',
+                padding: `0 ${wh(4)}px`,
+              }}
+            >
+              <PlpChip label="Filter (1)" />
+              <PlpChip label="Sort" />
+              <PlpChip label={`${title} ×`} />
+              <PlpChip label={brandChip} outlined />
             </div>
-            <div style={{ marginTop: wh(8), fontSize: wh(14), color: 'rgba(0,0,0,0.6)' }}>
+            <div
+              style={{
+                textAlign: 'center',
+                marginTop: wh(16),
+                fontFamily: 'var(--font-mono, var(--font-body))',
+                fontSize: wh(12),
+                fontWeight: 500,
+                color: 'rgba(242,239,234,0.55)',
+                letterSpacing: '0.02em',
+              }}
+            >
               Showing {results} results
             </div>
           </div>
-          {/* Grid */}
+
+          {/* Grid clip — auto-scrolls vertically */}
           <div
             style={{
-              flex: 1,
-              padding: wh(12),
-              display: 'grid',
-              gridTemplateColumns: '1fr 1fr',
-              gap: wh(10),
+              position: 'absolute',
+              left: 0,
+              right: 0,
+              top: wh(218),
+              bottom: wh(64),
               overflow: 'hidden',
+              background: SCREEN_BG,
             }}
           >
-            {tiles.slice(0, 8).map((tile, i) => (
-              <div
-                key={i}
-                style={{
-                  background: tile.imageUrl
-                    ? `url("${tile.imageUrl}") center/cover no-repeat`
-                    : '#f1eee9',
-                  borderRadius: wh(8),
-                  position: 'relative',
-                  paddingBottom: '125%',
-                }}
-              >
-                {tile.tag ? (
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: '1fr 1fr',
+                gap: `${wh(18)}px ${wh(12)}px`,
+                padding: `${wh(14)}px ${wh(14)}px ${wh(40)}px`,
+                transform: `translateY(${scrollPx}px)`,
+                willChange: 'transform',
+              }}
+            >
+              {tiles.slice(0, 8).map((tile, i) => (
+                <div
+                  key={i}
+                  style={{ position: 'relative', display: 'flex', flexDirection: 'column' }}
+                >
                   <div
                     style={{
-                      position: 'absolute',
-                      top: wh(8),
-                      left: wh(8),
-                      background: colors.accent,
-                      color: '#fff',
-                      fontSize: wh(10),
-                      fontWeight: 700,
-                      letterSpacing: '0.12em',
-                      padding: `${wh(4)}px ${wh(8)}px`,
-                      borderRadius: wh(2),
-                      textTransform: 'uppercase',
+                      position: 'relative',
+                      aspectRatio: '3 / 4',
+                      background: tile.imageUrl
+                        ? `url("${tile.imageUrl}") center/cover no-repeat`
+                        : '#1B1B1B',
+                      overflow: 'hidden',
                     }}
                   >
-                    {tile.tag}
+                    {/* Fav heart */}
+                    <span
+                      style={{
+                        position: 'absolute',
+                        top: wh(8),
+                        right: wh(8),
+                        color: '#fff',
+                        zIndex: 2,
+                        filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.4))',
+                      }}
+                    >
+                      <svg viewBox="0 0 24 24" width={wh(22)} height={wh(22)}>
+                        <path d="M12 20s-7-4.5-7-10.2A4.3 4.3 0 0 1 12 7a4.3 4.3 0 0 1 7 2.8C19 15.5 12 20 12 20z" fill="none" stroke="#fff" strokeWidth="1.6" strokeLinejoin="round" />
+                      </svg>
+                    </span>
+                    {tile.tag ? (
+                      <div
+                        style={{
+                          position: 'absolute',
+                          left: '50%',
+                          bottom: 0,
+                          transform: 'translateX(-50%)',
+                          background: SCREEN_BG,
+                          color: IVORY,
+                          fontFamily: 'var(--font-mono, var(--font-body))',
+                          fontSize: wh(9),
+                          fontWeight: 700,
+                          letterSpacing: '0.22em',
+                          textTransform: 'uppercase',
+                          padding: `${wh(6)}px ${wh(14)}px`,
+                          zIndex: 2,
+                        }}
+                      >
+                        {tile.tag}
+                      </div>
+                    ) : null}
                   </div>
-                ) : null}
-              </div>
-            ))}
+                  <div
+                    style={{
+                      padding: `${wh(10)}px ${wh(2)}px 0`,
+                      textAlign: 'center',
+                      color: IVORY,
+                    }}
+                  >
+                    <div
+                      style={{
+                        fontFamily: 'var(--font-mono, var(--font-body))',
+                        fontWeight: 700,
+                        fontSize: wh(11),
+                        lineHeight: 1.1,
+                        letterSpacing: '0.14em',
+                        textTransform: 'uppercase',
+                        marginBottom: wh(4),
+                      }}
+                    >
+                      {tile.brand}
+                    </div>
+                    <div
+                      style={{
+                        fontFamily: 'var(--font-mono, var(--font-body))',
+                        fontWeight: 400,
+                        fontSize: wh(11),
+                        lineHeight: 1.3,
+                        marginBottom: wh(6),
+                        overflow: 'hidden',
+                        whiteSpace: 'nowrap',
+                        textOverflow: 'ellipsis',
+                      }}
+                    >
+                      {tile.name}
+                    </div>
+                    <div
+                      style={{
+                        display: 'inline-flex',
+                        gap: wh(8),
+                        alignItems: 'baseline',
+                        marginBottom: wh(4),
+                      }}
+                    >
+                      <span
+                        style={{
+                          fontFamily: 'var(--font-mono, var(--font-body))',
+                          fontWeight: 600,
+                          fontSize: wh(11),
+                          letterSpacing: '0.04em',
+                          color: ACCENT,
+                        }}
+                      >
+                        {tile.price}
+                      </span>
+                      {tile.was ? (
+                        <span
+                          style={{
+                            fontFamily: 'var(--font-mono, var(--font-body))',
+                            fontWeight: 500,
+                            fontSize: wh(11),
+                            letterSpacing: '0.04em',
+                            color: 'rgba(242,239,234,0.45)',
+                            textDecoration: 'line-through',
+                          }}
+                        >
+                          {tile.was}
+                        </span>
+                      ) : null}
+                    </div>
+                    {tile.off ? (
+                      <div
+                        style={{
+                          fontFamily: 'var(--font-mono, var(--font-body))',
+                          fontWeight: 500,
+                          fontSize: wh(9.5),
+                          letterSpacing: '0.06em',
+                          color: 'rgba(242,239,234,0.65)',
+                        }}
+                      >
+                        {tile.off}
+                      </div>
+                    ) : null}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Tab bar */}
+          <div
+            style={{
+              position: 'absolute',
+              left: 0,
+              right: 0,
+              bottom: 0,
+              height: wh(64),
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-around',
+              padding: `0 ${wh(4)}px ${wh(8)}px`,
+              background: SCREEN_BG,
+              borderTop: `1px solid rgba(242,239,234,0.08)`,
+              zIndex: 4,
+              boxSizing: 'border-box',
+              color: IVORY,
+            }}
+          >
+            <PlpTab label="Discover" />
+            <PlpTab label="Categories" active />
+            <PlpTab label="For You" />
+            <PlpTab label="Bag" />
+            <PlpTab label="More" />
           </div>
         </div>
       </div>
@@ -1031,20 +1412,49 @@ function VouriPlp({ scale, is45, colors, heading, sub, title, brandChip, results
   );
 }
 
-function Chip({ children, strong }: { children: React.ReactNode; strong?: boolean }) {
+function PlpChip({ label, outlined }: { label: string; outlined?: boolean }) {
   return (
     <span
       style={{
-        padding: '4px 10px',
-        borderRadius: 999,
-        border: '1px solid rgba(0,0,0,0.16)',
-        background: strong ? '#111' : '#fff',
-        color: strong ? '#fff' : '#111',
-        fontSize: 11,
+        flex: '0 0 auto',
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: 6,
+        padding: '8px 12px',
+        borderRadius: 6,
+        fontFamily: 'var(--font-mono, var(--font-body))',
         fontWeight: 600,
+        fontSize: 11,
+        lineHeight: 1,
+        letterSpacing: '0.14em',
+        textTransform: 'uppercase',
+        color: outlined ? '#F2EFEA' : '#1A1410',
+        background: outlined ? 'transparent' : '#F2EFEA',
+        border: outlined ? '1px solid rgba(242,239,234,0.18)' : 'none',
       }}
     >
-      {children}
+      {label}
+    </span>
+  );
+}
+
+function PlpTab({ label, active }: { label: string; active?: boolean }) {
+  return (
+    <span
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        gap: 2,
+        fontFamily: 'var(--font-mono, var(--font-body))',
+        fontSize: 9,
+        fontWeight: active ? 700 : 500,
+        color: active ? '#F2EFEA' : 'rgba(242,239,234,0.6)',
+        letterSpacing: '0.04em',
+      }}
+    >
+      <span style={{ width: 18, height: 18, borderRadius: 9, background: active ? '#F2EFEA' : 'transparent', border: active ? 'none' : '1px solid rgba(242,239,234,0.4)' }} />
+      <span>{label}</span>
     </span>
   );
 }
