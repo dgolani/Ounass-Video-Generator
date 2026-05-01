@@ -88,28 +88,35 @@ function normalizeBackground(
   videoClipStartSec: number,
 ): ProjectBackground | undefined {
   // Path A — explicit background already set on the project.
-  if (raw && typeof raw === 'object' && typeof (raw as ProjectBackground).src === 'string') {
-    const dim = clamp01(typeof raw.dim === 'number' ? raw.dim : 0);
-    if (raw.kind === 'image') {
-      return { kind: 'image', src: raw.src, dim };
+  if (raw && typeof raw === 'object') {
+    const r = raw as ProjectBackground;
+    // Color kind has no `src`; check it before the src-based branches.
+    if (r.kind === 'color' && typeof r.color === 'string' && r.color) {
+      return { kind: 'color', color: normalizeHex(r.color) };
     }
-    if (raw.kind === 'video') {
-      const defaultAnchor = videoClipStartSec;
-      const defaultEnd = videoClipStartSec + duration;
-      const anchor = Math.max(0, Number.isFinite(raw.anchorVideoTime) ? raw.anchorVideoTime : defaultAnchor);
-      const trim = Math.max(0, Number.isFinite(raw.trimStartSec) ? raw.trimStartSec : 0);
-      const end = Math.max(
-        anchor + 0.05,
-        Number.isFinite(raw.endVideoTime) ? raw.endVideoTime : defaultEnd,
-      );
-      return {
-        kind: 'video',
-        src: raw.src,
-        dim: dim || 0.24,
-        anchorVideoTime: anchor,
-        trimStartSec: trim,
-        endVideoTime: end,
-      };
+    if (typeof (r as { src?: unknown }).src === 'string') {
+      const dim = clamp01(typeof (r as { dim?: number }).dim === 'number' ? (r as { dim?: number }).dim! : 0);
+      if (r.kind === 'image') {
+        return { kind: 'image', src: r.src, dim };
+      }
+      if (r.kind === 'video') {
+        const defaultAnchor = videoClipStartSec;
+        const defaultEnd = videoClipStartSec + duration;
+        const anchor = Math.max(0, Number.isFinite(r.anchorVideoTime) ? r.anchorVideoTime : defaultAnchor);
+        const trim = Math.max(0, Number.isFinite(r.trimStartSec) ? r.trimStartSec : 0);
+        const end = Math.max(
+          anchor + 0.05,
+          Number.isFinite(r.endVideoTime) ? r.endVideoTime : defaultEnd,
+        );
+        return {
+          kind: 'video',
+          src: r.src,
+          dim: dim || 0.24,
+          anchorVideoTime: anchor,
+          trimStartSec: trim,
+          endVideoTime: end,
+        };
+      }
     }
   }
 
@@ -143,6 +150,16 @@ function normalizeBackground(
 function clamp01(n: number): number {
   if (!Number.isFinite(n)) return 0;
   return Math.min(1, Math.max(0, n));
+}
+
+/** Normalize a user-supplied colour string into a CSS-safe `#RRGGBB`
+ *  / `#RGB` / `#RRGGBBAA` hex. Anything that doesn't look like a hex
+ *  falls back to solid black so the renderer never explodes on
+ *  malformed persisted data. */
+function normalizeHex(c: string): string {
+  const s = c.trim();
+  if (/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/.test(s)) return s;
+  return '#000000';
 }
 
 function readAll(): Project[] {

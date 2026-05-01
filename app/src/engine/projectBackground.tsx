@@ -88,7 +88,32 @@ export function ProjectBackgroundLayer({ background, width, height }: LayerProps
   if (background.kind === 'image') {
     return <ImageBackground background={background} />;
   }
+  if (background.kind === 'color') {
+    return <ColorBackground background={background} />;
+  }
   return <VideoBackground background={background} />;
+}
+
+// ── Color branch ────────────────────────────────────────────────
+
+function ColorBackground({
+  background,
+}: {
+  background: Extract<ProjectBackground, { kind: 'color' }>;
+}) {
+  // Solid colour bakes straight into the rasterized PNG (no
+  // `data-export-ignore`), exactly like the image branch — ffmpeg
+  // encodes the PNG sequence as-is, no overlay needed.
+  return (
+    <div
+      data-project-bg-color="true"
+      style={{
+        ...BASE_STYLE,
+        background: background.color,
+        objectFit: undefined,
+      }}
+    />
+  );
 }
 
 // ── Image branch ────────────────────────────────────────────────

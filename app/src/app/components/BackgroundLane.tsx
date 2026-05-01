@@ -99,6 +99,8 @@ export function BackgroundLane({
         <AddButton onClick={onAddClick} />
       ) : background.kind === 'image' ? (
         <ImageStripe onClick={onEditClick} />
+      ) : background.kind === 'color' ? (
+        <ColorStripe color={background.color} onClick={onEditClick} />
       ) : (
         <VideoClip
           background={background}
@@ -156,6 +158,68 @@ function AddButton({ onClick }: { onClick: () => void }) {
 }
 
 // ── Image branch — non-draggable stripe ─────────────────────────
+
+function ColorStripe({ color, onClick }: { color: string; onClick: () => void }) {
+  // Pick a contrasting label colour from the swatch luminance so the
+  // hex code is always legible on whatever shade the marketer chose.
+  const labelColor = isLightHex(color) ? '#0A0A0A' : '#F2EFEA';
+  return (
+    <button
+      type="button"
+      data-timeline-no-seek
+      onPointerDown={(e) => e.stopPropagation()}
+      onClick={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        onClick();
+      }}
+      style={{
+        position: 'absolute',
+        inset: 5,
+        borderRadius: 'var(--r-md)',
+        border: `2px solid ${BG_BRONZE}`,
+        background: color,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 10,
+        color: labelColor,
+        fontFamily: 'var(--mono, var(--sans))',
+        fontSize: 11,
+        fontWeight: 700,
+        letterSpacing: '0.18em',
+        textTransform: 'uppercase',
+        cursor: 'pointer',
+        padding: 0,
+        width: `calc(100% - 10px)`,
+      }}
+    >
+      <span aria-hidden style={{ fontSize: 10 }}>●</span>
+      <span>{color}</span>
+    </button>
+  );
+}
+
+/** Quick perceived-luminance check (Rec. 709-ish) on a `#RGB`/`#RRGGBB`
+ *  hex. Used by the lane stripe to pick a contrasting label colour. */
+function isLightHex(hex: string): boolean {
+  const m =
+    /^#([0-9a-fA-F]{3})$/.exec(hex) || /^#([0-9a-fA-F]{6})/.exec(hex);
+  if (!m) return false;
+  const h = m[1];
+  const expand = h.length === 3
+    ? h
+        .split('')
+        .map((c) => c + c)
+        .join('')
+    : h;
+  const r = parseInt(expand.slice(0, 2), 16);
+  const g = parseInt(expand.slice(2, 4), 16);
+  const b = parseInt(expand.slice(4, 6), 16);
+  // Rec. 709 luma — perceived brightness; > 0.6 reads as "light".
+  const lum = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
+  return lum > 0.6;
+}
 
 function ImageStripe({ onClick }: { onClick: () => void }) {
   return (

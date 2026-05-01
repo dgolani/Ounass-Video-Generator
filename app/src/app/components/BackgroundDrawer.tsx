@@ -25,7 +25,7 @@ import {
 const Z_BACKDROP = 9200;
 const Z_DRAWER = 9201;
 
-type Mode = 'none' | 'image' | 'video';
+type Mode = 'none' | 'image' | 'video' | 'color';
 
 type Props = {
   open: boolean;
@@ -89,13 +89,15 @@ export function BackgroundDrawer({
     return () => window.removeEventListener('keydown', onKey);
   }, [present, onClose]);
 
-  // Per-mode memory so toggling Off → Image → Video doesn't wipe the
-  // marketer's parked-aside state.
+  // Per-mode memory so toggling Off → Image → Video → Color doesn't
+  // wipe the marketer's parked-aside state for any of the modes.
   const lastImageRef = useRef<Extract<ProjectBackground, { kind: 'image' }> | null>(null);
   const lastVideoRef = useRef<Extract<ProjectBackground, { kind: 'video' }> | null>(null);
+  const lastColorRef = useRef<Extract<ProjectBackground, { kind: 'color' }> | null>(null);
   useEffect(() => {
     if (background?.kind === 'image') lastImageRef.current = background;
     else if (background?.kind === 'video') lastVideoRef.current = background;
+    else if (background?.kind === 'color') lastColorRef.current = background;
   }, [background]);
 
   const mode: Mode = background?.kind ?? 'none';
@@ -108,6 +110,10 @@ export function BackgroundDrawer({
     if (next === mode) return;
     if (next === 'image') {
       onChange(lastImageRef.current ?? { kind: 'image', src: '', dim: 0 });
+      return;
+    }
+    if (next === 'color') {
+      onChange(lastColorRef.current ?? { kind: 'color', color: '#000000' });
       return;
     }
     // 'video' — defaults span the content layer (anchor matches the
@@ -264,6 +270,13 @@ export function BackgroundDrawer({
             />
           ) : null}
 
+          {mode === 'color' && background?.kind === 'color' ? (
+            <ColorBgSection
+              color={background.color}
+              onChange={(color) => onChange({ kind: 'color', color })}
+            />
+          ) : null}
+
           {mode === 'none' ? (
             <div
               style={{
@@ -304,7 +317,7 @@ function ModeToggle({
         borderRadius: 'var(--r-md)',
       }}
     >
-      {(['none', 'image', 'video'] as Mode[]).map((m) => {
+      {(['none', 'image', 'video', 'color'] as Mode[]).map((m) => {
         const active = mode === m;
         return (
           <button
@@ -313,11 +326,11 @@ function ModeToggle({
             onClick={() => onChange(m)}
             style={{
               flex: 1,
-              padding: '8px 10px',
-              fontSize: 11,
+              padding: '8px 6px',
+              fontSize: 10,
               fontFamily: 'var(--sans)',
               fontWeight: 700,
-              letterSpacing: '0.1em',
+              letterSpacing: '0.08em',
               textTransform: 'uppercase',
               color: active ? '#fff' : 'var(--editor-text-dim)',
               background: active ? 'var(--editor-accent)' : 'transparent',
@@ -363,6 +376,90 @@ function ImageBgSection({
       </div>
     </>
   );
+}
+
+function ColorBgSection({
+  color,
+  onChange,
+}: {
+  color: string;
+  onChange: (color: string) => void;
+}) {
+  return (
+    <>
+      <SectionLabel>Solid colour</SectionLabel>
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 12,
+          padding: 8,
+          border: '1px solid var(--editor-border)',
+          borderRadius: 'var(--r-md)',
+          background: 'var(--editor-panel-2)',
+        }}
+      >
+        <input
+          type="color"
+          value={normalizeHexInput(color)}
+          onChange={(e) => onChange(e.target.value)}
+          style={{
+            width: 56,
+            height: 56,
+            padding: 0,
+            border: '1px solid rgba(255,255,255,0.08)',
+            borderRadius: 'var(--r-sm)',
+            background: 'transparent',
+            cursor: 'pointer',
+          }}
+          aria-label="Pick background colour"
+        />
+        <input
+          type="text"
+          value={color}
+          onChange={(e) => onChange(e.target.value)}
+          spellCheck={false}
+          style={{
+            flex: 1,
+            boxSizing: 'border-box',
+            padding: '10px 12px',
+            fontSize: 13,
+            fontFamily: 'var(--mono)',
+            letterSpacing: '0.04em',
+            color: 'var(--editor-text)',
+            background: 'rgba(255,255,255,0.03)',
+            border: '1px solid var(--editor-border)',
+            borderRadius: 'var(--r-sm)',
+            outline: 'none',
+            textTransform: 'uppercase',
+          }}
+        />
+      </div>
+      <div
+        style={{
+          fontFamily: 'var(--sans)',
+          fontSize: 11,
+          color: 'var(--editor-text-dim)',
+          letterSpacing: '0.01em',
+          marginTop: -4,
+        }}
+      >
+        Solid backdrop with no dim layer — pick a darker shade if you
+        want a dimmer feel. Hex `#RRGGBB` or `#RGB` or `#RRGGBBAA`.
+      </div>
+    </>
+  );
+}
+
+/** `<input type="color">` requires a 6-digit `#RRGGBB`. Truncate
+ *  alpha + expand short-form so the picker doesn't reset. */
+function normalizeHexInput(c: string): string {
+  const s = c.trim();
+  if (/^#[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$/.test(s)) return s.slice(0, 7);
+  if (/^#[0-9a-fA-F]{3}$/.test(s)) {
+    return `#${s[1]}${s[1]}${s[2]}${s[2]}${s[3]}${s[3]}`;
+  }
+  return '#000000';
 }
 
 function VideoBgSection({

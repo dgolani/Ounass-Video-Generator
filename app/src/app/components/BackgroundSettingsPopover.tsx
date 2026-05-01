@@ -120,12 +120,20 @@ export function BackgroundSettingsButton({
               }}
             >
               <PanelHeader background={background} />
-              <DimSection
-                value={background.dim}
-                onChange={(dim) =>
-                  onChange({ ...background, dim } as ProjectBackground)
-                }
-              />
+              {/* Dim slider only applies to image/video backdrops —
+               *  for solid colour the marketer is already picking the
+               *  exact shade in the drawer, so dimming would be a
+               *  redundant brightness control. */}
+              {background.kind !== 'color' ? (
+                <DimSection
+                  value={background.dim}
+                  onChange={(dim) =>
+                    onChange({ ...background, dim } as ProjectBackground)
+                  }
+                />
+              ) : (
+                <ColorEmptyState />
+              )}
               {background.kind === 'video' ? (
                 <TrimSection
                   trimStartSec={background.trimStartSec}
@@ -145,6 +153,18 @@ export function BackgroundSettingsButton({
 // ── Sub-components ───────────────────────────────────────────────
 
 function PanelHeader({ background }: { background: ProjectBackground }) {
+  let title: string;
+  let titleAttr: string;
+  if (background.kind === 'video') {
+    title = background.src || 'Untitled video';
+    titleAttr = background.src;
+  } else if (background.kind === 'image') {
+    title = 'Uploaded image';
+    titleAttr = 'Uploaded image';
+  } else {
+    title = `Solid ${background.color}`;
+    titleAttr = background.color;
+  }
   return (
     <>
       <div
@@ -171,14 +191,47 @@ function PanelHeader({ background }: { background: ProjectBackground }) {
           overflow: 'hidden',
           textOverflow: 'ellipsis',
           whiteSpace: 'nowrap',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8,
         }}
-        title={background.kind === 'video' ? background.src : 'Uploaded image'}
+        title={titleAttr}
       >
-        {background.kind === 'video'
-          ? background.src || 'Untitled video'
-          : 'Uploaded image'}
+        {background.kind === 'color' ? (
+          <span
+            aria-hidden
+            style={{
+              display: 'inline-block',
+              width: 14,
+              height: 14,
+              borderRadius: 4,
+              background: background.color,
+              border: '1px solid rgba(255,255,255,0.18)',
+              flex: 'none',
+            }}
+          />
+        ) : null}
+        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
+          {title}
+        </span>
       </div>
     </>
+  );
+}
+
+function ColorEmptyState() {
+  return (
+    <div
+      style={{
+        fontFamily: 'var(--sans)',
+        fontSize: 11,
+        lineHeight: 1.5,
+        color: 'var(--editor-text-dim)',
+      }}
+    >
+      Solid colour has no dim or trim — pick the exact shade you want
+      in the background drawer.
+    </div>
   );
 }
 

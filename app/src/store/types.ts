@@ -83,4 +83,12 @@ export type ProjectBackground =
        *  is replaced by the underlying scene chrome). Default = end
        *  of project. */
       endVideoTime: number;
+    }
+  | {
+      kind: 'color';
+      /** Hex `#RRGGBB` (or `#RGB` / `#RRGGBBAA`) solid backdrop. The
+       *  marketer picks via the color drawer; default is `#000000`.
+       *  No dim layer applies — pick a darker shade if you wanted
+       *  dimming. */
+      color: string;
     };
