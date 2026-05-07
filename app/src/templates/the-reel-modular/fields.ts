@@ -257,4 +257,10 @@ export const fields: FieldDescriptor[] = [
   { kind: 'color', path: 'colors.accentLight', label: 'Bronze light (cream)' },
   { kind: 'color', path: 'colors.phoneFrame', label: 'Phone frame (body)' },
   { kind: 'color', path: 'colors.phoneScreen', label: 'Phone screen base' },
+  {
+    kind: 'color',
+    path: 'colors.productCardBg',
+    label: 'Product card background',
+    showWhen: isContent('heading-products'),
+  },
 ];

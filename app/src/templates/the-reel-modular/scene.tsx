@@ -303,13 +303,17 @@ export function ReelModularScene({
     letterSpacing: '-0.01em',
     color: '#ffffff',
   });
+  // s4 pre-line — bumped from 22pt → 36pt and tightened the
+  // letter-spacing from 0.5em → 0.32em so it reads in better
+  // proportion to the huge OUNASS mark below it (matches the
+  // reference images' visual balance).
   const s4PreStyle = useFieldFormat('s4Pre', {
     fontFamily: 'var(--font-mono, var(--font-body))',
-    fontSize: wh(22),
+    fontSize: wh(is45 ? 28 : 36),
     fontWeight: 700,
-    letterSpacing: '0.5em',
+    letterSpacing: '0.32em',
     textTransform: 'uppercase',
-    color: 'rgba(255,255,255,0.85)',
+    color: 'rgba(255,255,255,0.92)',
   });
   const s4MarkStyle = useFieldFormat('s4Mark', {
     fontFamily: 'var(--font-display)',
@@ -350,30 +354,31 @@ export function ReelModularScene({
 
   // ── Scene 3 — USP flashes ─────────────────────────────────────
   const s3LocalT = t - T(tl.s3In);
+  // Eyebrow fade-in only (no translateY — keeps the animation pure
+  // opacity-driven per marketer's request).
   const eyeP = clamp((s3LocalT - 0.05) / 0.5, 0, 1);
-  const eyeE = Easing.easeOutCubic(eyeP);
-  const s3EyebrowOp = eyeE;
-  const s3EyebrowTy = (1 - eyeE) * wh(8);
-  // USPs split the available duration evenly, clamped to a 1.1s slice.
-  const s3Half = Math.max(0.6, (T(tl.s3Out) - T(tl.s3In) - 0.4) / 2);
-  const l1 = uspLineStyle(s3LocalT, 0.25, s3Half, wh(20));
-  const l2 = uspLineStyle(s3LocalT, 0.25 + s3Half, s3Half, wh(20));
+  const s3EyebrowOp = Easing.easeOutCubic(eyeP);
+  // Skip-blank logic: build a list of non-empty USP lines and split
+  // the available time evenly between them. If both are blank the
+  // scene renders empty (just the eyebrow if present); if only one
+  // is blank the other gets the entire window. No "appearing flash
+  // of nothing" any more.
+  const visibleUsps = [s3Line1, s3Line2].filter((s) => s && s.trim().length > 0);
+  const s3Window = T(tl.s3Out) - T(tl.s3In) - 0.4;
+  const slice = visibleUsps.length > 0 ? Math.max(0.6, s3Window / visibleUsps.length) : 0;
+  const uspSlots = visibleUsps.map((line, i) => ({
+    line,
+    fade: uspFadeStyle(s3LocalT, 0.25 + i * slice, slice),
+  }));
 
-  // ── Scene 4 — Discover + huge mark + CTA ──────────────────────
+  // ── Scene 4 — Discover + huge mark + CTA (pure fades) ────────
+  // Per marketer's request: drop the translateY / scale entry
+  // motion on Scene 4 elements. Each one fades in via opacity only,
+  // staggered so the eye reads pre-line → mark → CTA.
   const s4LocalT = t - T(tl.s4In);
-  const preP = clamp((s4LocalT - 0.1) / 0.6, 0, 1);
-  const preE = Easing.easeOutCubic(preP);
-  const s4PreOp = preE;
-  const s4PreTy = (1 - preE) * wh(8);
-  const markP = clamp((s4LocalT - 0.35) / 0.85, 0, 1);
-  const markE = Easing.easeOutCubic(markP);
-  const s4MarkOp = markE;
-  const s4MarkScale = 1.15 - markE * 0.15;
-  const ctaP = clamp((s4LocalT - 0.95) / 0.7, 0, 1);
-  const ctaE = Easing.easeOutCubic(ctaP);
-  const s4CtaOp = ctaE;
-  const s4CtaTy = (1 - ctaE) * wh(20);
-  const s4CtaScale = 0.92 + ctaE * 0.08;
+  const s4PreOp = Easing.easeOutCubic(clamp((s4LocalT - 0.1) / 0.6, 0, 1));
+  const s4MarkOp = Easing.easeOutCubic(clamp((s4LocalT - 0.35) / 0.85, 0, 1));
+  const s4CtaOp = Easing.easeOutCubic(clamp((s4LocalT - 0.95) / 0.7, 0, 1));
   // CTA shimmer — diagonal light sweep that loops across the pill
   // every 1.4s starting 1.7s after Scene 4 becomes active. Mirrors the
   // prototype's `@keyframes ctaShimmer` (translateX -130% → 130% over
@@ -508,6 +513,7 @@ export function ReelModularScene({
             headingStyle={s2hpHeadingStyle}
             brandStyle={s2hpProductBrandStyle}
             priceStyle={s2hpProductPriceStyle}
+            cardBg={colors.productCardBg ?? '#FFFFFF'}
             count={Math.max(1, Math.min(6, s2hpProducts.length))}
             products={s2hpProducts}
             localT={s2LocalT}
@@ -567,7 +573,6 @@ export function ReelModularScene({
             <div
               style={{
                 marginBottom: wh(28),
-                transform: `translateY(${s3EyebrowTy}px)`,
                 ...s3EyebrowStyle,
                 opacity: s3EyebrowOp * ((s3EyebrowStyle.opacity as number | undefined) ?? 1),
               }}
@@ -576,36 +581,26 @@ export function ReelModularScene({
             </div>
           ) : null}
           <div style={{ position: 'relative', height: wh(160) }}>
-            <div
-              style={{
-                position: 'absolute',
-                left: 0,
-                right: 0,
-                top: '50%',
-                transform: `translateY(-50%) translateY(${l1.ty}px)`,
-                filter: `blur(${l1.blur}px)`,
-                textAlign: 'center',
-                ...s3LineStyle,
-                opacity: l1.opacity * ((s3LineStyle.opacity as number | undefined) ?? 1),
-              }}
-            >
-              {s3Line1}
-            </div>
-            <div
-              style={{
-                position: 'absolute',
-                left: 0,
-                right: 0,
-                top: '50%',
-                transform: `translateY(-50%) translateY(${l2.ty}px)`,
-                filter: `blur(${l2.blur}px)`,
-                textAlign: 'center',
-                ...s3Line2Style,
-                opacity: l2.opacity * ((s3Line2Style.opacity as number | undefined) ?? 1),
-              }}
-            >
-              {s3Line2}
-            </div>
+            {uspSlots.map((slot, i) => {
+              const lineStyle = i === 0 ? s3LineStyle : s3Line2Style;
+              return (
+                <div
+                  key={i}
+                  style={{
+                    position: 'absolute',
+                    left: 0,
+                    right: 0,
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    textAlign: 'center',
+                    ...lineStyle,
+                    opacity: slot.fade * ((lineStyle.opacity as number | undefined) ?? 1),
+                  }}
+                >
+                  {slot.line}
+                </div>
+              );
+            })}
           </div>
         </div>
       </div>
@@ -627,8 +622,7 @@ export function ReelModularScene({
           {s4Pre ? (
             <div
               style={{
-                marginBottom: wh(30),
-                transform: `translateY(${s4PreTy}px)`,
+                marginBottom: wh(36),
                 ...s4PreStyle,
                 opacity: s4PreOp * ((s4PreStyle.opacity as number | undefined) ?? 1),
               }}
@@ -639,7 +633,6 @@ export function ReelModularScene({
           <div
             style={{
               opacity: s4MarkOp,
-              transform: `scale(${s4MarkScale})`,
               marginBottom: wh(60),
             }}
           >
@@ -665,45 +658,48 @@ export function ReelModularScene({
               </div>
             )}
           </div>
-          <div
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: wh(14),
-              padding: `${wh(28)}px ${wh(64)}px`,
-              background: '#000',
-              borderRadius: 999,
-              boxShadow: `
-                0 0 0 1px rgba(255,255,255,0.15),
-                0 ${wh(14)}px ${wh(40)}px rgba(0,0,0,0.55)
-              `,
-              transform: `translateY(${s4CtaTy}px) scale(${s4CtaScale})`,
-              position: 'relative',
-              overflow: 'hidden',
-              pointerEvents: 'auto',
-              ...s4CtaStyle,
-              opacity: s4CtaOp * ((s4CtaStyle.opacity as number | undefined) ?? 1),
-            }}
-          >
-            <span style={{ position: 'relative', zIndex: 2 }}>{s4Cta}</span>
-            <span style={{ fontSize: wh(24), lineHeight: 1, color: '#fff', position: 'relative', zIndex: 2 }}>→</span>
-            {/* Diagonal shimmer sweep — runs continuously after the
-             *  CTA's entry animation has settled. */}
-            {s4ShimmerVisible ? (
-              <span
-                aria-hidden
-                style={{
-                  position: 'absolute',
-                  inset: 0,
-                  background:
-                    'linear-gradient(115deg, transparent 25%, rgba(255,255,255,0.35) 48%, rgba(255,255,255,0) 65%, transparent 80%)',
-                  transform: `translateX(${s4ShimmerTx}%)`,
-                  pointerEvents: 'none',
-                  zIndex: 1,
-                }}
-              />
-            ) : null}
-          </div>
+          {/* Hide the entire CTA pill when its label is blank — the
+           *  marketer reported a stray empty pill rendering when they
+           *  cleared "Shop Now". Render-nothing on empty is the right
+           *  fix; the pill has no purpose without a label. */}
+          {s4Cta && s4Cta.trim().length > 0 ? (
+            <div
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: wh(14),
+                padding: `${wh(28)}px ${wh(64)}px`,
+                background: '#000',
+                borderRadius: 999,
+                boxShadow: `
+                  0 0 0 1px rgba(255,255,255,0.15),
+                  0 ${wh(14)}px ${wh(40)}px rgba(0,0,0,0.55)
+                `,
+                position: 'relative',
+                overflow: 'hidden',
+                pointerEvents: 'auto',
+                ...s4CtaStyle,
+                opacity: s4CtaOp * ((s4CtaStyle.opacity as number | undefined) ?? 1),
+              }}
+            >
+              <span style={{ position: 'relative', zIndex: 2 }}>{s4Cta}</span>
+              <span style={{ fontSize: wh(24), lineHeight: 1, color: '#fff', position: 'relative', zIndex: 2 }}>→</span>
+              {s4ShimmerVisible ? (
+                <span
+                  aria-hidden
+                  style={{
+                    position: 'absolute',
+                    inset: 0,
+                    background:
+                      'linear-gradient(115deg, transparent 25%, rgba(255,255,255,0.35) 48%, rgba(255,255,255,0) 65%, transparent 80%)',
+                    transform: `translateX(${s4ShimmerTx}%)`,
+                    pointerEvents: 'none',
+                    zIndex: 1,
+                  }}
+                />
+              ) : null}
+            </div>
+          ) : null}
         </div>
       </div>
       {void h /* keep h() reachable; reserved for future variant work */}
@@ -872,12 +868,14 @@ type HeadingProductsProps = {
   headingStyle: React.CSSProperties;
   brandStyle: React.CSSProperties;
   priceStyle: React.CSSProperties;
+  /** Hex fill for the white product card. Defaults to `#FFFFFF`. */
+  cardBg: string;
   count: number;
   products: ReelModularProps['s2hpProducts'];
   localT: number;
 };
 
-function HeadingProducts({ scale, is45, heading, headingStyle, brandStyle, priceStyle, count, products, localT }: HeadingProductsProps) {
+function HeadingProducts({ scale, is45, heading, headingStyle, brandStyle, priceStyle, cardBg, count, products, localT }: HeadingProductsProps) {
   const { wh } = scale;
   // Frame 0 = heading, frames 1..N = product cards.
   const SLICE = 2.2;
@@ -961,7 +959,7 @@ function HeadingProducts({ scale, is45, heading, headingStyle, brandStyle, price
           style={{
             width: '100%',
             aspectRatio: imgAspect,
-            background: '#ffffff',
+            background: cardBg,
             backgroundImage: product.imageUrl ? `url("${product.imageUrl}")` : undefined,
             backgroundSize: 'contain',
             backgroundPosition: 'center',
@@ -1671,19 +1669,16 @@ function phoneScreenReveal(anim: ReelPhoneAnim, localT: number): { clipPath: str
   return { clipPath: 'inset(0 0 0 0)' };
 }
 
-function uspLineStyle(localT: number, startAt: number, dur: number, tyAmp: number) {
+/** Opacity-only fade lifecycle for one USP line — fade-in over the
+ *  first 20% of its slot, hold to 80%, fade-out over the last 20%.
+ *  Returns just the opacity (no movement, no blur) per the
+ *  marketer's request for pure-fade animations on Scene 3. */
+function uspFadeStyle(localT: number, startAt: number, dur: number): number {
   const p = clamp((localT - startAt) / dur, 0, 1);
-  if (p <= 0) return { opacity: 0, ty: tyAmp, blur: 8 };
-  if (p >= 1) return { opacity: 0, ty: -tyAmp, blur: 6 };
-  if (p < 0.2) {
-    const local = p / 0.2;
-    const e = Easing.easeOutCubic(local);
-    return { opacity: e, ty: tyAmp * (1 - e), blur: 8 * (1 - e) };
-  }
-  if (p < 0.8) return { opacity: 1, ty: 0, blur: 0 };
-  const local = (p - 0.8) / 0.2;
-  const e = Easing.easeOutCubic(local);
-  return { opacity: 1 - e, ty: -tyAmp * e, blur: 6 * e };
+  if (p <= 0 || p >= 1) return 0;
+  if (p < 0.2) return Easing.easeOutCubic(p / 0.2);
+  if (p < 0.8) return 1;
+  return 1 - Easing.easeOutCubic((p - 0.8) / 0.2);
 }
 
 void interpolate; // reserved for future variant work

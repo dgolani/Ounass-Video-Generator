@@ -31,6 +31,11 @@ export type ReelModularPalette = {
   accentLight: string;
   phoneFrame: string;
   phoneScreen: string;
+  /** Background fill of the white product card in the
+   *  heading-products variant. Defaults to pure white but the
+   *  marketer can pick a tone (cream, bone, soft pink) to match
+   *  the campaign palette. */
+  productCardBg: string;
 };
 
 /** Per-product slot for the heading-products variant (scene 2). */
@@ -124,6 +129,7 @@ const palette: ReelModularPalette = {
   accentLight: '#FFE5C8',
   phoneFrame: '#0A0A0A',
   phoneScreen: '#1A1A1A',
+  productCardBg: '#FFFFFF',
 };
 
 const defaultHpProducts: HpProduct[] = [
