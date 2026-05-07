@@ -620,10 +620,23 @@ export function ReelModularScene({
       >
         <div style={{ textAlign: 'center' }}>
           {s4Pre ? (
+            // Max-width capped at 60% of the canvas so longer copy
+            // (e.g. "EXPLORE 1200+ LUXURY BRANDS ON") wraps onto a
+            // second line instead of running off the safe area.
+            // `margin: 0 auto` keeps it centred regardless of how
+            // many lines it occupies.
             <div
               style={{
+                maxWidth: s.w(BASE_W * 0.6),
+                margin: '0 auto',
                 marginBottom: wh(36),
+                whiteSpace: 'normal',
                 ...s4PreStyle,
+                // lineHeight after the spread so a second-line wrap
+                // breathes properly. The base style's lineHeight
+                // (defaults to 1 in FieldBaseStyle) would otherwise
+                // crush wrapped lines together.
+                lineHeight: 1.3,
                 opacity: s4PreOp * ((s4PreStyle.opacity as number | undefined) ?? 1),
               }}
             >
