@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Ounass Cutroom">
+  <!-- Deep-ink rounded card. Same family as the editor's chrome (#0E0B09). -->
+  <rect width="64" height="64" rx="14" fill="#0E0B09"/>
+
+  <!-- Subtle bronze inner edge — gives the icon depth at larger sizes
+       while staying invisible at 16px so the play triangle reads cleanly. -->
+  <rect x="1.5" y="1.5" width="61" height="61" rx="13" fill="none"
+        stroke="rgba(216,154,110,0.18)" stroke-width="0.75"/>
+
+  <!-- Bronze "O" ring — Ounass mark. Stroke 5 keeps it recognizable
+       at 16×16 (≈1.25px stroke after downscale). -->
+  <circle cx="32" cy="32" r="22" fill="none" stroke="url(#bronze)" stroke-width="5" stroke-linecap="round"/>
+
+  <!-- Cream play triangle in the ring — says "video editor" without
+       sacrificing the wordmark feel. Slightly inset so the triangle's
+       points don't kiss the ring at small sizes. -->
+  <path d="M27.5 22.5 L27.5 41.5 L43 32 Z" fill="#F2EFEA"/>
+
+  <defs>
+    <!-- Two-stop bronze gradient: deep on top-left, lifted highlight
+         on bottom-right. Catches the eye like polished foil. -->
+    <linearGradient id="bronze" x1="6" y1="6" x2="58" y2="58" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#B87253"/>
+      <stop offset="0.55" stop-color="#D89A6E"/>
+      <stop offset="1" stop-color="#FFE5C8"/>
+    </linearGradient>
+  </defs>
+</svg>

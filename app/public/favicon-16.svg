@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" role="img" aria-label="Ounass Cutroom">
+  <!-- 16×16-tuned variant — thicker ring + simpler card so the mark
+       doesn't dissolve in browser tab strips. Same colour palette
+       as the 64×64 favicon.svg. -->
+  <rect width="16" height="16" rx="3" fill="#0E0B09"/>
+  <circle cx="8" cy="8" r="5.4" fill="none" stroke="#D89A6E" stroke-width="1.6"/>
+  <path d="M6.5 5.5 L6.5 10.5 L11 8 Z" fill="#F2EFEA"/>
+</svg>
