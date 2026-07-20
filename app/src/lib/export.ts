@@ -56,6 +56,8 @@ export type ExportOptions = {
    */
   projectBackground?: ProjectBackground;
   onProgress?: (p: ExportProgress) => void;
+  /** Non-fatal problems (e.g. font embedding failed); export continues */
+  onWarning?: (message: string) => void;
   signal?: AbortSignal;
 };
 
@@ -74,6 +76,7 @@ export async function exportVideoToMP4({
   musicEndVideoTime = 0,
   projectBackground,
   onProgress = () => {},
+  onWarning = () => {},
   signal,
 }: ExportOptions): Promise<Blob> {
   const abort = () => {
@@ -116,12 +119,26 @@ export async function exportVideoToMP4({
     // frames render with Fraunces / Nunito Sans instead of falling back
     // to serif / sans-serif defaults.
     onProgress({ stage: 'fonts', message: 'Embedding fonts…' });
+    // A failure here means the MP4 renders in system fallback fonts with
+    // different metrics — text can wrap/overlap in ways the live preview
+    // never shows (seen on machines where a proxy/ad-blocker blocks font
+    // fetches). Retry once, and if it still fails surface a warning so
+    // the marketer knows the output may not match the preview.
     let fontEmbedCSS = '';
-    try {
-      fontEmbedCSS = await htmlToImage.getFontEmbedCSS(canvasEl);
-    } catch {
-      // If font fetching fails (CORS etc), fall back to system fonts.
-      fontEmbedCSS = '';
+    let fontEmbedError: unknown = null;
+    for (let attempt = 1; attempt <= 2 && !fontEmbedCSS; attempt++) {
+      abort();
+      try {
+        fontEmbedCSS = await htmlToImage.getFontEmbedCSS(canvasEl);
+      } catch (err) {
+        fontEmbedError = err;
+        console.warn(`[Export] font embed attempt ${attempt} failed:`, err);
+      }
+    }
+    if (!fontEmbedCSS && fontEmbedError) {
+      onWarning(
+        'Fonts could not be embedded — text in the MP4 may wrap or overlap differently from the preview. A network filter (VPN, proxy or ad-blocker) may be blocking font requests; fix that and re-export.',
+      );
     }
     abort();
 

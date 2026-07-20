@@ -17,21 +17,18 @@
     <link rel="icon" type="image/svg+xml" sizes="16x16" href="/favicon-16.svg" />
     <link rel="mask-icon" href="/favicon.svg" color="#B87253" />
     <meta name="theme-color" content="#0E0B09" />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <!--
-      Typography families used by template scenes.
-      - Portrait, Noto Serif Display, Noto Kufi Arabic → self-hosted at
-        app/src/assets/fonts/, registered via app/src/styles/fonts.css.
-      - Everything below is alternate choices loaded from Google Fonts for
-        marketers who switch families in Brand Kit → Typography (Phase 4).
-      Keeps the Ounass brand defaults available offline and removes the
-      runtime dependency on Google Fonts for the three critical families.
+      Typography: ALL families are self-hosted.
+      - Portrait, Noto Serif Display, Noto Kufi Arabic → app/src/assets/fonts/,
+        registered via app/src/styles/fonts.css.
+      - Fraunces, Nunito Sans, Cormorant Garamond, Playfair Display, Inter,
+        DM Sans, Noto Naskh Arabic, Cairo → vendored from Google Fonts into
+        app/src/assets/fonts/google/, registered via app/src/styles/google-fonts.css.
+      Do NOT reintroduce a fonts.googleapis.com <link>: export-time font
+      embedding (getFontEmbedCSS in lib/export.ts) must re-fetch every font,
+      and corporate proxies / ad-blockers blocking Google Fonts made exports
+      render in system fonts (text wrapped + overlapped) on marketing machines.
     -->
-    <link
-      rel="stylesheet"
-      href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,300&family=Nunito+Sans:ital,opsz,wght@0,6..12,300;0,6..12,400;0,6..12,600;0,6..12,700;0,6..12,900&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400;1,500;1,600&family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400;1,500&family=Inter:wght@300;400;500;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,700;1,9..40,400&family=Noto+Naskh+Arabic:wght@400;500;600;700&family=Cairo:wght@300;400;500;600;700;800&display=swap"
-    />
   </head>
   <body>
     <div id="root"></div>

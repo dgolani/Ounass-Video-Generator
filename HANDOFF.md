@@ -105,7 +105,7 @@ VideoAds/
 └── app/                        ← The Vite app (everything below is relative to here)
     ├── package.json
     ├── vite.config.ts          ← !! ffmpeg gotchas live here (optimizeDeps.exclude)
-    ├── index.html              ← Loads Google Fonts (Fraunces + Nunito Sans)
+    ├── index.html              ← No font <link>s — ALL families self-hosted (see src/styles/fonts.css + google-fonts.css)
     ├── tsconfig.*.json
     └── src/
         ├── main.tsx            ← StrictMode + BrowserRouter mounting
@@ -475,7 +475,7 @@ If export hangs, fails, or produces wrong output — check in this order:
 1. **Browser console:** ExportModal logs `[Export] failed:` on catch. Copy the message.
 2. **"Failed to import ffmpeg-core.js"** → §9 gotcha #3. Check that imports in `lib/export.ts` use `'@ffmpeg/core?url'` not a path-string.
 3. **"Loading encoder…" hangs forever** → §9 gotcha #2. Check `vite.config.ts` has `optimizeDeps.exclude: ['@ffmpeg/ffmpeg', '@ffmpeg/util']`.
-4. **Output MP4 has wrong fonts (system serif fallback)** → `getFontEmbedCSS(canvasEl)` either threw silently or returned empty. The catch in `lib/export.ts` swallows it. Add a `console.warn` inside that catch to see the underlying error.
+4. **Output MP4 has wrong fonts (system serif fallback)** → `getFontEmbedCSS(canvasEl)` threw or returned empty. `lib/export.ts` now retries once, `console.warn`s the underlying error, and surfaces an amber warning banner in the ExportModal. Root cause used to be corporate proxies / ad-blockers blocking fonts.googleapis.com mid-export (preview looked fine because self-hosted Portrait sits first in every stack) — fixed 2026-07-20 by vendoring ALL Google families into `src/assets/fonts/google/` + `src/styles/google-fonts.css` (regenerate with `app/scripts/vendor-google-fonts.mjs`). Font embedding is now 100% same-origin; if this warning ever fires again, check the console for the real error.
 5. **Export visually differs from preview** → known limitation: `backdrop-filter`, `mix-blend-mode`, and a couple of `filter:` properties don't always rasterize in foreignObject. The luxury aesthetic is ~95% intact; if a specific element looks wrong, replace those CSS properties on that layer with a flat alternative.
 6. **Render speed hits ~0.5 fps** → not a bug, just complex DOM. The 5-column Phillip Lim grid is the slowest. Optimisation candidates (Phase 5): worker-pool rasterization, OffscreenCanvas.
 7. **Export silently produces no download** → check `downloadBlob()` isn't being blocked by browser popup blocker. The button click is a user gesture so it should work.

@@ -63,6 +63,10 @@ export function ExportModal({
   const [phase, setPhase] = useState<Phase>('idle');
   const [progress, setProgress] = useState<ExportProgress | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // Non-fatal pipeline warnings (e.g. font embedding failed) — the export
+  // still completes, but the marketer must know the MP4 may not match
+  // the preview before shipping it.
+  const [warning, setWarning] = useState<string | null>(null);
   const [resultBlob, setResultBlob] = useState<Blob | null>(null);
   const abortRef = useRef<AbortController | null>(null);
 
@@ -72,6 +76,7 @@ export function ExportModal({
       setPhase('idle');
       setProgress(null);
       setError(null);
+      setWarning(null);
       setResultBlob(null);
       abortRef.current?.abort();
     }
@@ -85,6 +90,7 @@ export function ExportModal({
     }
     setPhase('running');
     setError(null);
+    setWarning(null);
     setResultBlob(null);
     const abort = new AbortController();
     abortRef.current = abort;
@@ -114,6 +120,7 @@ export function ExportModal({
         musicEndVideoTime,
         projectBackground,
         onProgress: setProgress,
+        onWarning: setWarning,
         signal: abort.signal,
       });
       setResultBlob(blob);
@@ -358,6 +365,28 @@ export function ExportModal({
               </Button>
             </div>
           </>
+        )}
+
+        {(phase === 'running' || phase === 'done') && warning && (
+          <div
+            style={{
+              padding: '12px 14px',
+              marginBottom: 16,
+              background: 'rgba(216,146,82,0.12)',
+              border: '1px solid rgba(216,146,82,0.45)',
+              borderRadius: 'var(--r-md)',
+              fontFamily: 'var(--sans)',
+              fontSize: 12,
+              lineHeight: 1.55,
+              color: '#D89252',
+            }}
+          >
+            <strong style={{ letterSpacing: '0.08em', textTransform: 'uppercase', fontSize: 10 }}>
+              Warning
+            </strong>
+            <br />
+            {warning}
+          </div>
         )}
 
         {phase === 'running' && (
