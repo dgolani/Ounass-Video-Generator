@@ -993,11 +993,19 @@ function HeadingProducts({ scale, is45, heading, headingStyle, brandStyle, price
         >
           {product.imageUrl ? null : `Product ${frameIdx}`}
         </div>
-        <div style={{ textAlign: 'center' }}>
+        {/* Brand + price are ONE line each, at the full column width.
+          * `alignSelf: stretch` + `nowrap` matter for export: html-to-image
+          * freezes each element's computed width, and a shrink-wrapped meta
+          * block ties the price's box to the brand's text width — if fonts
+          * ever fall back (blocked font fetch), the wider substitute face
+          * made short-brand frames wrap the price and long-brand frames
+          * overlap it. Independent full-width single lines can't collide. */}
+        <div style={{ textAlign: 'center', alignSelf: 'stretch' }}>
           <div
             style={{
               marginBottom: wh(14),
               ...brandStyle,
+              whiteSpace: 'nowrap',
             }}
           >
             {product.brand}
@@ -1005,6 +1013,7 @@ function HeadingProducts({ scale, is45, heading, headingStyle, brandStyle, price
           <div
             style={{
               ...priceStyle,
+              whiteSpace: 'nowrap',
             }}
           >
             {product.price}
