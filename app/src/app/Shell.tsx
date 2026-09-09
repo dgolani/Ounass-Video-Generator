@@ -106,7 +106,7 @@ export function Shell() {
               color: 'var(--editor-text-dim)',
             }}
           >
-            Build 0.2
+            Build 0.3
           </div>
         </div>
       </aside>

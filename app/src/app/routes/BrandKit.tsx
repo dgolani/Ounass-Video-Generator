@@ -21,6 +21,10 @@ import { ImageDropZone } from '../components/PropertiesPanel';
 import {
   CURATED_FAMILIES,
   DEFAULT_TYPOGRAPHY,
+  WEIGHT_LABELS,
+  fontStackFor,
+  snapWeight,
+  weightsFor,
   type TypographyRole,
   type FontChoice,
 } from '../../engine/typography';
@@ -352,13 +356,16 @@ const ROLE_META: Record<
   },
 };
 
-const WEIGHT_OPTIONS = [
-  { value: '300', label: '300 · Light' },
-  { value: '400', label: '400 · Regular' },
-  { value: '500', label: '500 · Medium' },
-  { value: '600', label: '600 · SemiBold' },
-  { value: '700', label: '700 · Bold' },
-];
+/** Weight options for whichever family is selected — families ship
+ *  different cuts (Nunito Sans has 200-900 but no 500; Fraunces stops at
+ *  600), and offering a weight a family lacks means the browser quietly
+ *  substitutes a different cut in the export. */
+function weightOptionsFor(family: string) {
+  return weightsFor(family).map((w) => ({
+    value: String(w),
+    label: `${w} · ${WEIGHT_LABELS[w] ?? 'Regular'}`,
+  }));
+}
 
 function TypographyTile({
   role,
@@ -412,7 +419,11 @@ function TypographyTile({
         <Field label="Family">
           <Select
             value={value.family}
-            onChange={(v) => onChange({ ...value, family: v })}
+            onChange={(v) =>
+              // Snap the weight into the new family's range so switching
+              // family can never leave a selection on a cut it lacks.
+              onChange({ family: v, weight: snapWeight(v, value.weight) })
+            }
             options={families}
           />
         </Field>
@@ -420,7 +431,7 @@ function TypographyTile({
           <Select
             value={String(value.weight)}
             onChange={(v) => onChange({ ...value, weight: Number(v) })}
-            options={WEIGHT_OPTIONS}
+            options={weightOptionsFor(value.family)}
           />
         </Field>
       </Stack>
@@ -441,7 +452,7 @@ function TypographyTile({
       >
         <span
           style={{
-            fontFamily: `'${value.family}', serif`,
+            fontFamily: fontStackFor(role, value.family),
             fontWeight: value.weight,
             fontSize: meta.sampleSize,
             fontStyle: meta.italic ? 'italic' : 'normal',

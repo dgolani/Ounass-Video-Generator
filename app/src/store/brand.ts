@@ -2,7 +2,11 @@ import { useEffect, useState } from 'react';
 import ounassLogoRaw from '../assets/ounass-logo.svg?raw';
 import ounassLogoArabicRaw from '../assets/ounass-logo-arabic.svg?raw';
 import { sanitizeSvg, svgToDataURL } from '../lib/logo';
-import { DEFAULT_TYPOGRAPHY, type Typography } from '../engine/typography';
+import {
+  DEFAULT_TYPOGRAPHY,
+  normalizeTypography,
+  type Typography,
+} from '../engine/typography';
 import {
   DEFAULT_SAFE_ZONES,
   type AspectKey,
@@ -89,11 +93,16 @@ export function readBrand(): BrandKit {
       ...parsed,
       colors: { ...DEFAULT_BRAND.colors, ...(parsed.colors ?? {}) },
       // Deep-merge typography so a partial override (e.g. just the display
-      // role) still receives defaults for the other three.
-      typography: {
+      // role) still receives defaults for the other three, then normalize
+      // onto faces that actually ship. A kit saved before Build 0.3 names
+      // 'Noto Serif Display' weight 500 for the numeric role; that family
+      // is no longer offered and its replacement (Nunito Sans) has no 500,
+      // so without this a marketer would see a stale family in the picker
+      // and a weight the browser has to fake.
+      typography: normalizeTypography({
         ...DEFAULT_BRAND.typography,
         ...(parsed.typography ?? {}),
-      },
+      }),
       // Per-aspect safe zones merge so newly introduced aspects (e.g. a
       // future 9:16-no-chrome-v2) don't strand older saves.
       safeZones: {

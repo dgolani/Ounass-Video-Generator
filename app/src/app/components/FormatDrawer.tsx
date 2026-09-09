@@ -32,6 +32,10 @@ import { createPortal } from 'react-dom';
 import { ColorField, TextField } from '../../ui/primitives';
 import {
   CURATED_FAMILIES,
+  WEIGHT_LABELS,
+  snapWeight,
+  supportsItalic,
+  weightsFor,
   type TypographyRole,
 } from '../../engine/typography';
 import {
@@ -84,8 +88,8 @@ const ROLE_DEFAULTS: Record<
     sample: 'Shop the edit · new in',
   },
   numeric: {
-    family: 'Noto Serif Display',
-    weight: 500,
+    family: 'Nunito Sans',
+    weight: 600,
     italic: false,
     size: 20,
     letterSpacing: '0.05em',
@@ -339,6 +343,10 @@ export function FormatDrawer({
   const families = CURATED_FAMILIES[role];
   const currentFamily = value.family ?? families[0];
   const activeWeight = value.weight;
+  // The weight actually rendering right now: the override if set, else the
+  // role's default. Face-availability lookups must use this, not
+  // activeWeight, which is undefined while no override exists.
+  const faceWeight = value.weight ?? ROLE_DEFAULTS[role].weight;
   const activeSize = value.sizeScale ?? 1;
   const activeLetterSpacing = value.letterSpacing ?? '';
   const activeLineHeight = value.lineHeight ?? '';
@@ -563,7 +571,18 @@ export function FormatDrawer({
                   type="button"
                   role="radio"
                   aria-checked={active}
-                  onClick={() => patch({ family: f })}
+                  onClick={() =>
+                    patch({
+                      family: f,
+                      // Carry the weight onto a cut `f` actually ships,
+                      // and drop italic if it has no real oblique there.
+                      weight: snapWeight(f, faceWeight),
+                      italic:
+                        value.italic && supportsItalic(f, snapWeight(f, faceWeight))
+                          ? true
+                          : undefined,
+                    })
+                  }
                   style={{
                     textAlign: role === 'arabic' ? 'right' : 'left',
                     direction: role === 'arabic' ? 'rtl' : 'ltr',
@@ -615,7 +634,7 @@ export function FormatDrawer({
               background: 'var(--editor-panel-2)',
               border: '1px solid var(--editor-border)',
               borderRadius: 3,
-              fontFamily: `'${currentFamily}', serif`,
+              fontFamily: `'${currentFamily}', var(--sans)`,
               fontSize: 20,
               fontWeight: activeWeight ?? 500,
               fontStyle: value.italic ? 'italic' : 'normal',
@@ -680,41 +699,58 @@ export function FormatDrawer({
 
         {/* Weight */}
         <DrawerSection label="Weight">
+          {/* Pills follow the selected family's real cuts — Nunito Sans
+            *  runs 200-900 with no Medium, Fraunces stops at 600. Picking
+            *  a weight a family lacks would silently render a different
+            *  cut in the export than in the preview. */}
           <PillRow<number>
             value={activeWeight}
             onChange={(v) => patch({ weight: v })}
-            options={[
-              { value: 300, label: 'Light' },
-              { value: 400, label: 'Regular' },
-              { value: 500, label: 'Medium' },
-              { value: 600, label: 'SemiBold' },
-              { value: 700, label: 'Bold' },
-            ]}
+            options={weightsFor(currentFamily).map((w) => ({
+              value: w,
+              label: WEIGHT_LABELS[w] ?? String(w),
+            }))}
           />
         </DrawerSection>
 
         {/* Italic + Text transform */}
         <DrawerSection label="Style">
           <Row label="Italic">
-            <button
-              type="button"
-              onClick={() => patch({ italic: value.italic ? undefined : true })}
-              style={{
-                padding: '6px 14px',
-                fontSize: 13,
-                fontStyle: 'italic',
-                fontWeight: 500,
-                color: value.italic ? '#0A0A0A' : 'rgba(255,255,255,0.75)',
-                background: value.italic ? 'var(--editor-accent)' : 'var(--editor-panel-2)',
-                border: `1px solid ${value.italic ? 'var(--editor-accent)' : 'var(--editor-border)'}`,
-                borderRadius: 3,
-                cursor: 'pointer',
-                width: 64,
-                fontFamily: 'var(--serif)',
-              }}
-            >
-              I
-            </button>
+            {/* Only offer italic where the family ships a real oblique —
+              *  otherwise the browser synthesises a slanted fake whose
+              *  metrics differ between preview and rasterized export. */}
+            {(() => {
+              const italicReal = supportsItalic(currentFamily, faceWeight);
+              const on = Boolean(value.italic) && italicReal;
+              return (
+                <button
+                  type="button"
+                  disabled={!italicReal}
+                  title={
+                    italicReal
+                      ? 'Italic'
+                      : `${currentFamily} has no italic at ${faceWeight}`
+                  }
+                  onClick={() => patch({ italic: value.italic ? undefined : true })}
+                  style={{
+                    padding: '6px 14px',
+                    fontSize: 13,
+                    fontStyle: 'italic',
+                    fontWeight: 500,
+                    color: on ? '#0A0A0A' : 'rgba(255,255,255,0.75)',
+                    background: on ? 'var(--editor-accent)' : 'var(--editor-panel-2)',
+                    border: `1px solid ${on ? 'var(--editor-accent)' : 'var(--editor-border)'}`,
+                    borderRadius: 3,
+                    cursor: italicReal ? 'pointer' : 'not-allowed',
+                    opacity: italicReal ? 1 : 0.4,
+                    width: 64,
+                    fontFamily: 'var(--serif)',
+                  }}
+                >
+                  I
+                </button>
+              );
+            })()}
           </Row>
           <Row label="Transform">
             <PillRow<TextTransform>

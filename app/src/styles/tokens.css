@@ -61,10 +61,11 @@
    *
    * Defaults below are the app-level fallbacks used before any brand kit
    * value is read. Cormorant Garamond + Inter are the luxury-fashion
-   * defaults; Noto Serif catches digits; Noto Kufi catches Arabic glyphs.
+   * defaults; Nunito Sans carries numerals (prices, badges, countdowns);
+   * Noto Kufi catches Arabic glyphs.
    */
   --font-display:  'Portrait', 'Cormorant Garamond', 'Fraunces', Georgia, serif;
   --font-body:     'Portrait', 'Inter', 'Nunito Sans', -apple-system, system-ui, sans-serif;
-  --font-numeric:  'Noto Serif Display', 'Noto Serif', 'Fraunces', Georgia, serif;
+  --font-numeric:  'Nunito Sans', 'Inter', -apple-system, system-ui, sans-serif;
   --font-arabic:   'Noto Kufi Arabic', 'Noto Naskh Arabic', 'Tahoma', sans-serif;
 }

@@ -61,6 +61,173 @@ export type ExportOptions = {
   signal?: AbortSignal;
 };
 
+type Face = { weight: number; style: string };
+
+/** Every @font-face this document declares, grouped by family. Read off
+ *  the live stylesheets so it can't drift from fonts.css /
+ *  google-fonts.css. */
+function declaredFaces(): Map<string, Face[]> {
+  const byFamily = new Map<string, Face[]>();
+  for (const sheet of Array.from(document.styleSheets)) {
+    let rules: CSSRuleList;
+    try {
+      rules = sheet.cssRules;
+    } catch {
+      // Cross-origin sheet — unreadable, and nothing we ship is remote.
+      continue;
+    }
+    for (const rule of Array.from(rules)) {
+      if (!(rule instanceof CSSFontFaceRule)) continue;
+      const family = rule.style.fontFamily?.replace(/["']/g, '').trim();
+      if (!family) continue;
+      const weight = parseInt(rule.style.fontWeight || '400', 10) || 400;
+      const style = (rule.style.fontStyle || 'normal').trim();
+      const faces = byFamily.get(family) ?? [];
+      // Same weight/style can appear twice with different unicode-range
+      // (latin vs latin-ext); one entry per weight/style is enough here.
+      if (!faces.some((f) => f.weight === weight && f.style === style)) {
+        faces.push({ weight, style });
+      }
+      byFamily.set(family, faces);
+    }
+  }
+  return byFamily;
+}
+
+const GENERIC_FAMILY_RE =
+  /^(-apple-system|system-ui|sans-serif|serif|monospace|cursive|fantasy|ui-[a-z-]+|BlinkMacSystemFont|Georgia|Tahoma|Helvetica|Arial|Times)$/i;
+
+/** CSS font-matching for weight, per CSS Fonts 4 §5.2: at 400-500 look
+ *  upward to 500 first, then down, then up; below 400 look down first;
+ *  above 500 look up first. Getting this right matters because a family
+ *  often lacks the requested cut — Nunito Sans has no 500 — and we must
+ *  embed the face the browser will actually choose, not the one asked
+ *  for. */
+function matchWeight(available: number[], desired: number): number {
+  if (available.includes(desired)) return desired;
+  const below = available.filter((w) => w < desired).sort((a, b) => b - a);
+  const above = available.filter((w) => w > desired).sort((a, b) => a - b);
+  if (desired >= 400 && desired <= 500) {
+    const upToFive = above.filter((w) => w <= 500);
+    return upToFive[0] ?? below[0] ?? above[0];
+  }
+  if (desired < 400) return below[0] ?? above[0];
+  return above[0] ?? below[0];
+}
+
+/** The exact faces the canvas will paint with: family + the weight/style
+ *  the browser resolves to. Keys are `family|weight|style`. */
+function resolveUsedFaces(root: HTMLElement): Set<string> {
+  const declared = declaredFaces();
+  const keep = new Set<string>();
+
+  const collect = (node: HTMLElement) => {
+    const cs = window.getComputedStyle(node);
+    let family: string | null = null;
+    for (const part of cs.fontFamily.split(',')) {
+      const name = part.trim().replace(/["']/g, '');
+      if (!name || GENERIC_FAMILY_RE.test(name)) continue;
+      if (declared.has(name)) {
+        family = name;
+        break; // Later entries only paint if this one lacks a glyph.
+      }
+    }
+    if (family) {
+      const faces = declared.get(family)!;
+      const wantWeight = parseInt(cs.fontWeight || '400', 10) || 400;
+      const wantItalic = cs.fontStyle.startsWith('italic') || cs.fontStyle.startsWith('oblique');
+      // Real italic if the family has one at a matching weight, else the
+      // roman face (the browser then synthesises the slant, same as it
+      // does live, so preview and export still agree).
+      const pool = wantItalic
+        ? faces.filter((f) => f.style !== 'normal')
+        : faces.filter((f) => f.style === 'normal');
+      const usePool = pool.length > 0 ? pool : faces;
+      const weight = matchWeight(
+        usePool.map((f) => f.weight),
+        wantWeight,
+      );
+      const style = usePool.find((f) => f.weight === weight)?.style ?? 'normal';
+      keep.add(`${family}|${weight}|${style}`);
+    }
+    for (const child of Array.from(node.children)) {
+      if (child instanceof HTMLElement) collect(child);
+    }
+  };
+  collect(root);
+  return keep;
+}
+
+/** Drop @font-face blocks the canvas never paints with.
+ *
+ *  Each rasterized frame carries this CSS inline, and the browser
+ *  instantiates every face in it per frame — so embedding a family's full
+ *  weight range (Nunito Sans alone is 14 faces) costs real wall-clock
+ *  across a few hundred frames. Blocks are matched on family/weight/style;
+ *  unicode-range variants of a kept face (latin vs latin-ext) both stay.
+ *  Data URLs are base64 and so contain no `}`, which makes the block split
+ *  safe. */
+function pruneFontEmbedCSS(css: string, keep: Set<string>): string {
+  const blocks = css.match(/@font-face\s*\{[^}]*\}/g);
+  if (!blocks || keep.size === 0) return css;
+  const kept = blocks.filter((block) => {
+    const family = block.match(/font-family:\s*["']?([^;"']+)/)?.[1]?.trim();
+    if (!family) return false;
+    const weight = parseInt(block.match(/font-weight:\s*(\d+)/)?.[1] ?? '400', 10);
+    const style = block.match(/font-style:\s*([a-z]+)/)?.[1] ?? 'normal';
+    return keep.has(`${family}|${weight}|${style}`);
+  });
+  // Never hand back nothing: if matching failed for any reason, the full
+  // CSS is worse for size but still correct.
+  return kept.length > 0 ? kept.join('\n') : css;
+}
+
+/** Build embed CSS covering exactly the faces the canvas paints with.
+ *
+ *  Why this exists: html-to-image picks which @font-face rules to embed by
+ *  walking the tree reading
+ *  `node.style.fontFamily || getComputedStyle(node).fontFamily`
+ *  — inline style FIRST. Every template scene sets fonts inline as
+ *  `fontFamily: 'var(--font-display)'` (that indirection is what lets the
+ *  Brand Kit swap typography at runtime), so the library sees the literal
+ *  string "var(--font-display)", matches no @font-face rule, and embeds
+ *  NONE of the brand faces. Rasterized frames then fall back to whatever
+ *  font the viewing machine has installed — which is why an export could
+ *  look right on one machine and wrong on another.
+ *
+ *  So we resolve the real families ourselves from computed styles, hand
+ *  `getFontEmbedCSS` a throwaway probe that names them literally (the
+ *  shape its detection reads correctly), then prune to the faces actually
+ *  painted. */
+async function buildFontEmbedCSS(
+  canvasEl: HTMLElement,
+  getFontEmbedCSS: (node: HTMLElement) => Promise<string>,
+): Promise<string> {
+  const keep = resolveUsedFaces(canvasEl);
+  const families = [...new Set([...keep].map((k) => k.split('|')[0]))];
+  if (families.length === 0) return getFontEmbedCSS(canvasEl);
+
+  const probe = document.createElement('div');
+  // Kept out of the canvas and out of the way: this must never affect
+  // layout, paint, or the rasterized frame.
+  probe.setAttribute('aria-hidden', 'true');
+  probe.dataset.exportIgnore = 'true';
+  probe.style.cssText =
+    'position:fixed;left:-9999px;top:0;width:0;height:0;overflow:hidden;opacity:0;pointer-events:none';
+  for (const family of families) {
+    const span = document.createElement('span');
+    span.style.fontFamily = `'${family}'`;
+    span.textContent = '.';
+    probe.appendChild(span);
+  }
+  document.body.appendChild(probe);
+  try {
+    return pruneFontEmbedCSS(await getFontEmbedCSS(probe), keep);
+  } finally {
+    probe.remove();
+  }
+}
+
 export async function exportVideoToMP4({
   canvasEl,
   controller,
@@ -115,9 +282,10 @@ export async function exportVideoToMP4({
   // when Phase 4 dropped per-template `<video>` elements.
 
   try {
-    // Embed any fonts currently used on the page so the rasterized
-    // frames render with Fraunces / Nunito Sans instead of falling back
-    // to serif / sans-serif defaults.
+    // Embed every font the canvas resolves to, so the rasterized frames
+    // carry the real brand faces instead of falling back to whatever the
+    // viewing machine has installed. See buildFontEmbedCSS for why we
+    // can't just hand the canvas to getFontEmbedCSS.
     onProgress({ stage: 'fonts', message: 'Embedding fonts…' });
     // A failure here means the MP4 renders in system fallback fonts with
     // different metrics — text can wrap/overlap in ways the live preview
@@ -129,7 +297,9 @@ export async function exportVideoToMP4({
     for (let attempt = 1; attempt <= 2 && !fontEmbedCSS; attempt++) {
       abort();
       try {
-        fontEmbedCSS = await htmlToImage.getFontEmbedCSS(canvasEl);
+        fontEmbedCSS = await buildFontEmbedCSS(canvasEl, (node) =>
+          htmlToImage.getFontEmbedCSS(node),
+        );
       } catch (err) {
         fontEmbedError = err;
         console.warn(`[Export] font embed attempt ${attempt} failed:`, err);
@@ -137,7 +307,7 @@ export async function exportVideoToMP4({
     }
     if (!fontEmbedCSS && fontEmbedError) {
       onWarning(
-        'Fonts could not be embedded — text in the MP4 may wrap or overlap differently from the preview. A network filter (VPN, proxy or ad-blocker) may be blocking font requests; fix that and re-export.',
+        'Fonts could not be embedded — text in the MP4 may wrap or overlap differently from the preview. Check the browser console for the underlying error (a VPN, proxy or ad-blocker blocking font requests is one cause), then re-export.',
       );
     }
     abort();

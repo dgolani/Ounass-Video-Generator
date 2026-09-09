@@ -82,7 +82,130 @@
   src: url('../assets/fonts/Portrait/Portrait-BoldItalic.woff2') format('woff2');
 }
 
-/* ─── Noto Serif Display (for the numeric role) ─────────────────────────
+/* ─── Nunito Sans (numeric role default + body alternate) ──────────────
+ * Full 14-face family (7 weights x roman/italic), SIL OFL 1.1, supplied
+ * by the marketing team and subset to Latin + Latin-Extended. See
+ * ../assets/fonts/Nunito_Sans/README.txt for provenance + conversion.
+ *
+ * Replaces Noto Serif Display as the `numeric` default (prices, badges,
+ * countdowns) as of Build 0.3.
+ *
+ * NO unicode-range here, unlike Noto Serif Display below: Nunito Sans
+ * carries no Arabic glyphs at all, so Arabic script falls through the
+ * stack to Noto Kufi / Noto Naskh on its own — a range gate would be
+ * redundant and would break Latin-Extended brand names.
+ *
+ * There is NO 500 (Medium) cut in this family. FAMILY_WEIGHTS in
+ * engine/typography.ts is the single source of truth for what the weight
+ * pickers offer, so a marketer can never select a weight that would be
+ * silently substituted or synthesised.
+ *
+ * This family must be declared HERE ONLY. It used to come from Google
+ * Fonts via google-fonts.css; declaring one family name in two places
+ * lets the later import win and silently swap which cut renders.
+ */
+@font-face {
+  font-family: 'Nunito Sans';
+  font-style: normal;
+  font-weight: 200;
+  font-display: swap;
+  src: url('../assets/fonts/Nunito_Sans/NunitoSans-ExtraLight.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Nunito Sans';
+  font-style: italic;
+  font-weight: 200;
+  font-display: swap;
+  src: url('../assets/fonts/Nunito_Sans/NunitoSans-ExtraLightItalic.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Nunito Sans';
+  font-style: normal;
+  font-weight: 300;
+  font-display: swap;
+  src: url('../assets/fonts/Nunito_Sans/NunitoSans-Light.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Nunito Sans';
+  font-style: italic;
+  font-weight: 300;
+  font-display: swap;
+  src: url('../assets/fonts/Nunito_Sans/NunitoSans-LightItalic.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Nunito Sans';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('../assets/fonts/Nunito_Sans/NunitoSans-Regular.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Nunito Sans';
+  font-style: italic;
+  font-weight: 400;
+  font-display: swap;
+  src: url('../assets/fonts/Nunito_Sans/NunitoSans-Italic.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Nunito Sans';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('../assets/fonts/Nunito_Sans/NunitoSans-SemiBold.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Nunito Sans';
+  font-style: italic;
+  font-weight: 600;
+  font-display: swap;
+  src: url('../assets/fonts/Nunito_Sans/NunitoSans-SemiBoldItalic.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Nunito Sans';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('../assets/fonts/Nunito_Sans/NunitoSans-Bold.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Nunito Sans';
+  font-style: italic;
+  font-weight: 700;
+  font-display: swap;
+  src: url('../assets/fonts/Nunito_Sans/NunitoSans-BoldItalic.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Nunito Sans';
+  font-style: normal;
+  font-weight: 800;
+  font-display: swap;
+  src: url('../assets/fonts/Nunito_Sans/NunitoSans-ExtraBold.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Nunito Sans';
+  font-style: italic;
+  font-weight: 800;
+  font-display: swap;
+  src: url('../assets/fonts/Nunito_Sans/NunitoSans-ExtraBoldItalic.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Nunito Sans';
+  font-style: normal;
+  font-weight: 900;
+  font-display: swap;
+  src: url('../assets/fonts/Nunito_Sans/NunitoSans-Black.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Nunito Sans';
+  font-style: italic;
+  font-weight: 900;
+  font-display: swap;
+  src: url('../assets/fonts/Nunito_Sans/NunitoSans-BlackItalic.woff2') format('woff2');
+}
+
+/* ─── Noto Serif Display (legacy numeric role; superseded by Nunito) ───
+ * Kept declared so projects/brand kits saved before Build 0.3 still
+ * render if they reference it. Not offered in any picker any more.
  * Restricted to Latin + Latin-Extended unicode-range so this face only
  * renders digits / Latin glyphs. Arabic script goes to Noto Kufi via the
  * `arabic` role; the browser picks per-glyph when both stacks overlap in
