@@ -371,6 +371,16 @@ superimposed — marketing's "overlap on transition of intro frames". Pass
 `fadeOut = 0` for the final scene so the film holds its last frame. If you
 add a scene, keep this rule or the overlap comes straight back.
 
+**Scene 2's product frame grid must scale with `timeScale`.** `localT` is in
+scaled seconds, so the per-frame slice is `HP_FRAME_SLICE * timeScale` (and
+the in/out fades scale with it). `meta.defaultDuration` is frozen at the
+4-product default, so ANY other product count gives `timeScale != 1`. With a
+bare `2.2` the grid drifted out of the scene's slot: removing a product
+packed 8.8s of frames into a 7.78s window and the last product was cut off
+mid-fade ("the last product just doesn't appear"); adding products left a
+blank tail. Import `HP_FRAME_SLICE` rather than re-typing the literal — the
+duplication is what let the two drift apart.
+
 **Scene 3 USPs are three-part lockups.** Each message is pre / main / post
 (`s3Line1Pre` / `s3Line1` / `s3Line1Post`), because formatting is per-field
 and the brand artwork sets small upright caps around a large italic phrase.

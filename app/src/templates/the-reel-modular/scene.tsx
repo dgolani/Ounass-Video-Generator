@@ -28,6 +28,7 @@ import {
 } from '../../engine';
 import {
   computeTimeline,
+  HP_FRAME_SLICE,
   type ReelModularProps,
   type ReelPhoneAnim,
   type ContentType,
@@ -66,7 +67,11 @@ type SceneProps = {
 };
 
 const FADE_DEFAULT = 0.55;
-const FADE_S2_OUT = 1.0;
+// Scene 2's own exit fade. Matches FADE_DEFAULT rather than running
+// longer: now that fades lead the boundary, a 1.0s exit started dimming
+// the final product frame ~0.3s before that frame's own fade-out began,
+// so the last product read as fading early compared with the others.
+const FADE_S2_OUT = 0.55;
 
 /** Per-scene cross-fade envelope: 1 inside [in, out], rises over fadeIn,
  *  falls so that it reaches 0 AT `outAt`.
@@ -590,6 +595,7 @@ export function ReelModularScene({
             count={Math.max(1, Math.min(6, s2hpProducts.length))}
             products={s2hpProducts}
             localT={s2LocalT}
+            timeScale={timeScale}
           />
         ) : null}
         {contentType === 'vouri-plp' ? (
@@ -968,25 +974,36 @@ type HeadingProductsProps = {
   count: number;
   products: ReelModularProps['s2hpProducts'];
   localT: number;
+  timeScale: number;
 };
 
-function HeadingProducts({ scale, is45, heading, headingStyle, brandStyle, priceStyle, cardBg, count, products, localT }: HeadingProductsProps) {
+function HeadingProducts({ scale, is45, heading, headingStyle, brandStyle, priceStyle, cardBg, count, products, localT, timeScale }: HeadingProductsProps) {
   const { wh } = scale;
   // Frame 0 = heading, frames 1..N = product cards.
-  const SLICE = 2.2;
+  //
+  // Every duration here is in SCALED seconds, because `localT` is. The
+  // scene's slot is `(count + 1) * HP_FRAME_SLICE * timeScale` long, so
+  // the grid has to stretch by the same factor or it drifts out of the
+  // slot. It used to use a bare `2.2`, duplicating HP_FRAME_SLICE and
+  // ignoring timeScale: `meta.defaultDuration` is fixed at the 4-product
+  // default, so ANY other product count makes timeScale != 1. Removing a
+  // product gave the grid 8.8s of frames inside a 7.78s slot and the last
+  // product was cut off mid-fade (reported as "the last product just
+  // doesn't appear"); adding products left a blank tail instead.
+  const SLICE = HP_FRAME_SLICE * timeScale;
   const totalFrames = 1 + count;
   // Strict no-overlap fade pattern from the prototype CSS:
   // fade-OUT runs 0.8s starting at frame end - 0.8s; fade-IN runs
   // 0.8s with a 0.8s delay (so it begins after the previous frame
   // has fully faded out). Each frame holds at opacity 1 in between.
+  // Scaled alongside SLICE so the in/hold/out proportions survive.
+  const fadeDur = 0.8 * timeScale;
+  const fadeOutAt = 1.4 * timeScale;
   const frameIdxFloat = localT / SLICE;
   const frameIdx = Math.max(0, Math.floor(frameIdxFloat));
   const frameLocal = localT - frameIdx * SLICE;
-  // Fade-in: 0–0.8s after delayed start (we treat "delay" as already
-  // baked into frameLocal — frameLocal=0 is when the new frame starts
-  // fading in). Fade-out begins at 1.4s, ends at 2.2s.
-  const inP = clamp(frameLocal / 0.8, 0, 1);
-  const outP = clamp((frameLocal - 1.4) / 0.8, 0, 1);
+  const inP = clamp(frameLocal / fadeDur, 0, 1);
+  const outP = clamp((frameLocal - fadeOutAt) / fadeDur, 0, 1);
   const opacity = Easing.easeOutCubic(inP) * (1 - Easing.easeOutCubic(outP));
 
   if (frameIdx >= totalFrames) {
