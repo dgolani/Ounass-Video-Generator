@@ -112,8 +112,18 @@ export type ReelModularProps = {
 
   // Scene 3 — two-flash variant
   s3Eyebrow: string;
+  // Each USP is a three-part lockup, mirroring the brand artwork:
+  // a small upright pre-line, a large italic phrase, a small upright
+  // post-line ("ENJOY" / "2-hour delivery" / "IN DUBAI"). One text field
+  // can only carry one style, which is why the single-line version could
+  // never match the PNGs. Pre/post may be blank — the stack just renders
+  // the parts that have text.
+  s3Line1Pre: string;
   s3Line1: string;
+  s3Line1Post: string;
+  s3Line2Pre: string;
   s3Line2: string;
+  s3Line2Post: string;
 
   // Scene 4 — discover-shimmer variant
   s4Pre: string;
@@ -211,10 +221,14 @@ export const defaultProps: ReelModularProps = {
   s2gcImgs: '',
 
   s3Eyebrow: 'WHY OUNASS',
-  s3Line1: '2-Hour or Same Day Delivery',
-  s3Line2: 'Curated for you',
+  s3Line1Pre: 'ENJOY',
+  s3Line1: '2-hour delivery',
+  s3Line1Post: 'IN DUBAI',
+  s3Line2Pre: 'AND',
+  s3Line2: 'same-day delivery',
+  s3Line2Post: 'IN UAE',
 
-  s4Pre: 'DISCOVER ON',
+  s4Pre: 'DISCOVER NOW ON',
   s4Mark: 'OUNASS',
   s4Cta: 'Shop Now',
 

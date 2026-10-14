@@ -226,8 +226,16 @@ export const fields: FieldDescriptor[] = [
     precision: 1,
   },
   { kind: 'text', path: 's3Eyebrow', label: 'Eyebrow', role: 'body', sceneIds: ['s3'] },
-  { kind: 'text', path: 's3Line1', label: 'USP 1', role: 'display', sceneIds: ['s3'] },
-  { kind: 'text', path: 's3Line2', label: 'USP 2', role: 'display', sceneIds: ['s3'] },
+  // Each USP is a three-part lockup (small caps / large italic / small
+  // caps) because per-field formatting means one field can only carry one
+  // style. Leave a whole group blank to drop that message — Arabic and
+  // ROW markets run a single frame where English runs two.
+  { kind: 'text', path: 's3Line1Pre', label: 'USP 1 — top line', role: 'display', sceneIds: ['s3'] },
+  { kind: 'text', path: 's3Line1', label: 'USP 1 — main (italic)', role: 'display', sceneIds: ['s3'] },
+  { kind: 'text', path: 's3Line1Post', label: 'USP 1 — bottom line', role: 'display', sceneIds: ['s3'] },
+  { kind: 'text', path: 's3Line2Pre', label: 'USP 2 — top line', role: 'display', sceneIds: ['s3'] },
+  { kind: 'text', path: 's3Line2', label: 'USP 2 — main (italic)', role: 'display', sceneIds: ['s3'] },
+  { kind: 'text', path: 's3Line2Post', label: 'USP 2 — bottom line', role: 'display', sceneIds: ['s3'] },
 
   // ── Scene 4 — Finale ──────────────────────────────────────────
   { kind: 'section', label: 'Scene 4 — Finale' },

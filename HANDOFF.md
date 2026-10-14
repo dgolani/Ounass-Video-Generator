@@ -363,6 +363,23 @@ Templates reference typography roles, never families:
 - `var(--font-body)` — sans UI (kickers, captions, CTA labels)
 - `var(--font-numeric)` — Nunito Sans (prices, rank indicators, counts). Full 14-face family self-hosted; **no 500 Medium cut** — weight pickers read `FAMILY_WEIGHTS`/`FAMILY_FACES` in `engine/typography.ts` so only real cuts are offered. Replaced Noto Serif Display in Build 0.3.
 
+**Scene transitions (the-reel / the-reel-modular).** `sceneOpacity` fades a
+scene OUT so it reaches 0 *at* its boundary, rather than starting the fade
+there. Consecutive scenes share a boundary (`s2In === s1Out`), so the old
+behaviour ran both fades over the same window and left two centred texts
+superimposed — marketing's "overlap on transition of intro frames". Pass
+`fadeOut = 0` for the final scene so the film holds its last frame. If you
+add a scene, keep this rule or the overlap comes straight back.
+
+**Scene 3 USPs are three-part lockups.** Each message is pre / main / post
+(`s3Line1Pre` / `s3Line1` / `s3Line1Post`), because formatting is per-field
+and the brand artwork sets small upright caps around a large italic phrase.
+Sizes are tuned so each part's rendered width matches the supplied PNGs
+(ENJOY 254px, "2-hour delivery" 663px, IN DUBAI 366px at 1080 wide) — if you
+retune, measure against the artwork rather than eyeballing. A group with all
+three parts blank is skipped, which is how Arabic and ROW run one frame
+where English runs two.
+
 The Stage prepends Noto Kufi Arabic to the display / body stacks when locale is Arabic, via `unicode-range`-gated `@font-face`. Hardcoding `'Fraunces'`, `'Nunito Sans'`, `'Portrait'`, or any literal family name in a scene breaks both Brand-Kit typography swaps AND Arabic glyph routing. Grep check: `grep -E "fontFamily: ['\"](?!var\()" app/src/templates/*/scene.tsx` should return nothing.
 
 ### 5.15 Theme support — light / dark palette pair (post-Phase 6)

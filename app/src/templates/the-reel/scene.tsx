@@ -77,9 +77,20 @@ const FADE_DEFAULT = 0.55;
 const FADE_S2_OUT = 1.4;
 const FADE_S3_IN = 0.85;
 
-/** Smooth in/out window. Returns 1 inside [inAt, outAt], rises over
- *  fadeIn before inAt's end, falls over fadeOut before outAt. Used as
- *  the master opacity for each scene block. */
+/** Master opacity for each scene block: 1 inside [inAt, outAt], rises over
+ *  fadeIn, falls so that it reaches 0 AT `outAt`.
+ *
+ *  The fade-out deliberately LEADS the boundary instead of starting on it.
+ *  Consecutive scenes share a boundary (S2_IN === S1_OUT), so a fade-out
+ *  beginning at `outAt` ran over exactly the same window as the next
+ *  scene's fade-in and left both superimposed — the centred wordmark
+ *  printing over the centred heading that marketing reported as "overlap
+ *  on transition of intro frames". Leading the fade means a scene has
+ *  fully cleared before the next one starts. Scene boundaries and total
+ *  runtime are unchanged.
+ *
+ *  Pass fadeOut = 0 for the final scene so the film holds its last frame
+ *  instead of ending on an empty one. */
 function sceneOpacity(
   t: number,
   inAt: number,
@@ -88,12 +99,10 @@ function sceneOpacity(
   fadeOut = FADE_DEFAULT,
 ): number {
   if (t <= inAt - 0.01) return 0;
-  if (t >= outAt + fadeOut) return 0;
+  if (t > outAt + 1e-6) return 0;
   const upP = clamp((t - inAt) / fadeIn, 0, 1);
-  const downP = clamp((t - outAt) / fadeOut, 0, 1);
-  const upE = Easing.easeOutCubic(upP);
-  const downE = Easing.easeOutCubic(downP);
-  return upE * (1 - downE);
+  const downP = fadeOut > 0 ? clamp((t - (outAt - fadeOut)) / fadeOut, 0, 1) : 0;
+  return Easing.easeOutCubic(upP) * (1 - Easing.easeOutCubic(downP));
 }
 
 export function ReelScene({
@@ -214,7 +223,7 @@ export function ReelScene({
   const op1 = sceneOpacity(t, T(S1_IN), T(S1_OUT));
   const op2 = sceneOpacity(t, T(S2_IN), T(S2_OUT), FADE_DEFAULT, FADE_S2_OUT);
   const op3 = sceneOpacity(t, T(S3_IN), T(S3_OUT), FADE_S3_IN);
-  const op4 = sceneOpacity(t, T(S4_IN), T(S4_OUT));
+  const op4 = sceneOpacity(t, T(S4_IN), T(S4_OUT), FADE_DEFAULT, 0);
 
   // ─── Scene 1 — per-letter stagger ───
   const s1LocalT = t - T(S1_IN);

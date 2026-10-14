@@ -69,7 +69,20 @@ const FADE_DEFAULT = 0.55;
 const FADE_S2_OUT = 1.0;
 
 /** Per-scene cross-fade envelope: 1 inside [in, out], rises over fadeIn,
- *  falls over fadeOut. */
+ *  falls so that it reaches 0 AT `outAt`.
+ *
+ *  The fade-out deliberately LEADS the boundary instead of starting on it.
+ *  Consecutive scenes share a boundary (s2In === s1Out), so a fade-out that
+ *  began at `outAt` ran over exactly the same window as the next scene's
+ *  fade-in and left both superimposed — the centred wordmark printing over
+ *  the centred heading that marketing reported as "overlap on transition of
+ *  intro frames". Leading the fade means a scene has fully cleared before
+ *  the next one starts, which is the same no-overlap rule the product
+ *  frames inside scene 2 already follow. Scene boundaries and total runtime
+ *  are unchanged.
+ *
+ *  Pass fadeOut = 0 for the final scene so the film holds its last frame
+ *  instead of ending on an empty one. */
 function sceneOpacity(
   t: number,
   inAt: number,
@@ -78,9 +91,9 @@ function sceneOpacity(
   fadeOut = FADE_DEFAULT,
 ): number {
   if (t <= inAt - 0.01) return 0;
-  if (t >= outAt + fadeOut) return 0;
+  if (t > outAt + 1e-6) return 0;
   const upP = clamp((t - inAt) / fadeIn, 0, 1);
-  const downP = clamp((t - outAt) / fadeOut, 0, 1);
+  const downP = fadeOut > 0 ? clamp((t - (outAt - fadeOut)) / fadeOut, 0, 1) : 0;
   return Easing.easeOutCubic(upP) * (1 - Easing.easeOutCubic(downP));
 }
 
@@ -119,8 +132,12 @@ export function ReelModularScene({
     s2vpTiles,
     s2gcImgs,
     s3Eyebrow,
+    s3Line1Pre,
     s3Line1,
+    s3Line1Post,
+    s3Line2Pre,
     s3Line2,
+    s3Line2Post,
     s4Pre,
     s4Mark,
     s4Cta,
@@ -132,7 +149,7 @@ export function ReelModularScene({
   const op1 = sceneOpacity(t, T(tl.s1In), T(tl.s1Out));
   const op2 = sceneOpacity(t, T(tl.s2In), T(tl.s2Out), FADE_DEFAULT, FADE_S2_OUT);
   const op3 = sceneOpacity(t, T(tl.s3In), T(tl.s3Out));
-  const op4 = sceneOpacity(t, T(tl.s4In), T(tl.s4Out));
+  const op4 = sceneOpacity(t, T(tl.s4In), T(tl.s4Out), FADE_DEFAULT, 0);
 
   // Per-text typography hooks.
   // Logo color override — Aa drawer on the logo field surfaces a
@@ -288,39 +305,88 @@ export function ReelModularScene({
   const s3LineStyle = useFieldFormat('s3Line1', {
     fontFamily: 'var(--font-display)',
     fontStyle: 'italic',
-    fontSize: wh(is45 ? 88 : 110),
+    fontSize: wh(is45 ? 114 : 142),
     fontWeight: 300,
-    lineHeight: 1.0,
+    lineHeight: 1.02,
     letterSpacing: '-0.01em',
     color: '#ffffff',
   });
   const s3Line2Style = useFieldFormat('s3Line2', {
     fontFamily: 'var(--font-display)',
     fontStyle: 'italic',
-    fontSize: wh(is45 ? 88 : 110),
+    fontSize: wh(is45 ? 114 : 142),
     fontWeight: 300,
-    lineHeight: 1.0,
+    lineHeight: 1.02,
     letterSpacing: '-0.01em',
+    color: '#ffffff',
+  });
+  // Upright caps above and below each italic phrase. Sizes come from the
+  // delivery artwork (UAE/KSA/KWT/ROW *.png, 1080x1080): pre cap-height
+  // 77px, italic band 126px, post cap-height 60px, set tight at 8px and
+  // 14px apart. Separate fields because formatting is per-field — one
+  // field cannot carry upright caps AND a large italic at once.
+  const s3Line1PreStyle = useFieldFormat('s3Line1Pre', {
+    fontFamily: 'var(--font-display)',
+    fontSize: wh(is45 ? 68 : 85),
+    fontWeight: 400,
+    lineHeight: 0.95,
+    letterSpacing: '0.01em',
+    textTransform: 'uppercase',
+    color: '#ffffff',
+  });
+  const s3Line1PostStyle = useFieldFormat('s3Line1Post', {
+    fontFamily: 'var(--font-display)',
+    fontSize: wh(is45 ? 67 : 84),
+    fontWeight: 400,
+    lineHeight: 0.95,
+    letterSpacing: '0.01em',
+    textTransform: 'uppercase',
+    color: '#ffffff',
+  });
+  const s3Line2PreStyle = useFieldFormat('s3Line2Pre', {
+    fontFamily: 'var(--font-display)',
+    fontSize: wh(is45 ? 68 : 85),
+    fontWeight: 400,
+    lineHeight: 0.95,
+    letterSpacing: '0.01em',
+    textTransform: 'uppercase',
+    color: '#ffffff',
+  });
+  const s3Line2PostStyle = useFieldFormat('s3Line2Post', {
+    fontFamily: 'var(--font-display)',
+    fontSize: wh(is45 ? 67 : 84),
+    fontWeight: 400,
+    lineHeight: 0.95,
+    letterSpacing: '0.01em',
+    textTransform: 'uppercase',
     color: '#ffffff',
   });
   // s4 pre-line — bumped from 22pt → 36pt and tightened the
   // letter-spacing from 0.5em → 0.32em so it reads in better
   // proportion to the huge OUNASS mark below it (matches the
   // reference images' visual balance).
+  // Sizes/tracking below are measured off the brand outro artwork
+  // (Outros TXT_*.png, 1080x1080): pre-line cap-height 29px, mark
+  // cap-height 80px, 25px between them. The previous values ran the mark
+  // at 180px against a 36px bold pre-line — a 5x jump where the artwork
+  // uses 2.8x — which is the mismatch marketing flagged ("the spacing
+  // between the two lines differs from our PNGs"). Display face, not
+  // body: the lockup must stay on the brand serif even if a boutique
+  // swaps its body font in Brand Kit.
   const s4PreStyle = useFieldFormat('s4Pre', {
-    fontFamily: 'var(--font-mono, var(--font-body))',
-    fontSize: wh(is45 ? 28 : 36),
-    fontWeight: 700,
-    letterSpacing: '0.32em',
+    fontFamily: 'var(--font-display)',
+    fontSize: wh(is45 ? 32 : 41),
+    fontWeight: 400,
+    letterSpacing: '0.055em',
     textTransform: 'uppercase',
     color: 'rgba(255,255,255,0.92)',
   });
   const s4MarkStyle = useFieldFormat('s4Mark', {
     fontFamily: 'var(--font-display)',
-    fontSize: wh(is45 ? 140 : 180),
+    fontSize: wh(is45 ? 89 : 114),
     fontWeight: 400,
     lineHeight: 1.0,
-    letterSpacing: '0.06em',
+    letterSpacing: '0.085em',
     color: '#ffffff',
   });
   const s4CtaStyle = useFieldFormat('s4Cta', {
@@ -363,11 +429,18 @@ export function ReelModularScene({
   // scene renders empty (just the eyebrow if present); if only one
   // is blank the other gets the entire window. No "appearing flash
   // of nothing" any more.
-  const visibleUsps = [s3Line1, s3Line2].filter((s) => s && s.trim().length > 0);
+  const uspGroups = [
+    { pre: s3Line1Pre, main: s3Line1, post: s3Line1Post, mainStyle: s3LineStyle, preStyle: s3Line1PreStyle, postStyle: s3Line1PostStyle },
+    { pre: s3Line2Pre, main: s3Line2, post: s3Line2Post, mainStyle: s3Line2Style, preStyle: s3Line2PreStyle, postStyle: s3Line2PostStyle },
+  ];
+  const has = (v?: string) => Boolean(v && v.trim().length > 0);
+  // Markets differ: English runs two frames, Arabic and ROW only one, so
+  // an empty group is skipped rather than held as a blank beat.
+  const visibleUsps = uspGroups.filter((g) => has(g.pre) || has(g.main) || has(g.post));
   const s3Window = T(tl.s3Out) - T(tl.s3In) - 0.4;
   const slice = visibleUsps.length > 0 ? Math.max(0.6, s3Window / visibleUsps.length) : 0;
-  const uspSlots = visibleUsps.map((line, i) => ({
-    line,
+  const uspSlots = visibleUsps.map((group, i) => ({
+    group,
     fade: uspFadeStyle(s3LocalT, 0.25 + i * slice, slice),
   }));
 
@@ -580,9 +653,12 @@ export function ReelModularScene({
               {s3Eyebrow}
             </div>
           ) : null}
-          <div style={{ position: 'relative', height: wh(160) }}>
+          {/* Tall enough for the three-part stack (the artwork's block is
+            *  282px of a 1080 frame); each USP is absolutely positioned and
+            *  centred so consecutive messages cross-fade in place. */}
+          <div style={{ position: 'relative', height: wh(300) }}>
             {uspSlots.map((slot, i) => {
-              const lineStyle = i === 0 ? s3LineStyle : s3Line2Style;
+              const { pre, main, post, preStyle, mainStyle, postStyle } = slot.group;
               return (
                 <div
                   key={i}
@@ -593,11 +669,16 @@ export function ReelModularScene({
                     top: '50%',
                     transform: 'translateY(-50%)',
                     textAlign: 'center',
-                    ...lineStyle,
-                    opacity: slot.fade * ((lineStyle.opacity as number | undefined) ?? 1),
+                    opacity: slot.fade,
                   }}
                 >
-                  {slot.line}
+                  {has(pre) ? (
+                    <div style={{ ...preStyle, marginBottom: wh(8) }}>{pre}</div>
+                  ) : null}
+                  {has(main) ? <div style={{ ...mainStyle }}>{main}</div> : null}
+                  {has(post) ? (
+                    <div style={{ ...postStyle, marginTop: wh(14) }}>{post}</div>
+                  ) : null}
                 </div>
               );
             })}
@@ -629,14 +710,15 @@ export function ReelModularScene({
               style={{
                 maxWidth: s.w(BASE_W * 0.6),
                 margin: '0 auto',
-                marginBottom: wh(36),
+                marginBottom: wh(14),
                 whiteSpace: 'normal',
                 ...s4PreStyle,
                 // lineHeight after the spread so a second-line wrap
                 // breathes properly. The base style's lineHeight
                 // (defaults to 1 in FieldBaseStyle) would otherwise
-                // crush wrapped lines together.
-                lineHeight: 1.3,
+                // crush wrapped lines together. 1.2 + the 14px margin
+                // above lands the gap to the mark on the artwork's 25px.
+                lineHeight: 1.2,
                 opacity: s4PreOp * ((s4PreStyle.opacity as number | undefined) ?? 1),
               }}
             >
